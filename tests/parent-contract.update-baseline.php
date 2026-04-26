@@ -32,13 +32,21 @@ if ( PHP_SAPI !== 'cli' ) {
  * end, why-it-matters ].
  */
 $RANGES = [
-	[ 'includes/classes/class-wcdonationorder.php',          1540, 1820, 'AJAX handler add_donation_to_order_action — the contract our submit feeds' ],
+	[ 'includes/classes/class-wcdonationorder.php',          1540, 1820, 'AJAX handler add_donation_to_order_action — the contract our overlay JS feeds via parent\'s submit handler' ],
 	[ 'includes/classes/class-wcdonationorder.php',          1655, 1655, 'RecurringDisp === user gate (D1 origin)' ],
-	[ 'includes/classes/class-wcdonationcampaignsetting.php', 614,  630, 'Single-page form render + before/after action hooks (D3 wraps these)' ],
-	[ 'includes/classes/class-wcdonationcampaignsetting.php', 920,  935, 'Shortcode form render + before/after action hooks (D3 wraps these)' ],
+	[ 'includes/classes/class-wcdonationcampaignsetting.php', 614,  630, 'Single-page form render — overlay finds .wc-donation-in-action via this render path' ],
+	[ 'includes/classes/class-wcdonationcampaignsetting.php', 920,  935, '[wc_woo_donation] shortcode render — same path, same selector' ],
 	[ 'includes/classes/class-wcdonationcampaignsetting.php', 1820, 1840, 'wc_donation_after_save_campaign_meta action — our save handler hooks here' ],
-	[ 'includes/classes/class-wcdonationproces.php',          324,  355, 'Frontend localize block — reference for our own dfwcCompanion localize shape' ],
+	[ 'includes/classes/class-wcdonationcampaignsetting.php',  882,  944, '[wc_woo_donation] shortcode handler signature — overlay calls this via do_shortcode("[wc_woo_donation id=N]")' ],
+	[ 'includes/classes/class-wcdonationproces.php',          324,  355, 'Frontend localize block — wcOrderScript shape (parent uses, we mirror in dfwcCompanion)' ],
 	[ 'includes/classes/class-wcdonationsubscriptionfree.php',  78,  110, 'WPS SFW expiry handling — open-ended convention (empty expiry fields)' ],
+	// 0.4.0 augmentation overlay dependencies — DOM selectors locked to these line ranges.
+	[ 'includes/views/frontend/frontend-order-donation.php',         1, 100, 'Donor form template top: .wc-donation-in-action wrapper, $blocks ordering' ],
+	[ 'includes/views/frontend/blocks/frontend-donation-amount-disp.php', 1, 183, 'Amount block — overlay depends on .row1, hidden price inputs (.donate_<id>_<rand>), .grab-donation, .wc-donation-f-donation-other-value, wc-donation-cause hidden input' ],
+	[ 'includes/views/frontend/blocks/frontend-donation-subscription-disp.php', 1, 178, 'Recurring block — overlay depends on .donation-is-recurring, _subscription_period/_interval/_length selects, .wps_sfw_subscription_* fields' ],
+	[ 'includes/views/frontend/blocks/frontend-donation-button-disp.php', 14,  22, 'Submit button + hidden campaign/rand inputs — overlay reads .wc_donation_camp / .wp_rand and binds capture-phase guard on .wc-donation-f-submit-donation' ],
+	[ 'assets/js/frontend.js',                              351,  500, 'Parent submit handler addDonationToOrder() POST shape + .wc-donation-f-submit-donation click — overlay piggybacks on this for the AJAX call' ],
+	[ 'assets/js/frontend.js',                              860,  900, 'Parent\'s extra click validator on submit (validates wps_sfw_subscription_number >= 1) — overlay populates this so validation passes' ],
 ];
 
 $parent_path = rtrim( getenv( 'DFWC_PARENT_PATH' ) ?: ( __DIR__ . '/donation-for-woocommerce' ), '/\\' );

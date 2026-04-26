@@ -27,7 +27,6 @@ foreach ( [
 	'\DFWC\Companion\Frontend\Renderer',
 	'\DFWC\Companion\Frontend\Shortcode',
 	'\DFWC\Companion\Frontend\Block',
-	'\DFWC\Companion\Frontend\Form_Replacer',
 	'\DFWC\Companion\Frontend\Assets',
 	'\DFWC\Companion\Frontend\Submit_Guard',
 	'\DFWC\Companion\Frontend\Elementor_Adapter',
@@ -55,14 +54,24 @@ $cfg = \DFWC\Companion\Config_Resolver::resolve( (int) $cid );
 echo "config keys: " . implode( ',', array_keys( $cfg ) ) . "\n";
 echo "one_time enabled: " . ( ! empty( $cfg['one_time']['enabled'] ) ? 'yes' : 'no' ) . "\n";
 
-// 5. Render the donor form (exercises Renderer + template — including the
-// wp_unique_id replacement that bit us in 0.1.0).
+// 5. Render via the augmentation pattern (delegates to parent's shortcode).
+// In 0.4.0 the Renderer no longer outputs a self-contained form — it wraps
+// parent's `[wc_woo_donation]` HTML in our overlay marker.
 $html = \DFWC\Companion\Frontend\Renderer::render( (int) $cid );
 $len = strlen( $html );
 echo "render html length: $len\n";
-if ( $len < 500 ) { echo "FAIL: render too short\n"; exit( 1 ); }
-if ( strpos( $html, 'data-dfwc-form' ) === false ) { echo "FAIL: form root marker missing\n"; exit( 1 ); }
-if ( strpos( $html, 'dfwc-form-' ) === false ) { echo "FAIL: uid prefix missing\n"; exit( 1 ); }
+if ( strpos( $html, 'data-dfwc-overlay-target' ) === false ) {
+	echo "FAIL: overlay marker [data-dfwc-overlay-target] missing — Renderer didn't wrap parent shortcode\n";
+	echo substr( $html, 0, 500 ) . "\n";
+	exit( 1 );
+}
+if ( strpos( $html, 'wc-donation-in-action' ) === false ) {
+	echo "FAIL: parent's .wc-donation-in-action root not present in overlay output — parent shortcode produced nothing\n";
+	echo substr( $html, 0, 500 ) . "\n";
+	exit( 1 );
+}
+echo "overlay marker: present\n";
+echo "parent form root: present\n";
 
 // 6. Simulate a save by invoking Meta_Box::save() with mock $_POST.
 // This is the path that fataled on the user's site.
