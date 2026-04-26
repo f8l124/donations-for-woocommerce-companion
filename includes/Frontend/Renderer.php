@@ -42,7 +42,10 @@ final class Renderer {
 		$engine         = Engine_Detector::detect();
 		$intervals      = Config_Resolver::intervals();
 		$interval_label = self::interval_labels();
-		$form_uid       = wp_unique_id( 'dfwc-form-' );
+		// wp_unique_id() exists only since WP 6.4. Build our own to avoid that
+		// version dependency. uniqid() + an md5 slice gives a sufficiently
+		// unique per-render id even if multiple renders fire in the same tick.
+		$form_uid       = 'dfwc-form-' . substr( md5( uniqid( '', true ) ), 0, 8 );
 
 		// Determine which intervals are actually offered (engine-aware).
 		$enabled_intervals = self::resolve_enabled_intervals( $config, $engine );

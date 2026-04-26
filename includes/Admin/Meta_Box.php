@@ -110,12 +110,15 @@ final class Meta_Box {
 			return;
 		}
 
-		if ( wp_doing_autosave() ) {
+		// Use constants directly rather than wp_doing_autosave()/wp_doing_ajax() —
+		// wp_doing_autosave() does not exist as a WP function (the canonical idiom
+		// is the constant), and we want one less version-dependent surface anyway.
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
 			return;
 		}
 
 		// Reject classic-AJAX (autosave heartbeat etc.) but allow REST (block editor).
-		if ( wp_doing_ajax() && ! defined( 'REST_REQUEST' ) ) {
+		if ( ( defined( 'DOING_AJAX' ) && DOING_AJAX ) && ! defined( 'REST_REQUEST' ) ) {
 			return;
 		}
 
