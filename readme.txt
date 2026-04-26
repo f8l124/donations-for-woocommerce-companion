@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,11 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 
 == Changelog ==
 
+= 0.1.1 =
+* Fix: critical "Call to undefined function wp_doing_autosave()" fatal on campaign update — a hallucinated helper that doesn't exist in WordPress. Replaced with the canonical `defined('DOING_AUTOSAVE') && DOING_AUTOSAVE` check.
+* Fix: replaced `wp_doing_ajax()` calls with the `DOING_AJAX` constant for consistency.
+* Fix: replaced `wp_unique_id()` (WP 6.4+) with a self-contained UID generator so the plugin works on the declared minimum WP 6.2.
+
 = 0.1.0 =
 * Initial release.
 * Per-campaign admin meta box for interval-first config.
@@ -94,6 +99,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.1.1 =
+Critical fatal-error fix. Upgrade required if you've installed 0.1.0.
 
 = 0.1.0 =
 Initial release.
