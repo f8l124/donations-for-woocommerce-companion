@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.2.0
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,12 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 
 == Changelog ==
 
+= 0.3.0 =
+* Improvement: parent plugin's donation form is now ALWAYS replaced by the interval-first form on every render path (single-campaign permalink, [wc_woo_donation] shortcode, widget, and WC checkout context). The previous per-campaign opt-in caused dual-form display when sites upgraded from 0.1.x — eliminated.
+* Improvement: removed the "Companion: Form Mode" side meta box. Power users who specifically need to keep parent's form on certain campaigns can opt out via the new `dfwc_should_replace_parent_form` filter (signature: `apply_filters( 'dfwc_should_replace_parent_form', bool $replace, int $campaign_id )`).
+* Improvement: Form_Replacer now wraps four parent render contexts (was two): single, shortcode, widget, checkout. Donor sees the same interval-first UX wherever parent would have rendered its form.
+* Fix: legacy campaigns saved under 0.1.x with `_dfwc_companion_form_mode = shortcode_only` are no longer respected — the meta is left in the DB but ignored. Eliminates the "I upgraded but still see two forms" trap.
+
 = 0.2.0 =
 * Improvement: companion config UI is now relocated into the parent plugin's "Recurring Donations" tab via a small JS injector — admins see one unified place to configure recurring intervals instead of the two separate UIs in 0.1.x.
 * Improvement: parent plugin's "Display Type" / "Recurring Text" / WPS-SFW interval controls inside the Recurring Donations tab are auto-hidden when the companion is configuring recurring intervals (avoids conflicting/duplicated controls).
@@ -107,6 +113,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.3.0 =
+Replacement of the parent plugin's donation form is now unconditional across single-campaign pages, shortcodes, widgets, and checkout contexts. Removes the form-mode opt-in that caused dual-form display on upgrade. If you need parent's form preserved on specific campaigns, use the new `dfwc_should_replace_parent_form` filter.
 
 = 0.2.0 =
 Major UX improvement: companion config moves into the parent plugin's Recurring Donations tab; default form mode flipped to "Replace" so you no longer see two donation forms on the same page. Safe to upgrade.

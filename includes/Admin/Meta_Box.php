@@ -25,7 +25,6 @@ final class Meta_Box {
 	private const NONCE_ACTION    = 'dfwc_companion_save_meta';
 	private const NONCE_FIELD     = '_dfwc_nonce';
 	private const META_BOX_ID     = 'dfwc_companion_intervals';
-	private const META_BOX_FORM   = 'dfwc_companion_form_mode';
 	private const PARENT_POST_TYPE = 'wc-donation';
 
 	/**
@@ -51,15 +50,9 @@ final class Meta_Box {
 			'normal',
 			'high'
 		);
-
-		add_meta_box(
-			self::META_BOX_FORM,
-			__( 'Companion: Form Mode', 'dfwc-companion' ),
-			[ $this, 'render_form_mode' ],
-			self::PARENT_POST_TYPE,
-			'side',
-			'low'
-		);
+		// 0.3.0: removed the form-mode side meta box. Replacement is now
+		// unconditional; opt-out is via the `dfwc_should_replace_parent_form`
+		// filter for power users.
 	}
 
 	public function render_intervals( \WP_Post $post ): void {
@@ -76,33 +69,6 @@ final class Meta_Box {
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD );
 
 		include DFWC_COMPANION_PATH . 'templates/meta-box-intervals.php';
-	}
-
-	public function render_form_mode( \WP_Post $post ): void {
-		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
-			return;
-		}
-
-		$mode = Config_Resolver::form_mode( $post->ID );
-		?>
-		<p>
-			<label>
-				<input type="radio" name="dfwc_form_mode" value="<?php echo esc_attr( Config_Resolver::FORM_MODE_REPLACE ); ?>"
-					<?php checked( Config_Resolver::FORM_MODE_REPLACE, $mode ); ?>>
-				<strong><?php esc_html_e( 'Replace the default donation form (recommended)', 'dfwc-companion' ); ?></strong>
-			</label>
-		</p>
-		<p>
-			<label>
-				<input type="radio" name="dfwc_form_mode" value="<?php echo esc_attr( Config_Resolver::FORM_MODE_SHORTCODE_ONLY ); ?>"
-					<?php checked( Config_Resolver::FORM_MODE_SHORTCODE_ONLY, $mode ); ?>>
-				<?php esc_html_e( 'Render only via shortcode / block / widget', 'dfwc-companion' ); ?>
-			</label>
-		</p>
-		<p class="description">
-			<?php esc_html_e( '"Replace" is the default. The interval-first form replaces the parent plugin\'s default donation form on this campaign\'s single page AND on any [wc_woo_donation] shortcode for this campaign. Pick the second option if you want to keep using the parent\'s form alongside our shortcode/block/widget on specific pages.', 'dfwc-companion' ); ?>
-		</p>
-		<?php
 	}
 
 	public function save( int $post_id ): void {
@@ -194,12 +160,10 @@ final class Meta_Box {
 			update_post_meta( $post_id, '_subscription_length', '0' );
 		}
 
-		// Form-mode meta.
-		$mode_raw = isset( $_POST['dfwc_form_mode'] ) ? sanitize_text_field( wp_unslash( $_POST['dfwc_form_mode'] ) ) : '';
-		$mode     = in_array( $mode_raw, [ Config_Resolver::FORM_MODE_REPLACE, Config_Resolver::FORM_MODE_SHORTCODE_ONLY ], true )
-			? $mode_raw
-			: Config_Resolver::FORM_MODE_SHORTCODE_ONLY;
-		update_post_meta( $post_id, Config_Resolver::META_KEY_FORM_MODE, $mode );
+		// 0.3.0: form-mode meta is no longer collected from the form. The
+		// _dfwc_companion_form_mode key remains in the DB on legacy campaigns
+		// but is now unused. We do not delete it (preserves user state in case
+		// 0.4.0 reintroduces the opt-out as something more granular).
 	}
 
 	/**
