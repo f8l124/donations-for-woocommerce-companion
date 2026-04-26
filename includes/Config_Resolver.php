@@ -22,14 +22,15 @@ defined( 'ABSPATH' ) || exit;
 final class Config_Resolver {
 
 	public const META_KEY_INTERVALS = '_dfwc_companion_intervals';
-	public const META_KEY_FORM_MODE = '_dfwc_companion_form_mode';
-
-	public const FORM_MODE_REPLACE        = 'replace';
-	public const FORM_MODE_SHORTCODE_ONLY = 'shortcode_only';
 
 	public const INTERVAL_ONE_TIME = 'one_time';
 	public const INTERVAL_MONTHLY  = 'monthly';
 	public const INTERVAL_ANNUAL   = 'annual';
+
+	// Note: META_KEY_FORM_MODE / FORM_MODE_* constants and form_mode() method
+	// were removed in 0.4.0. The companion no longer replaces parent's form;
+	// it augments it. The legacy `_dfwc_companion_form_mode` post meta on
+	// existing campaigns is left in the DB but unread.
 
 	/**
 	 * Allow-listed interval keys, in display order.
@@ -50,17 +51,6 @@ final class Config_Resolver {
 		}
 
 		return self::infer_from_parent( $campaign_id );
-	}
-
-	public static function form_mode( int $campaign_id ): string {
-		$stored = get_post_meta( $campaign_id, self::META_KEY_FORM_MODE, true );
-		// Default to 'replace' when meta is unset (changed in 0.2.0).
-		// Admins who explicitly want shortcode_only can pick it in the side
-		// meta box; that choice is persisted and respected.
-		if ( self::FORM_MODE_SHORTCODE_ONLY === $stored ) {
-			return self::FORM_MODE_SHORTCODE_ONLY;
-		}
-		return self::FORM_MODE_REPLACE;
 	}
 
 	/**

@@ -1,7 +1,13 @@
 <?php
 /**
- * Builds the donor-facing form HTML. Single entry point used by Shortcode,
- * Block, Elementor_Widget, and (in Phase F) Form_Replacer.
+ * Render the augmented donor experience: parent's full donation form, wrapped
+ * in our overlay marker so dfwc-overlay.js can mutate the amount + recurring
+ * controls into our interval-first UI.
+ *
+ * Single entry point used by Shortcode, Block, and Elementor_Widget. Returns a
+ * string; never echoes. The marker carries per-form config as JSON in
+ * data-config so the overlay can run without a global localize that scales
+ * poorly for multi-instance pages.
  *
  * @package   DFWC\Companion
  * @copyright Copyright (c) 2026 David Stells
@@ -23,10 +29,7 @@ final class Renderer {
 	];
 
 	/**
-	 * Render the form for a campaign. Returns sanitized HTML; never echoes.
-	 *
-	 * Returns an empty string for invalid campaigns (with an HTML comment for
-	 * developers, visible only in source view, never to end users).
+	 * Build the augmented donor experience for a campaign.
 	 */
 	public static function render( int $campaign_id ): string {
 		if ( $campaign_id < 1 ) {
@@ -38,35 +41,54 @@ final class Renderer {
 			return self::dev_comment( 'dfwc: campaign not found, wrong post type, or unpublished' );
 		}
 
+		// Parent must be active for the augmentation pattern to work — its
+		// shortcode renders the form we augment.
+		if ( ! shortcode_exists( 'wc_woo_donation' ) ) {
+			return self::dev_comment( 'dfwc: parent plugin shortcode [wc_woo_donation] not registered' );
+		}
+
+		// Pull in our overlay assets — registered globally by Frontend\Assets.
+		Assets::enqueue();
+
 		$config         = Config_Resolver::resolve( $campaign_id );
 		$engine         = Engine_Detector::detect();
 		$intervals      = Config_Resolver::intervals();
-		$interval_label = self::interval_labels();
-		// wp_unique_id() exists only since WP 6.4. Build our own to avoid that
-		// version dependency. uniqid() + an md5 slice gives a sufficiently
-		// unique per-render id even if multiple renders fire in the same tick.
-		$form_uid       = 'dfwc-form-' . substr( md5( uniqid( '', true ) ), 0, 8 );
 
-		// Determine which intervals are actually offered (engine-aware).
+		// Determine which intervals are actually selectable for this campaign
+		// (engine-aware: monthly/annual hidden when no recurring engine).
 		$enabled_intervals = self::resolve_enabled_intervals( $config, $engine );
 
-		// First enabled interval becomes the initial active tab.
+		// First enabled interval is the initial active tab.
 		$active_interval = ! empty( $enabled_intervals ) ? $enabled_intervals[0] : Config_Resolver::INTERVAL_ONE_TIME;
 
-		// Per-form JSON config consumed by the JS layer (no global localize bloat,
-		// no leaking of other campaigns' configs into the page).
+		// Shape the per-instance JS payload. Only enabled intervals are
+		// included so disabled-interval data doesn't leak into the page.
 		$form_config = self::build_form_config( $config, $enabled_intervals );
 
-		ob_start();
-		include DFWC_COMPANION_PATH . 'templates/recurring-donation-form.php';
-		return (string) ob_get_clean();
+		// Delegate to parent's shortcode for the full form HTML (cause selector,
+		// gift aid, processing fee, tributes, button, etc.).
+		$inner = do_shortcode( '[wc_woo_donation id="' . (int) $campaign_id . '"]' );
+		if ( '' === trim( (string) $inner ) ) {
+			return self::dev_comment( 'dfwc: parent shortcode returned empty (campaign deleted or unpublished?)' );
+		}
+
+		return sprintf(
+			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d" data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s" data-intervals="%5$s">%6$s</div>',
+			(int) $campaign_id,
+			esc_attr( $engine ),
+			esc_attr( $active_interval ),
+			esc_attr( (string) wp_json_encode( $form_config ) ),
+			esc_attr( (string) wp_json_encode( $enabled_intervals ) ),
+			$inner // already escaped inside parent's shortcode
+		);
 	}
 
 	/**
-	 * Format the CTA button label by substituting {amount} (formatted price)
-	 * and {interval} (locale suffix like "/month") tokens. Output is HTML
-	 * containing only allow-listed wc_price() tags; safe to echo without
-	 * further escaping.
+	 * Format the CTA label by substituting {amount} (formatted price) and
+	 * {interval} (locale suffix like "/month") tokens. Output is HTML
+	 * containing only allow-listed wc_price() tags; safe to use as
+	 * `button.innerHTML` from PHP. The overlay JS does its own substitution
+	 * client-side via textContent for runtime updates.
 	 */
 	public static function format_cta( string $template, float $amount, string $interval_key ): string {
 		$intervals = [
@@ -88,17 +110,10 @@ final class Renderer {
 		return wp_kses( $out, self::ALLOWED_PRICE_TAGS );
 	}
 
-	/**
-	 * Allow-listed kses tags for echoing wc_price() output in templates.
-	 */
 	public static function allowed_price_tags(): array {
 		return self::ALLOWED_PRICE_TAGS;
 	}
 
-	/**
-	 * Display labels for each interval. Mirrors Admin\Meta_Box::interval_labels()
-	 * but kept local to avoid an admin → frontend dependency.
-	 */
 	public static function interval_labels(): array {
 		return [
 			Config_Resolver::INTERVAL_ONE_TIME => __( 'One-time', 'dfwc-companion' ),
@@ -107,11 +122,6 @@ final class Renderer {
 		];
 	}
 
-	/**
-	 * The set of intervals that should actually be selectable for this
-	 * campaign right now: enabled in config AND supported by the active
-	 * recurring engine (one-time always supported).
-	 */
 	private static function resolve_enabled_intervals( array $config, string $engine ): array {
 		$out             = [];
 		$recurring_ok    = Engine_Detector::ENGINE_NONE !== $engine;
@@ -125,12 +135,11 @@ final class Renderer {
 				continue;
 			}
 			if ( empty( $config[ $key ]['presets'] ) && ( $config[ $key ]['min'] ?? 0 ) <= 0 ) {
-				continue; // Nothing for the donor to pick.
+				continue;
 			}
 			$out[] = $key;
 		}
 
-		// One-time is the universal fallback if nothing else is selectable.
 		if ( empty( $out ) ) {
 			$out[] = Config_Resolver::INTERVAL_ONE_TIME;
 		}
@@ -139,11 +148,14 @@ final class Renderer {
 	}
 
 	/**
-	 * Reduce the full config to just the bits the JS layer needs, keyed by
-	 * enabled interval. Avoids leaking disabled-interval data into the page.
+	 * Reduce the full config to just the bits the JS overlay needs, keyed by
+	 * enabled interval. Includes presets so the overlay can render its preset
+	 * chips client-side; preset.label is forwarded so it can populate
+	 * parent's `selectedLabel` POST field via JS.
 	 */
 	private static function build_form_config( array $config, array $enabled_intervals ): array {
-		$out = [];
+		$out             = [];
+		$interval_labels = self::interval_labels();
 		foreach ( $enabled_intervals as $key ) {
 			$block = $config[ $key ];
 			$out[ $key ] = [
@@ -151,6 +163,16 @@ final class Renderer {
 				'max'           => (float) $block['max'],
 				'default_index' => (int) $block['default_index'],
 				'cta_template'  => (string) $block['cta_template'],
+				'label'         => (string) ( $interval_labels[ $key ] ?? $key ),
+				'presets'       => array_map(
+					static function ( $p ) {
+						return [
+							'amount' => (float) ( $p['amount'] ?? 0 ),
+							'label'  => (string) ( $p['label'] ?? '' ),
+						];
+					},
+					(array) ( $block['presets'] ?? [] )
+				),
 			];
 		}
 		return $out;
