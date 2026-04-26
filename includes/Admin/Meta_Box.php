@@ -87,20 +87,20 @@ final class Meta_Box {
 		?>
 		<p>
 			<label>
-				<input type="radio" name="dfwc_form_mode" value="<?php echo esc_attr( Config_Resolver::FORM_MODE_SHORTCODE_ONLY ); ?>"
-					<?php checked( Config_Resolver::FORM_MODE_SHORTCODE_ONLY, $mode ); ?>>
-				<?php esc_html_e( 'Shortcode / block only (default)', 'dfwc-companion' ); ?>
+				<input type="radio" name="dfwc_form_mode" value="<?php echo esc_attr( Config_Resolver::FORM_MODE_REPLACE ); ?>"
+					<?php checked( Config_Resolver::FORM_MODE_REPLACE, $mode ); ?>>
+				<strong><?php esc_html_e( 'Replace the default donation form (recommended)', 'dfwc-companion' ); ?></strong>
 			</label>
 		</p>
 		<p>
 			<label>
-				<input type="radio" name="dfwc_form_mode" value="<?php echo esc_attr( Config_Resolver::FORM_MODE_REPLACE ); ?>"
-					<?php checked( Config_Resolver::FORM_MODE_REPLACE, $mode ); ?>>
-				<?php esc_html_e( 'Replace parent\'s form on single-campaign pages', 'dfwc-companion' ); ?>
+				<input type="radio" name="dfwc_form_mode" value="<?php echo esc_attr( Config_Resolver::FORM_MODE_SHORTCODE_ONLY ); ?>"
+					<?php checked( Config_Resolver::FORM_MODE_SHORTCODE_ONLY, $mode ); ?>>
+				<?php esc_html_e( 'Render only via shortcode / block / widget', 'dfwc-companion' ); ?>
 			</label>
 		</p>
 		<p class="description">
-			<?php esc_html_e( 'When "Replace" is selected, the interval-first form replaces the parent plugin\'s default donation form on this campaign\'s single page and on its [wc_woo_donation] shortcode.', 'dfwc-companion' ); ?>
+			<?php esc_html_e( '"Replace" is the default. The interval-first form replaces the parent plugin\'s default donation form on this campaign\'s single page AND on any [wc_woo_donation] shortcode for this campaign. Pick the second option if you want to keep using the parent\'s form alongside our shortcode/block/widget on specific pages.', 'dfwc-companion' ); ?>
 		</p>
 		<?php
 	}

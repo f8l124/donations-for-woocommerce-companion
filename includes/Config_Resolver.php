@@ -54,7 +54,13 @@ final class Config_Resolver {
 
 	public static function form_mode( int $campaign_id ): string {
 		$stored = get_post_meta( $campaign_id, self::META_KEY_FORM_MODE, true );
-		return self::FORM_MODE_REPLACE === $stored ? self::FORM_MODE_REPLACE : self::FORM_MODE_SHORTCODE_ONLY;
+		// Default to 'replace' when meta is unset (changed in 0.2.0).
+		// Admins who explicitly want shortcode_only can pick it in the side
+		// meta box; that choice is persisted and respected.
+		if ( self::FORM_MODE_SHORTCODE_ONLY === $stored ) {
+			return self::FORM_MODE_SHORTCODE_ONLY;
+		}
+		return self::FORM_MODE_REPLACE;
 	}
 
 	/**

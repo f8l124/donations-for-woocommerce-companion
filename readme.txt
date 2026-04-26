@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.1.1
+Stable tag: 0.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,14 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 
 == Changelog ==
 
+= 0.2.0 =
+* Improvement: companion config UI is now relocated into the parent plugin's "Recurring Donations" tab via a small JS injector — admins see one unified place to configure recurring intervals instead of the two separate UIs in 0.1.x.
+* Improvement: parent plugin's "Display Type" / "Recurring Text" / WPS-SFW interval controls inside the Recurring Donations tab are auto-hidden when the companion is configuring recurring intervals (avoids conflicting/duplicated controls).
+* Improvement: form-mode default flipped from `shortcode_only` to `replace`. When you embed the companion's form via shortcode/block/widget, the parent plugin's default form on the same campaign's permalink page is now suppressed automatically. Existing campaigns that were explicitly set to `shortcode_only` keep that setting; only campaigns that never set a value get the new default.
+* Improvement: side meta box "Form Mode" copy rewritten — both options shown clearly with a descriptive paragraph.
+* Improvement: graceful fallback — if the parent plugin restructures its tab DOM in a future release, the JS injector logs a warning to console and leaves the companion meta box at its default location instead of breaking the page.
+* Internal: smoke-test harness in `tests/smoke-save.php` validates class loading, engine detection, Renderer output (incl. the wp_unique_id replacement), and Meta_Box::save() invocation against a real wp-env instance.
+
 = 0.1.1 =
 * Fix: critical "Call to undefined function wp_doing_autosave()" fatal on campaign update — a hallucinated helper that doesn't exist in WordPress. Replaced with the canonical `defined('DOING_AUTOSAVE') && DOING_AUTOSAVE` check.
 * Fix: replaced `wp_doing_ajax()` calls with the `DOING_AJAX` constant for consistency.
@@ -99,6 +107,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.2.0 =
+Major UX improvement: companion config moves into the parent plugin's Recurring Donations tab; default form mode flipped to "Replace" so you no longer see two donation forms on the same page. Safe to upgrade.
 
 = 0.1.1 =
 Critical fatal-error fix. Upgrade required if you've installed 0.1.0.

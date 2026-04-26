@@ -13,8 +13,9 @@ defined( 'ABSPATH' ) || exit;
 
 final class Assets {
 
-	private const HANDLE_CSS = 'dfwc-admin';
-	private const HANDLE_JS  = 'dfwc-admin';
+	private const HANDLE_CSS          = 'dfwc-admin';
+	private const HANDLE_JS           = 'dfwc-admin';
+	private const HANDLE_TAB_INJECTOR = 'dfwc-admin-tab-injector';
 
 	public function __construct() {
 		add_action( 'admin_enqueue_scripts', [ $this, 'maybe_enqueue' ] );
@@ -48,7 +49,22 @@ final class Assets {
 			]
 		);
 
+		// Tab injector relocates our meta-box content into the parent's
+		// "Recurring Donations" tab (#tab-3). Loads in footer so the parent's
+		// metabox markup is fully present in the DOM by the time it runs.
+		wp_register_script(
+			self::HANDLE_TAB_INJECTOR,
+			DFWC_COMPANION_URL . 'assets/js/dfwc-admin-tab-injector.js',
+			[],
+			DFWC_COMPANION_VERSION,
+			[
+				'in_footer' => true,
+				'strategy'  => 'defer',
+			]
+		);
+
 		wp_enqueue_style( self::HANDLE_CSS );
 		wp_enqueue_script( self::HANDLE_JS );
+		wp_enqueue_script( self::HANDLE_TAB_INJECTOR );
 	}
 }
