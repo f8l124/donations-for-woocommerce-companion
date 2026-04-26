@@ -1,0 +1,176 @@
+/**
+ * Donations for WooCommerce Companion — admin meta-box styles.
+ *
+ * @package   DFWC\Companion
+ * @copyright Copyright (c) 2026 David Stells
+ * @license   GPL-2.0-or-later https://www.gnu.org/licenses/gpl-2.0.html
+ */
+
+.dfwc-mb {
+	font-size: 13px;
+}
+
+.dfwc-mb__notice {
+	margin: 0 0 12px;
+}
+
+/* ---------- Tabs ---------- */
+
+.dfwc-mb__tabs {
+	display: flex;
+	gap: 4px;
+	border-bottom: 1px solid #c3c4c7;
+	margin-bottom: 16px;
+}
+
+.dfwc-mb__tab {
+	background: transparent;
+	border: 1px solid transparent;
+	border-bottom: none;
+	padding: 8px 16px;
+	cursor: pointer;
+	font-size: 14px;
+	color: #2c3338;
+	border-radius: 4px 4px 0 0;
+	margin-bottom: -1px;
+}
+
+.dfwc-mb__tab:hover:not([disabled]) {
+	background: #f0f0f1;
+}
+
+.dfwc-mb__tab[aria-selected="true"] {
+	background: #fff;
+	border-color: #c3c4c7;
+	border-bottom-color: #fff;
+	font-weight: 600;
+}
+
+.dfwc-mb__tab[disabled] {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.dfwc-mb__tab:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+
+/* ---------- Panels ---------- */
+
+.dfwc-mb__panel {
+	padding: 8px 0 4px;
+}
+
+.dfwc-mb__panel[hidden] {
+	display: none;
+}
+
+.dfwc-mb__enable {
+	font-weight: 600;
+	margin: 0 0 16px;
+}
+
+.dfwc-mb__fieldset {
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 12px 16px;
+	margin: 0 0 16px;
+}
+
+.dfwc-mb__fieldset legend {
+	padding: 0 6px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.dfwc-mb__fieldset[disabled],
+.dfwc-mb__fieldset[disabled] input {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+/* ---------- Preset table / repeater ---------- */
+
+.dfwc-mb__presets {
+	margin: 0 0 8px;
+}
+
+.dfwc-mb__presets th,
+.dfwc-mb__presets td {
+	padding: 6px 8px;
+	vertical-align: middle;
+}
+
+.dfwc-mb__col-handle {
+	width: 24px;
+	text-align: center;
+}
+
+.dfwc-mb__col-amount {
+	width: 120px;
+}
+
+.dfwc-mb__col-default,
+.dfwc-mb__col-remove {
+	width: 80px;
+	text-align: center;
+}
+
+.dfwc-mb__col-amount input,
+.dfwc-mb__col-label input {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.dfwc-mb__drag {
+	cursor: grab;
+	color: #8c8f94;
+	user-select: none;
+}
+
+.dfwc-mb__drag:active {
+	cursor: grabbing;
+}
+
+.dfwc-mb__preset-row {
+	transition: background-color 100ms ease-out;
+}
+
+.dfwc-mb__preset-row--dragging {
+	opacity: 0.5;
+	background: #f0f6fc;
+}
+
+.dfwc-mb__remove {
+	color: #b32d2e;
+	font-size: 12px;
+}
+
+.dfwc-mb__remove:hover {
+	color: #8a1e1f;
+}
+
+/* ---------- Footnote ---------- */
+
+.dfwc-mb__footnote {
+	margin-top: 16px;
+	padding-top: 12px;
+	border-top: 1px solid #f0f0f1;
+}
+
+/* ---------- Error state ---------- */
+
+.dfwc-mb__error {
+	border: 1px solid #b32d2e !important;
+	background: #fff5f5;
+}
+
+/* ---------- Responsive ---------- */
+
+@media ( max-width: 600px ) {
+	.dfwc-mb__col-amount { width: 90px; }
+	.dfwc-mb__col-default,
+	.dfwc-mb__col-remove { width: 60px; }
+	.dfwc-mb__tab { padding: 6px 10px; font-size: 13px; }
+}

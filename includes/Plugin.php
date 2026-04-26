@@ -52,6 +52,9 @@ final class Plugin {
 
 		$this->engine = Engine_Detector::detect();
 
+		new Admin\Meta_Box();
+		new Admin\Assets();
+
 		$this->booted = true;
 	}
 
