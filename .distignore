@@ -1,0 +1,57 @@
+# .distignore — files excluded from the WordPress.org plugin distribution zip
+# Used by `wp dist-archive` (WP-CLI) and similar tooling.
+
+# Version control
+.git
+.gitignore
+.gitattributes
+.github/
+
+# AI tooling state (also excluded from the repo, but defense-in-depth)
+.wolf
+.claude
+CLAUDE.md
+plans
+
+# Development tooling
+node_modules
+package.json
+package-lock.json
+yarn.lock
+composer.json
+composer.lock
+vendor
+
+# Tests
+tests
+playwright.config.ts
+playwright-report
+test-results
+.wp-env.json
+.wp-env.override.json
+
+# Build / dev artifacts
+build
+dist
+coverage
+*.zip
+*.map
+*.log
+
+# IDE / editor
+.vscode
+.idea
+*.sublime-*
+.editorconfig
+.eslintrc*
+.prettierrc*
+.stylelintrc*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Documentation source (keep readme.txt; exclude internal docs)
+docs
+.distignore
