@@ -1,0 +1,19 @@
+{
+	"core": "WordPress/WordPress",
+	"phpVersion": "8.1",
+	"plugins": [
+		".",
+		"https://downloads.wordpress.org/plugin/woocommerce.zip",
+		"https://downloads.wordpress.org/plugin/donation-for-woocommerce.zip",
+		"https://downloads.wordpress.org/plugin/subscriptions-for-woocommerce.zip"
+	],
+	"config": {
+		"WP_DEBUG": true,
+		"WP_DEBUG_LOG": true,
+		"WP_DEBUG_DISPLAY": false,
+		"SCRIPT_DEBUG": true
+	},
+	"port": 8889,
+	"testsPort": 8890,
+	"mappings": {}
+}

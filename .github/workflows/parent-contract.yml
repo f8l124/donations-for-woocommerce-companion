@@ -1,0 +1,40 @@
+name: Parent contract watcher
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly Monday 09:00 UTC — catches parent updates we didn't notice locally.
+    - cron: "0 9 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  watch:
+    name: Hash parent line ranges vs baseline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP 8.1
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          tools: none
+
+      - name: Download latest Donation for WooCommerce
+        run: |
+          set -e
+          mkdir -p tests/donation-for-woocommerce
+          curl -sSLf -o /tmp/parent.zip https://downloads.wordpress.org/plugin/donation-for-woocommerce.zip
+          unzip -q /tmp/parent.zip -d tests/
+          # Plugin extracts as tests/donation-for-woocommerce/
+
+      - name: Run watcher
+        env:
+          DFWC_PARENT_PATH: ${{ github.workspace }}/tests/donation-for-woocommerce
+        run: php tests/parent-contract.test.php

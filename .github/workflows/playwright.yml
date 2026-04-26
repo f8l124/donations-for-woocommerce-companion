@@ -1,0 +1,80 @@
+name: Playwright E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: ${{ matrix.fixture }} fixture
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture: [none, wps]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install npm deps
+        run: npm install
+
+      - name: Install Playwright browsers (Chromium only)
+        run: npx playwright install --with-deps chromium
+
+      - name: Start wp-env (${{ matrix.fixture }})
+        run: |
+          if [ "${{ matrix.fixture }}" = "wps" ]; then
+            npx wp-env start --config .wp-env.wps.json
+          else
+            npx wp-env start --config .wp-env.none.json
+          fi
+
+      - name: Wait for WordPress to be reachable
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sSf http://localhost:8889/ > /dev/null 2>&1; then
+              echo "WP up"
+              break
+            fi
+            sleep 2
+          done
+          curl -sSf http://localhost:8889/ > /dev/null
+
+      - name: Confirm parent + WC active
+        run: |
+          npx wp-env run cli wp plugin list --status=active --field=name | tee /tmp/active.txt
+          grep -q '^woocommerce$' /tmp/active.txt
+          grep -q '^donation-for-woocommerce$' /tmp/active.txt
+
+      - name: Run Playwright (${{ matrix.fixture }} project)
+        env:
+          CI: "true"
+        run: npx playwright test --project=${{ matrix.fixture }}
+
+      - name: Upload Playwright HTML report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.fixture }}
+          path: playwright-report/
+          retention-days: 7
+
+      - name: wp-env logs on failure
+        if: failure()
+        run: npx wp-env logs all || true
+
+      - name: Stop wp-env
+        if: always()
+        run: npx wp-env stop || true

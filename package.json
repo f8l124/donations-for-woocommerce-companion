@@ -1,5 +1,40 @@
 {
-  "dependencies": {
+  "name": "donations-for-woocommerce-companion",
+  "version": "0.1.0",
+  "description": "Companion plugin adding interval-first recurring donation support to Donation for WooCommerce.",
+  "private": true,
+  "license": "GPL-2.0-or-later",
+  "author": "David Stells",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/f8l124/donations-for-woocommerce-companion.git"
+  },
+  "scripts": {
+    "env:start": "wp-env start",
+    "env:stop": "wp-env stop",
+    "env:destroy": "wp-env destroy",
+    "env:logs": "wp-env logs",
+    "env:cli": "wp-env run cli wp",
+    "env:start:none": "wp-env start --config .wp-env.none.json",
+    "env:start:wps": "wp-env start --config .wp-env.wps.json",
+    "env:start:wcs": "wp-env start --config .wp-env.wcs.json",
+    "test:e2e": "playwright test",
+    "test:e2e:none": "playwright test --project=none",
+    "test:e2e:wps": "playwright test --project=wps",
+    "test:e2e:wcs": "playwright test --project=wcs",
+    "test:e2e:install": "playwright install --with-deps chromium",
+    "test:contract": "php tests/parent-contract.test.php",
+    "test:contract:update": "php tests/parent-contract.update-baseline.php",
+    "build:zip": "node scripts/build-zip.js",
+    "lint:php": "find includes templates -name '*.php' -print0 | xargs -0 -n1 php -l"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@wordpress/env": "^10.0.0",
+    "archiver": "^7.0.1",
     "playwright": "^1.59.1"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
