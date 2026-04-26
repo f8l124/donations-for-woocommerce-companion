@@ -59,3 +59,11 @@ debug.log
 wp-config.php
 wp-content/uploads/
 wp-content/cache/
+
+# Parent plugin (paid Woo extension; mount locally for tests, never commit)
+tests/donation-for-woocommerce.zip
+tests/donation-for-woocommerce/
+tests/parent-source/
+
+# Local wp-env override
+.wp-env.override.json

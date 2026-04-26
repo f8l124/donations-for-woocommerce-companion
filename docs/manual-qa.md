@@ -3,6 +3,8 @@
 Run before tagging any release. Playwright covers the integration surface; this checklist covers what automation can't (visual polish, real payment processors, accessibility, multi-currency, multi-theme).
 
 > Working from a clean wp-env start (`npm run env:start:wps`) unless noted otherwise. Reset between runs with `npm run env:destroy && npm run env:start:wps`.
+>
+> **Prerequisite (one-time):** the parent plugin is a paid Woo extension, not auto-installable from wp.org. Drop your woocommerce.com-licensed copy at `tests/donation-for-woocommerce.zip` (gitignored) before starting wp-env. See `docs/ci.md` for full CI setup.
 
 ## Plugin lifecycle
 

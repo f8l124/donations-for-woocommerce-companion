@@ -4,9 +4,10 @@
 	"plugins": [
 		".",
 		"https://downloads.wordpress.org/plugin/woocommerce.zip",
-		"https://downloads.wordpress.org/plugin/donation-for-woocommerce.zip",
+		"./tests/donation-for-woocommerce.zip",
 		"https://downloads.wordpress.org/plugin/subscriptions-for-woocommerce.zip"
 	],
+	"_comment_": "Drop the parent zip into tests/donation-for-woocommerce.zip before starting (it's a paid Woo extension, can't be auto-fetched). See docs/ci.md.",
 	"config": {
 		"WP_DEBUG": true,
 		"WP_DEBUG_LOG": true,

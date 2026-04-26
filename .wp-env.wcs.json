@@ -1,11 +1,11 @@
 {
-	"_comment_": "WC Subscriptions is paid (Automattic) and cannot be auto-installed from wp.org. Drop the plugin zip into wp-content/plugins/ on the running wp-env container BEFORE running these tests, OR mount it via the `mappings` block. CI runs only the WPS SFW fixture (D10).",
+	"_comment_": "WC Subscriptions is paid (Automattic) and cannot be auto-installed from wp.org. The parent Donation For Woocommerce is also paid (sold via woocommerce.com — see docs/ci.md, D11). Mount both manually before running this fixture. CI runs only the wps + none fixtures.",
 	"core": "WordPress/WordPress",
 	"phpVersion": "8.1",
 	"plugins": [
 		".",
 		"https://downloads.wordpress.org/plugin/woocommerce.zip",
-		"https://downloads.wordpress.org/plugin/donation-for-woocommerce.zip"
+		"./tests/donation-for-woocommerce.zip"
 	],
 	"config": {
 		"WP_DEBUG": true,

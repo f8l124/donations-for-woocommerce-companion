@@ -4,8 +4,9 @@
 	"plugins": [
 		".",
 		"https://downloads.wordpress.org/plugin/woocommerce.zip",
-		"https://downloads.wordpress.org/plugin/donation-for-woocommerce.zip"
+		"./tests/donation-for-woocommerce.zip"
 	],
+	"_comment_": "The parent Donation For Woocommerce plugin (by WPExperts) is a paid Woo extension sold via woocommerce.com, not a free wp.org plugin. Drop the zip you downloaded from your woocommerce.com account into tests/donation-for-woocommerce.zip (gitignored) before running wp-env. See docs/ci.md.",
 	"config": {
 		"WP_DEBUG": true,
 		"WP_DEBUG_LOG": true,

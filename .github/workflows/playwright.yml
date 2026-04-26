@@ -20,20 +20,47 @@ jobs:
       matrix:
         fixture: [none, wps]
     steps:
+      - name: Check parent zip secret
+        id: check
+        env:
+          PARENT_URL: ${{ secrets.DFWC_PARENT_ZIP_URL }}
+        run: |
+          if [ -z "$PARENT_URL" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Playwright skipped::DFWC_PARENT_ZIP_URL secret is unset. The parent plugin is paid (woocommerce.com) and can't be auto-fetched from wp.org. Set the DFWC_PARENT_ZIP_URL repository secret to enable this workflow. See docs/ci.md."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.check.outputs.skip == 'false'
 
       - uses: actions/setup-node@v4
+        if: steps.check.outputs.skip == 'false'
         with:
           node-version: "20"
           cache: npm
 
       - name: Install npm deps
+        if: steps.check.outputs.skip == 'false'
         run: npm install
 
       - name: Install Playwright browsers (Chromium only)
+        if: steps.check.outputs.skip == 'false'
         run: npx playwright install --with-deps chromium
 
+      - name: Download parent zip from secret URL
+        if: steps.check.outputs.skip == 'false'
+        env:
+          PARENT_URL: ${{ secrets.DFWC_PARENT_ZIP_URL }}
+        run: |
+          set -e
+          mkdir -p tests
+          curl -sSLf -o tests/donation-for-woocommerce.zip "$PARENT_URL"
+          ls -la tests/donation-for-woocommerce.zip
+
       - name: Start wp-env (${{ matrix.fixture }})
+        if: steps.check.outputs.skip == 'false'
         run: |
           if [ "${{ matrix.fixture }}" = "wps" ]; then
             npx wp-env start --config .wp-env.wps.json
@@ -42,6 +69,7 @@ jobs:
           fi
 
       - name: Wait for WordPress to be reachable
+        if: steps.check.outputs.skip == 'false'
         run: |
           for i in $(seq 1 60); do
             if curl -sSf http://localhost:8889/ > /dev/null 2>&1; then
@@ -53,18 +81,26 @@ jobs:
           curl -sSf http://localhost:8889/ > /dev/null
 
       - name: Confirm parent + WC active
+        if: steps.check.outputs.skip == 'false'
         run: |
           npx wp-env run cli wp plugin list --status=active --field=name | tee /tmp/active.txt
           grep -q '^woocommerce$' /tmp/active.txt
-          grep -q '^donation-for-woocommerce$' /tmp/active.txt
+          # The parent zip extracts to a directory whose name becomes the plugin slug.
+          # Most distributions use 'donation-for-woocommerce' as the directory name.
+          grep -E '^donation-?for-?woocommerce$' /tmp/active.txt || {
+            echo "ERROR: parent plugin not detected as active. Active plugins:"
+            cat /tmp/active.txt
+            exit 1
+          }
 
       - name: Run Playwright (${{ matrix.fixture }} project)
+        if: steps.check.outputs.skip == 'false'
         env:
           CI: "true"
         run: npx playwright test --project=${{ matrix.fixture }}
 
       - name: Upload Playwright HTML report on failure
-        if: failure()
+        if: failure() && steps.check.outputs.skip == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ matrix.fixture }}
@@ -72,9 +108,9 @@ jobs:
           retention-days: 7
 
       - name: wp-env logs on failure
-        if: failure()
+        if: failure() && steps.check.outputs.skip == 'false'
         run: npx wp-env logs all || true
 
       - name: Stop wp-env
-        if: always()
+        if: always() && steps.check.outputs.skip == 'false'
         run: npx wp-env stop || true
