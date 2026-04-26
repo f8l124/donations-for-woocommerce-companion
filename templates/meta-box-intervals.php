@@ -33,7 +33,15 @@ $engine_supports_recurring = Engine_Detector::ENGINE_NONE !== $engine;
 	<?php if ( ! $engine_supports_recurring ) : ?>
 		<div class="notice notice-warning inline dfwc-mb__notice">
 			<p>
-				<?php esc_html_e( 'No recurring billing engine is active. Donors will only see the One-time tab. Install WooCommerce Subscriptions or Subscriptions For WooCommerce to enable Monthly and Annually.', 'dfwc-companion' ); ?>
+				<?php esc_html_e( 'No recurring billing engine is active. Donors will only see the One-time tab.', 'dfwc-companion' ); ?>
+				<a href="<?php echo esc_url( Engine_Detector::recommended_install_url() ); ?>">
+					<?php esc_html_e( 'Install Subscriptions For WooCommerce (free)', 'dfwc-companion' ); ?>
+				</a>
+				<?php esc_html_e( 'or', 'dfwc-companion' ); ?>
+				<a href="https://woocommerce.com/products/woocommerce-subscriptions/" target="_blank" rel="noopener noreferrer">
+					<?php esc_html_e( 'WooCommerce Subscriptions', 'dfwc-companion' ); ?>
+				</a>
+				<?php esc_html_e( 'to enable Monthly and Annually.', 'dfwc-companion' ); ?>
 			</p>
 		</div>
 	<?php endif; ?>

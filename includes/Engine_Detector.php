@@ -48,6 +48,40 @@ final class Engine_Detector {
 	}
 
 	/**
+	 * Both supported engines accept open-ended subscription length:
+	 * - WCS via `new_length=0`
+	 * - WPS SFW via empty `wps_sfw_subscription_expiry_number`
+	 *
+	 * Verified at parent's class-wcdonationsubscriptionfree.php:78-110.
+	 */
+	public static function supports_open_ended_length(): bool {
+		return true;
+	}
+
+	/**
+	 * Human-readable engine name for admin notices and debug output.
+	 */
+	public static function engine_label( ?string $engine = null ): string {
+		$engine = $engine ?? self::detect();
+		switch ( $engine ) {
+			case self::ENGINE_WCS:
+				return __( 'WooCommerce Subscriptions', 'dfwc-companion' );
+			case self::ENGINE_WPS:
+				return __( 'Subscriptions For WooCommerce', 'dfwc-companion' );
+			default:
+				return __( 'no recurring engine', 'dfwc-companion' );
+		}
+	}
+
+	/**
+	 * URL of the recommended free engine to install when none is active.
+	 * Returns the wordpress.org plugin install page so admins can one-click.
+	 */
+	public static function recommended_install_url(): string {
+		return self_admin_url( 'plugin-install.php?s=Subscriptions+For+WooCommerce&tab=search&type=term' );
+	}
+
+	/**
 	 * Reset the static cache. Intended for test fixtures that toggle engines
 	 * mid-request; not used in production.
 	 */

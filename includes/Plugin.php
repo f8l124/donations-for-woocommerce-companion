@@ -54,6 +54,7 @@ final class Plugin {
 
 		new Admin\Meta_Box();
 		new Admin\Assets();
+		new Admin\Self_Check();
 		new Frontend\Shortcode();
 		new Frontend\Block();
 		new Frontend\Assets();
