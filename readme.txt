@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.3.0
+Stable tag: 0.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,18 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 
 == Changelog ==
 
+= 0.4.0 =
+* Architectural refactor: companion now AUGMENTS the parent's donation form instead of replacing it. Cause selector, campaign image, processing fee, gift aid, tributes, e-card recipient, and donor-wall integration that the parent plugin renders are now visible alongside our interval-first tabs.
+* Implementation: parent plugin renders its full form via its existing render path; on every page that contains our shortcode/block/Elementor widget, a tiny vanilla-JS overlay (`assets/js/dfwc-overlay.js`) finds parent's amount block and recurring controls in the DOM, hides them, and mounts our 3-tab interval UI in their place. As the donor changes our tabs/presets/custom amount, the overlay writes to parent's existing hidden inputs. Parent's existing submit handler runs unchanged — the AJAX call to `donation_to_order` happens through parent's tested pipeline.
+* Removed: `Form_Replacer` class and its `wc_donation_before/after_*_add_donation` ob_start/ob_get_clean wrapping. The 0.3.0 `dfwc_should_replace_parent_form` filter is gone.
+* Removed: legacy `_dfwc_companion_form_mode` post meta read path + the `META_KEY_FORM_MODE` / `FORM_MODE_*` constants in `Config_Resolver`. The post meta on legacy campaigns is left in the DB unread (allows rolling back to 0.3.0 if needed).
+* Removed: deleted templates/recurring-donation-form.php, assets/js/dfwc-form.js, assets/css/dfwc-form.css. Replaced by the overlay JS+CSS at assets/{js,css}/dfwc-overlay.{js,css}.
+* New: `tests/parent-contract.baseline.json` covers six additional file/line ranges in the parent — every selector the overlay depends on is locked. CI's parent-contract watcher fails loudly if the parent restructures any of: `.wc-donation-in-action` wrapper, `.row1` amount block, hidden price inputs, recurring checkbox, `_subscription_*` selects, WPS SFW fields, or the submit handler at `assets/js/frontend.js:470`.
+* Block editor preview short-circuit: the Gutenberg block renders a placeholder card in the editor instead of triggering parent's frontend-only render path through `ServerSideRender`.
+* Power-user opt-out: don't enqueue the overlay assets (filter `wp_enqueue_scripts` to dequeue `dfwc-overlay`) on pages where you want parent's form unmodified. Per-page granularity instead of the per-campaign toggle 0.3.0 had.
+
+**Upgrade action required:** if you put `[dfwc_recurring_donation campaign_id="..."]` directly in a campaign's post content during 0.1.x–0.3.x, leave it there — it now produces the augmented form. Don't ALSO place `[wc_woo_donation]` on the same page; you'd get two forms.
+
 = 0.3.0 =
 * Improvement: parent plugin's donation form is now ALWAYS replaced by the interval-first form on every render path (single-campaign permalink, [wc_woo_donation] shortcode, widget, and WC checkout context). The previous per-campaign opt-in caused dual-form display when sites upgraded from 0.1.x — eliminated.
 * Improvement: removed the "Companion: Form Mode" side meta box. Power users who specifically need to keep parent's form on certain campaigns can opt out via the new `dfwc_should_replace_parent_form` filter (signature: `apply_filters( 'dfwc_should_replace_parent_form', bool $replace, int $campaign_id )`).
@@ -113,6 +125,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.4.0 =
+Major architectural refactor: companion now augments parent's form instead of replacing it. Cause selector, gift aid, processing fee, tributes, and other parent-rendered fields are now visible alongside our interval tabs. Safe to upgrade — overlay falls back gracefully (donor sees parent's unmodified form) if any required parent DOM element is missing.
 
 = 0.3.0 =
 Replacement of the parent plugin's donation form is now unconditional across single-campaign pages, shortcodes, widgets, and checkout contexts. Removes the form-mode opt-in that caused dual-form display on upgrade. If you need parent's form preserved on specific campaigns, use the new `dfwc_should_replace_parent_form` filter.
