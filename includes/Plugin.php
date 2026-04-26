@@ -54,6 +54,10 @@ final class Plugin {
 
 		new Admin\Meta_Box();
 		new Admin\Assets();
+		new Frontend\Shortcode();
+		new Frontend\Block();
+		new Frontend\Assets();
+		new Frontend\Elementor_Adapter();
 
 		$this->booted = true;
 	}

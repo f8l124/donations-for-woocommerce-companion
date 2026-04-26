@@ -1,0 +1,21 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 2,
+	"name": "dfwc-companion/recurring-donation",
+	"version": "0.1.0",
+	"title": "Recurring Donation",
+	"category": "widgets",
+	"icon": "heart",
+	"description": "Interval-first donation form (one-time / monthly / annually).",
+	"keywords": [ "donation", "recurring", "subscription", "fundraising" ],
+	"textdomain": "dfwc-companion",
+	"attributes": {
+		"campaignId": { "type": "number", "default": 0 }
+	},
+	"supports": {
+		"html": false,
+		"anchor": false,
+		"align": [ "wide", "full" ]
+	},
+	"editorScript": "dfwc-companion-block-editor"
+}

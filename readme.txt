@@ -19,7 +19,7 @@ It works by feeding the parent plugin's existing AJAX pipeline with the right pa
 = Features =
 
 * Per-campaign admin UI to configure preset amounts independently per interval
-* Donor-facing interval-first form (shortcode + Gutenberg block)
+* Donor-facing interval-first form via shortcode, Gutenberg block, OR Elementor widget
 * Auto-detects WooCommerce Subscriptions vs WPS Free Subscriptions
 * Graceful degradation when no recurring engine is installed (one-time still works)
 * Optional override of the parent plugin's single-campaign template
@@ -31,7 +31,7 @@ It works by feeding the parent plugin's existing AJAX pipeline with the right pa
 2. Install and activate either [WooCommerce Subscriptions](https://woocommerce.com/products/woocommerce-subscriptions/) or [Subscriptions For WooCommerce](https://wordpress.org/plugins/subscriptions-for-woocommerce/) (optional but required for recurring intervals).
 3. Install and activate this companion plugin.
 4. Edit a donation campaign and configure the "Interval-First Donation Form" meta box.
-5. Add the shortcode `[dfwc_recurring_donation campaign_id="123"]` to any page, or use the Gutenberg block.
+5. Add the shortcode `[dfwc_recurring_donation campaign_id="123"]` to any page, the "Recurring Donation" Gutenberg block, or the matching Elementor widget.
 
 == Frequently Asked Questions ==
 
