@@ -245,6 +245,27 @@
 	cursor: wait;
 }
 
+/* ---------- Spinner (loading state) ---------- */
+
+.dfwc-form__spinner {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border: 2px solid rgba( 255, 255, 255, 0.4 );
+	border-top-color: #fff;
+	border-radius: 50%;
+	animation: dfwc-spin 700ms linear infinite;
+	vertical-align: middle;
+}
+
+@keyframes dfwc-spin {
+	to { transform: rotate( 360deg ); }
+}
+
+@media ( prefers-reduced-motion: reduce ) {
+	.dfwc-form__spinner { animation-duration: 2.5s; }
+}
+
 /* ---------- Error ---------- */
 
 .dfwc-form__error {

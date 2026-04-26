@@ -231,7 +231,161 @@
 	function bindSubmit( formEl, config, state ) {
 		formEl.addEventListener( 'submit', function ( e ) {
 			e.preventDefault();
-			// Phase D wires the real AJAX handler here. For now, no-op.
+			submit( formEl, config, state );
 		} );
+	}
+
+	function submit( formEl, config, state ) {
+		var i18n = ( window.dfwcCompanion && window.dfwcCompanion.i18n ) || {};
+
+		if ( ! state.amount || state.amount <= 0 ) {
+			showError( formEl, i18n.errorAmountRequired || 'Please choose an amount.' );
+			return;
+		}
+
+		var entry = config[ state.interval ];
+		if ( entry ) {
+			if ( state.amount < entry.min || state.amount > entry.max ) {
+				showError( formEl, i18n.errorAmountRequired || 'Please choose an amount within the allowed range.' );
+				return;
+			}
+		}
+
+		showError( formEl, '' );
+		setLoading( formEl, true );
+
+		postDonation( buildPayload( formEl, state ) )
+			.then( function ( response ) { handleResponse( response, formEl ); } )
+			.catch( function ( err ) {
+				var msg = err && err.isNetwork ? ( i18n.errorNetwork || 'Network error.' ) : ( i18n.errorGeneric || 'Something went wrong.' );
+				showError( formEl, msg );
+			} )
+			.then( function () { setLoading( formEl, false ); } );
+	}
+
+	function buildPayload( formEl, state ) {
+		var fd = new FormData();
+		var ctx = window.dfwcCompanion || {};
+
+		fd.append( 'action',      ctx.action || 'donation_to_order' );
+		fd.append( 'nonce',       ctx.nonce  || '' );
+		fd.append( 'campaign_id', String( formEl.getAttribute( 'data-campaign-id' ) || '0' ) );
+		fd.append( 'amount',      String( state.amount ) );
+
+		if ( state.interval === 'one_time' ) {
+			fd.append( 'is_recurring', 'no' );
+			return fd;
+		}
+
+		// Recurring — send BOTH WCS-style and WPS-SFW-style key sets. Parent
+		// reads only the relevant set based on its own runtime engine check.
+		// We don't know the linked-product type at render time without an
+		// extra DB query; sending both is harmless. (Master plan deviation D2.)
+		var period = state.interval === 'monthly' ? 'month' : 'year';
+
+		fd.append( 'is_recurring',  'yes' );
+		fd.append( 'new_period',    period );
+		fd.append( 'new_interval',  '1' );
+		fd.append( 'new_length',    '0' ); // 0 = open-ended in WCS
+
+		fd.append( 'wps_sfw_subscription_number',          '1' );
+		fd.append( 'wps_sfw_subscription_interval',        period );
+		fd.append( 'wps_sfw_subscription_expiry_number',   '' ); // empty = open-ended in WPS SFW
+		fd.append( 'wps_sfw_subscription_expiry_interval', '' );
+
+		return fd;
+	}
+
+	function postDonation( formData ) {
+		var ctx = window.dfwcCompanion || {};
+		var url = ctx.ajaxUrl || '';
+		var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+		var timer = controller ? setTimeout( function () { controller.abort(); }, 30000 ) : 0;
+
+		return fetch( url, {
+			method: 'POST',
+			body: formData,
+			credentials: 'same-origin',
+			headers: { 'Accept': 'application/json' },
+			signal: controller ? controller.signal : undefined,
+		} )
+			.catch( function ( err ) {
+				err.isNetwork = true;
+				throw err;
+			} )
+			.then( function ( res ) {
+				if ( timer ) { clearTimeout( timer ); }
+				if ( ! res.ok ) {
+					return res.text().then( function ( body ) {
+						return parseResponseText( body, res.status );
+					} );
+				}
+				return res.text().then( function ( body ) { return parseResponseText( body, res.status ); } );
+			} );
+	}
+
+	function parseResponseText( body, status ) {
+		try {
+			var parsed = JSON.parse( body );
+			// wp_send_json_error wraps the payload in { success: false, data: {...} }.
+			// Parent's own error path emits a flat object { response, message }.
+			// Normalize to a flat shape for handleResponse().
+			if ( parsed && typeof parsed === 'object' && Object.prototype.hasOwnProperty.call( parsed, 'success' ) ) {
+				var data = parsed.data || {};
+				return Object.assign( { response: parsed.success ? 'success' : 'error' }, data );
+			}
+			return parsed;
+		} catch ( e ) {
+			var err = new Error( 'Invalid response (HTTP ' + status + ')' );
+			err.isNetwork = false;
+			throw err;
+		}
+	}
+
+	function handleResponse( response, formEl ) {
+		if ( response && response.response === 'success' ) {
+			var ctx = window.dfwcCompanion || {};
+			var redirect = response.cart_url || response.redirect || ctx.cartUrl || '/cart/';
+			window.location.href = redirect;
+			return;
+		}
+		var i18n = ( window.dfwcCompanion && window.dfwcCompanion.i18n ) || {};
+		var msg = ( response && response.message ) || i18n.errorGeneric || 'Something went wrong.';
+		showError( formEl, msg );
+	}
+
+	function showError( formEl, message ) {
+		var node = formEl.querySelector( '[data-dfwc-error]' );
+		if ( ! node ) { return; }
+		if ( ! message ) {
+			node.textContent = '';
+			node.setAttribute( 'hidden', '' );
+			return;
+		}
+		// textContent (not innerHTML) — defense against XSS via response message.
+		node.textContent = message;
+		node.removeAttribute( 'hidden' );
+	}
+
+	function setLoading( formEl, isLoading ) {
+		var cta = formEl.querySelector( '[data-dfwc-cta]' );
+		if ( ! cta ) { return; }
+		if ( isLoading ) {
+			formEl.setAttribute( 'aria-busy', 'true' );
+			if ( ! cta.dataset.dfwcOriginalLabel ) {
+				cta.dataset.dfwcOriginalLabel = cta.innerHTML;
+			}
+			cta.disabled = true;
+			cta.setAttribute( 'aria-disabled', 'true' );
+			cta.innerHTML = '<span class="dfwc-form__spinner" aria-hidden="true"></span>';
+		} else {
+			formEl.removeAttribute( 'aria-busy' );
+			cta.disabled = false;
+			cta.removeAttribute( 'aria-disabled' );
+			if ( cta.dataset.dfwcOriginalLabel ) {
+				cta.innerHTML = cta.dataset.dfwcOriginalLabel;
+				delete cta.dataset.dfwcOriginalLabel;
+			}
+		}
 	}
 } )();

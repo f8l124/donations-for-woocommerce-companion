@@ -87,13 +87,16 @@ final class Assets {
 			'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
 			'nonce'          => wp_create_nonce( '_wcdnonce' ),
 			'action'         => 'donation_to_order',
+			'cartUrl'        => function_exists( 'wc_get_cart_url' ) ? wc_get_cart_url() : home_url( '/cart/' ),
 			'currency'       => get_woocommerce_currency(),
 			'currencySymbol' => html_entity_decode( get_woocommerce_currency_symbol() ),
 			'locale'         => str_replace( '_', '-', get_locale() ),
 			'i18n'           => [
-				'errorGeneric' => __( 'Something went wrong. Please try again.', 'dfwc-companion' ),
-				'monthly'      => '/' . __( 'month', 'dfwc-companion' ),
-				'annual'       => '/' . __( 'year', 'dfwc-companion' ),
+				'errorGeneric'        => __( 'Something went wrong. Please try again.', 'dfwc-companion' ),
+				'errorAmountRequired' => __( 'Please choose a preset amount or enter a custom amount.', 'dfwc-companion' ),
+				'errorNetwork'        => __( 'Network error. Please check your connection and try again.', 'dfwc-companion' ),
+				'monthly'             => '/' . __( 'month', 'dfwc-companion' ),
+				'annual'              => '/' . __( 'year', 'dfwc-companion' ),
 			],
 		];
 	}
