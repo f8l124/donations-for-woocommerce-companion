@@ -1,0 +1,251 @@
+/**
+ * Donations for WooCommerce Companion — overlay augmentation styles.
+ *
+ * All rules are scoped under [data-dfwc-overlay-target] so we never bleed onto
+ * a non-overlaid parent shortcode. The overlay UI sits inside parent's
+ * `.wc-donation-in-action` container; we hide parent's `.row1` (amount block)
+ * and recurring blocks via the `.dfwc-overlay-hidden` utility class.
+ *
+ * @package   DFWC\Companion
+ * @copyright Copyright (c) 2026 David Stells
+ * @license   GPL-2.0-or-later https://www.gnu.org/licenses/gpl-2.0.html
+ */
+
+/* Utility: hide parent's amount + recurring blocks once we mount our overlay.
+   Uses !important because parent's inline `style="display: block;"` on
+   `#wps_sfw_product_target_section` would otherwise win. */
+.dfwc-overlay-hidden {
+	display: none !important;
+}
+
+[data-dfwc-overlay-target] {
+	font-family: inherit;
+	color: inherit;
+	line-height: 1.4;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__root {
+	margin: 0 0 16px;
+	max-width: 480px;
+}
+
+/* ---------- Tabs ---------- */
+
+[data-dfwc-overlay-target] .dfwc-overlay__tabs {
+	display: flex;
+	gap: 4px;
+	margin: 0 0 16px;
+	background: #f0f0f1;
+	border-radius: 6px;
+	padding: 4px;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__tab {
+	flex: 1;
+	background: transparent;
+	border: none;
+	padding: 10px 8px;
+	cursor: pointer;
+	font: inherit;
+	font-weight: 500;
+	color: #555;
+	border-radius: 4px;
+	transition: background-color 150ms ease, color 150ms ease;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__tab:hover:not( [disabled] ) {
+	color: #1d2327;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__tab--active {
+	background: #fff;
+	color: #1d2327;
+	font-weight: 600;
+	box-shadow: 0 1px 2px rgba( 0, 0, 0, 0.06 );
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__tab[disabled],
+[data-dfwc-overlay-target] .dfwc-overlay__tab[aria-disabled="true"] {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__tab:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+/* ---------- Panels ---------- */
+
+[data-dfwc-overlay-target] .dfwc-overlay__panel {
+	margin: 0 0 12px;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__panel[hidden] {
+	display: none;
+}
+
+/* ---------- Preset chips ---------- */
+
+[data-dfwc-overlay-target] .dfwc-overlay__presets {
+	display: grid;
+	grid-template-columns: repeat( 3, minmax( 0, 1fr ) );
+	gap: 8px;
+	margin: 0 0 12px;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__preset-input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect( 0, 0, 0, 0 );
+	white-space: nowrap;
+	border: 0;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__preset-input:focus + .dfwc-overlay__preset-label {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__preset-label {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	min-height: 56px;
+	padding: 10px 8px;
+	border: 2px solid #c3c4c7;
+	border-radius: 6px;
+	cursor: pointer;
+	background: #fff;
+	font-weight: 600;
+	transition: border-color 120ms ease, background-color 120ms ease;
+	text-align: center;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__preset-label:hover {
+	border-color: #6c7177;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__preset-input:checked + .dfwc-overlay__preset-label {
+	border-color: currentColor;
+	background: rgba( 0, 0, 0, 0.03 );
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__preset-amount {
+	font-size: 1.05em;
+	line-height: 1.2;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__preset-tag {
+	font-size: 0.75em;
+	font-weight: 500;
+	color: #555;
+}
+
+/* ---------- Custom amount ---------- */
+
+[data-dfwc-overlay-target] .dfwc-overlay__custom {
+	margin: 12px 0 0;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__custom-label {
+	display: block;
+	margin: 0 0 4px;
+	font-size: 0.9em;
+	color: #555;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__custom-input-wrap {
+	display: flex;
+	align-items: stretch;
+	border: 2px solid #c3c4c7;
+	border-radius: 6px;
+	overflow: hidden;
+	background: #fff;
+	transition: border-color 120ms ease;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__custom-input-wrap:focus-within {
+	border-color: currentColor;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__currency {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 12px;
+	background: #f6f6f7;
+	color: #555;
+	font-weight: 600;
+	min-width: 36px;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__custom-input {
+	flex: 1;
+	border: none;
+	padding: 10px 12px;
+	font: inherit;
+	font-size: 1em;
+	background: transparent;
+	color: inherit;
+	outline: none;
+	min-width: 0;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__custom-input::-webkit-outer-spin-button,
+[data-dfwc-overlay-target] .dfwc-overlay__custom-input::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+[data-dfwc-overlay-target] .dfwc-overlay__custom-input { -moz-appearance: textfield; }
+
+/* ---------- Error ---------- */
+
+[data-dfwc-overlay-target] .dfwc-overlay__error {
+	margin: 12px 0 0;
+	padding: 10px 12px;
+	background: #fcf0f1;
+	border-left: 3px solid #b32d2e;
+	color: #8a1e1f;
+	font-size: 0.9em;
+	border-radius: 2px;
+}
+
+/* ---------- Editor placeholder (Block REST short-circuit) ---------- */
+
+.dfwc-overlay-preview {
+	padding: 16px;
+	border: 2px dashed #c3c4c7;
+	border-radius: 6px;
+	color: #555;
+	text-align: center;
+	font-style: italic;
+}
+
+/* ---------- Responsive ---------- */
+
+@media ( max-width: 480px ) {
+	[data-dfwc-overlay-target] .dfwc-overlay__presets {
+		grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+	}
+	[data-dfwc-overlay-target] .dfwc-overlay__tab {
+		padding: 8px 4px;
+		font-size: 0.95em;
+	}
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media ( prefers-reduced-motion: reduce ) {
+	[data-dfwc-overlay-target] .dfwc-overlay__tab,
+	[data-dfwc-overlay-target] .dfwc-overlay__preset-label,
+	[data-dfwc-overlay-target] .dfwc-overlay__custom-input-wrap {
+		transition: none;
+	}
+}

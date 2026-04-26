@@ -55,8 +55,18 @@ final class Block {
 		$campaign_id = isset( $attributes['campaignId'] ) ? absint( $attributes['campaignId'] ) : 0;
 
 		if ( $campaign_id < 1 ) {
-			return '<div class="dfwc-form__placeholder">'
+			return '<div class="dfwc-overlay-preview">'
 				. esc_html__( 'Select a donation campaign in the block sidebar.', 'dfwc-companion' )
+				. '</div>';
+		}
+
+		// Block-editor REST preview short-circuit: parent's [wc_woo_donation]
+		// shortcode does is_admin() / frontend-only checks that misbehave in the
+		// REST context the editor's ServerSideRender uses. Show a placeholder
+		// instead of triggering parent's frontend paths.
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			return '<div class="dfwc-overlay-preview">'
+				. esc_html__( 'Donation form preview renders on the frontend. Save and view the post to see it.', 'dfwc-companion' )
 				. '</div>';
 		}
 

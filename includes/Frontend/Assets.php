@@ -4,10 +4,10 @@
  * localize.
  *
  * Splits register-vs-enqueue: scripts/styles register on every page so
- * out-of-band callers (e.g., the Elementor widget's render() method,
- * Phase F's Form_Replacer) can call wp_enqueue_*() at any point in the
- * request lifecycle. Conditional enqueue (shortcode/block detection) runs
- * separately on `wp_enqueue_scripts`.
+ * out-of-band callers (Elementor widget render(), Renderer::render() when
+ * driven from a non-shortcode/non-block context) can call wp_enqueue_*()
+ * at any point in the request lifecycle. Conditional enqueue (shortcode /
+ * block detection) runs separately on `wp_enqueue_scripts`.
  *
  * @package   DFWC\Companion
  * @copyright Copyright (c) 2026 David Stells
@@ -20,8 +20,8 @@ defined( 'ABSPATH' ) || exit;
 
 final class Assets {
 
-	public const HANDLE_CSS = 'dfwc-form';
-	public const HANDLE_JS  = 'dfwc-form';
+	public const HANDLE_CSS = 'dfwc-overlay';
+	public const HANDLE_JS  = 'dfwc-overlay';
 
 	public function __construct() {
 		add_action( 'wp_enqueue_scripts', [ $this, 'register' ], 5 );
@@ -31,14 +31,14 @@ final class Assets {
 	public function register(): void {
 		wp_register_style(
 			self::HANDLE_CSS,
-			DFWC_COMPANION_URL . 'assets/css/dfwc-form.css',
+			DFWC_COMPANION_URL . 'assets/css/dfwc-overlay.css',
 			[],
 			DFWC_COMPANION_VERSION
 		);
 
 		wp_register_script(
 			self::HANDLE_JS,
-			DFWC_COMPANION_URL . 'assets/js/dfwc-form.js',
+			DFWC_COMPANION_URL . 'assets/js/dfwc-overlay.js',
 			[],
 			DFWC_COMPANION_VERSION,
 			[
@@ -52,7 +52,8 @@ final class Assets {
 
 	/**
 	 * Conditional enqueue for shortcode + block contexts. Out-of-band callers
-	 * (Elementor widget, Form_Replacer) call enqueue() directly.
+	 * (Elementor widget, Renderer when invoked outside has_shortcode/has_block
+	 * detection) call enqueue() directly.
 	 */
 	public function maybe_enqueue(): void {
 		if ( ! is_singular() ) {
@@ -74,8 +75,8 @@ final class Assets {
 
 	/**
 	 * Public entry point so non-shortcode/non-block contexts (Elementor widget
-	 * render(), Form_Replacer in Phase F) can pull in the assets on demand.
-	 * WordPress dedupes; safe to call multiple times.
+	 * render(), Renderer when called from arbitrary code paths) can pull in
+	 * the assets on demand. WordPress dedupes; safe to call multiple times.
 	 */
 	public static function enqueue(): void {
 		wp_enqueue_style( self::HANDLE_CSS );

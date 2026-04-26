@@ -68,7 +68,7 @@ if ( class_exists( '\Elementor\Widget_Base' ) ) {
 			$campaign_id = isset( $settings['campaign_id'] ) ? absint( $settings['campaign_id'] ) : 0;
 
 			if ( $campaign_id < 1 ) {
-				echo '<div class="dfwc-form__placeholder">'
+				echo '<div class="dfwc-overlay-preview">'
 					. esc_html__( 'Select a donation campaign in the widget settings.', 'dfwc-companion' )
 					. '</div>';
 				return;
