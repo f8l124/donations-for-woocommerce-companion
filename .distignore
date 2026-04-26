@@ -21,6 +21,7 @@ yarn.lock
 composer.json
 composer.lock
 vendor
+scripts
 
 # Tests
 tests
@@ -28,6 +29,7 @@ playwright.config.ts
 playwright-report
 test-results
 .wp-env.json
+.wp-env.*.json
 .wp-env.override.json
 
 # Build / dev artifacts
