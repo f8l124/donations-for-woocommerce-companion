@@ -52,8 +52,6 @@ final class Plugin {
 
 		$this->engine = Engine_Detector::detect();
 
-		$this->wire_submodules();
-
 		$this->booted = true;
 	}
 
@@ -103,17 +101,6 @@ final class Plugin {
 		}
 
 		return true;
-	}
-
-	private function wire_submodules(): void {
-		new Admin\Meta_Box();
-		new Admin\Assets();
-		new Admin\Self_Check();
-		new Frontend\Shortcode();
-		new Frontend\Block();
-		new Frontend\Form_Replacer();
-		new Frontend\Assets();
-		new Frontend\Submit_Guard();
 	}
 
 	private function add_notice( string $message, string $severity = 'info' ): void {
