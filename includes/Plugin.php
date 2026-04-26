@@ -59,6 +59,7 @@ final class Plugin {
 		new Frontend\Block();
 		new Frontend\Assets();
 		new Frontend\Submit_Guard();
+		new Frontend\Context_Augmenter();
 		new Frontend\Elementor_Adapter();
 
 		$this->booted = true;

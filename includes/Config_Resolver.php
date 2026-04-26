@@ -54,6 +54,20 @@ final class Config_Resolver {
 	}
 
 	/**
+	 * Has the admin explicitly saved companion config for this campaign?
+	 * Used to gate auto-augmentation of parent's cart/checkout/widget/single
+	 * render contexts: we only augment campaigns the admin opted in to.
+	 * Shortcode/block/widget invocations of OUR Renderer are always opted-in.
+	 */
+	public static function is_configured( int $campaign_id ): bool {
+		if ( $campaign_id < 1 ) {
+			return false;
+		}
+		$stored = get_post_meta( $campaign_id, self::META_KEY_INTERVALS, true );
+		return is_array( $stored ) && ! empty( $stored );
+	}
+
+	/**
 	 * Canonical config skeleton. One-time enabled by default; recurring
 	 * intervals disabled (admin opts in via the meta box).
 	 */

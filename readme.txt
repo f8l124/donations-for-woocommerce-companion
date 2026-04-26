@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.4.0
+Stable tag: 0.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,16 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 
 == Changelog ==
 
+= 0.5.0 =
+* New: auto-augmentation across all six render paths the parent plugin uses — single-campaign permalink, parent's `[wc_woo_donation]` shortcode, donation widget, donation-on-cart, donation-on-cart-block, and donation-on-checkout. Previously only our `[dfwc_recurring_donation]` shortcode/block/widget triggered augmentation; now any place parent renders a donation form will get the interval-first overlay automatically (when the campaign has companion config saved).
+* New: per-campaign + per-context opt-out filter `dfwc_should_augment_parent_form` (signature: `apply_filters( 'dfwc_should_augment_parent_form', bool $augment, int $campaign_id, string $context )` where context is one of single/shortcode/widget/checkout/cart/cart_block).
+* New: gating — campaigns without saved companion config render parent's vanilla form unchanged. Augmentation only kicks in for campaigns the admin explicitly opted into via the meta box.
+* New: i18n — `languages/dfwc-companion.pot` template ships with the plugin; ~71 translatable strings.
+* Internal: `Frontend\Context_Augmenter` is the new auto-augmentation hook handler. Re-entrancy-safe: when our `Renderer::render()` is wrapping (driven from `[dfwc_recurring_donation]`), the augmenter checks `Renderer::is_inside_render()` and skips its own wrapping to avoid double-wrapping.
+* Internal: `Renderer` exposes `build_overlay_attributes()` and `wrap_with_overlay()` so the same overlay payload shape is used by all render paths.
+
+**Upgrade action:** if you previously embedded `[dfwc_recurring_donation]` directly in a campaign's post content because the auto-render didn't augment, you can remove it now — parent's auto-render on the campaign permalink will be augmented automatically. Leaving the shortcode in place will produce two augmented forms on the same page; remove one.
+
 = 0.4.0 =
 * Architectural refactor: companion now AUGMENTS the parent's donation form instead of replacing it. Cause selector, campaign image, processing fee, gift aid, tributes, e-card recipient, and donor-wall integration that the parent plugin renders are now visible alongside our interval-first tabs.
 * Implementation: parent plugin renders its full form via its existing render path; on every page that contains our shortcode/block/Elementor widget, a tiny vanilla-JS overlay (`assets/js/dfwc-overlay.js`) finds parent's amount block and recurring controls in the DOM, hides them, and mounts our 3-tab interval UI in their place. As the donor changes our tabs/presets/custom amount, the overlay writes to parent's existing hidden inputs. Parent's existing submit handler runs unchanged — the AJAX call to `donation_to_order` happens through parent's tested pipeline.
@@ -125,6 +135,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.5.0 =
+Auto-augmentation now extends to all six contexts where parent renders a donation form (cart, checkout, widget, etc.) — previously only our shortcode/block triggered it. Includes a `.pot` translation template. If you put `[dfwc_recurring_donation]` directly in a campaign's post content as a workaround in 0.4.x, you can remove it.
 
 = 0.4.0 =
 Major architectural refactor: companion now augments parent's form instead of replacing it. Cause selector, gift aid, processing fee, tributes, and other parent-rendered fields are now visible alongside our interval tabs. Safe to upgrade — overlay falls back gracefully (donor sees parent's unmodified form) if any required parent DOM element is missing.

@@ -29,6 +29,18 @@ final class Renderer {
 	];
 
 	/**
+	 * Re-entrancy guard. True while we are inside `render()` and have called
+	 * parent's `[wc_woo_donation]` shortcode — Context_Augmenter checks this
+	 * to avoid wrapping parent's render a second time when its action hooks
+	 * fire inside our delegated do_shortcode call.
+	 */
+	private static bool $inside_render = false;
+
+	public static function is_inside_render(): bool {
+		return self::$inside_render;
+	}
+
+	/**
 	 * Build the augmented donor experience for a campaign.
 	 */
 	public static function render( int $campaign_id ): string {
@@ -50,37 +62,68 @@ final class Renderer {
 		// Pull in our overlay assets — registered globally by Frontend\Assets.
 		Assets::enqueue();
 
-		$config         = Config_Resolver::resolve( $campaign_id );
-		$engine         = Engine_Detector::detect();
-		$intervals      = Config_Resolver::intervals();
-
-		// Determine which intervals are actually selectable for this campaign
-		// (engine-aware: monthly/annual hidden when no recurring engine).
-		$enabled_intervals = self::resolve_enabled_intervals( $config, $engine );
-
-		// First enabled interval is the initial active tab.
-		$active_interval = ! empty( $enabled_intervals ) ? $enabled_intervals[0] : Config_Resolver::INTERVAL_ONE_TIME;
-
-		// Shape the per-instance JS payload. Only enabled intervals are
-		// included so disabled-interval data doesn't leak into the page.
-		$form_config = self::build_form_config( $config, $enabled_intervals );
-
 		// Delegate to parent's shortcode for the full form HTML (cause selector,
-		// gift aid, processing fee, tributes, button, etc.).
-		$inner = do_shortcode( '[wc_woo_donation id="' . (int) $campaign_id . '"]' );
+		// gift aid, processing fee, tributes, button, etc.). Set the inside-render
+		// flag so Context_Augmenter knows not to also wrap when parent's
+		// `wc_donation_before_shortcode_add_donation` action fires inside.
+		self::$inside_render = true;
+		try {
+			$inner = do_shortcode( '[wc_woo_donation id="' . (int) $campaign_id . '"]' );
+		} finally {
+			self::$inside_render = false;
+		}
+
 		if ( '' === trim( (string) $inner ) ) {
 			return self::dev_comment( 'dfwc: parent shortcode returned empty (campaign deleted or unpublished?)' );
 		}
 
+		return self::wrap_with_overlay( $campaign_id, $inner );
+	}
+
+	/**
+	 * Wrap arbitrary parent-rendered form HTML in our overlay marker. Used by
+	 * `render()` (after delegating to parent's shortcode) and by
+	 * Context_Augmenter (after capturing parent's auto-render output via the
+	 * cart/checkout/widget action hooks).
+	 *
+	 * @param int    $campaign_id
+	 * @param string $inner      Parent's pre-rendered form HTML.
+	 */
+	public static function wrap_with_overlay( int $campaign_id, string $inner ): string {
+		$attrs = self::build_overlay_attributes( $campaign_id );
+
 		return sprintf(
 			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d" data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s" data-intervals="%5$s">%6$s</div>',
 			(int) $campaign_id,
-			esc_attr( $engine ),
-			esc_attr( $active_interval ),
-			esc_attr( (string) wp_json_encode( $form_config ) ),
-			esc_attr( (string) wp_json_encode( $enabled_intervals ) ),
-			$inner // already escaped inside parent's shortcode
+			esc_attr( $attrs['engine'] ),
+			esc_attr( $attrs['active_interval'] ),
+			esc_attr( (string) wp_json_encode( $attrs['form_config'] ) ),
+			esc_attr( (string) wp_json_encode( $attrs['enabled_intervals'] ) ),
+			$inner // already escaped inside parent's shortcode/template
 		);
+	}
+
+	/**
+	 * Compute the overlay's data-* attribute payload (engine, enabled
+	 * intervals, active interval, per-interval config). Used by
+	 * `wrap_with_overlay()` and by Context_Augmenter when emitting the
+	 * wrapper's opening tag separately from its closing tag.
+	 *
+	 * @return array{engine:string,enabled_intervals:array<int,string>,active_interval:string,form_config:array<string,array>}
+	 */
+	public static function build_overlay_attributes( int $campaign_id ): array {
+		$config            = Config_Resolver::resolve( $campaign_id );
+		$engine            = Engine_Detector::detect();
+		$enabled_intervals = self::resolve_enabled_intervals( $config, $engine );
+		$active_interval   = ! empty( $enabled_intervals ) ? $enabled_intervals[0] : Config_Resolver::INTERVAL_ONE_TIME;
+		$form_config       = self::build_form_config( $config, $enabled_intervals );
+
+		return [
+			'engine'            => $engine,
+			'enabled_intervals' => $enabled_intervals,
+			'active_interval'   => $active_interval,
+			'form_config'       => $form_config,
+		];
 	}
 
 	/**

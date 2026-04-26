@@ -1,0 +1,338 @@
+# Copyright (C) 2026 David Stells
+# This file is distributed under the GPLv2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Donations for WooCommerce Companion 0.5.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/dfwc-companion\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-04-26T23:46:24+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: dfwc-companion\n"
+
+#. Plugin Name of the plugin
+#: donations-for-woocommerce-companion.php
+msgid "Donations for WooCommerce Companion"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: donations-for-woocommerce-companion.php
+msgid "https://github.com/f8l124/donations-for-woocommerce-companion"
+msgstr ""
+
+#. Description of the plugin
+#: donations-for-woocommerce-companion.php
+msgid "Adds an interval-first donation form (one-time / monthly / annually) on top of the Donation for WooCommerce plugin, without modifying it."
+msgstr ""
+
+#. Author of the plugin
+#: donations-for-woocommerce-companion.php
+msgid "David Stells"
+msgstr ""
+
+#. Author URI of the plugin
+#: donations-for-woocommerce-companion.php
+msgid "https://github.com/f8l124"
+msgstr ""
+
+#: donations-for-woocommerce-companion.php:34
+msgid "Donations for WooCommerce Companion requires PHP 7.4 or higher. Please upgrade PHP to use this plugin."
+msgstr ""
+
+#: includes/Admin/Meta_Box.php:47
+msgid "Interval-First Donation Form"
+msgstr ""
+
+#. translators: %s: interval name (Monthly / Annually)
+#: includes/Admin/Meta_Box.php:132
+#, php-format
+msgid "The %s tab is enabled but has no presets and an unusually high minimum. Please review the configuration."
+msgstr ""
+
+#. translators: %d: WooCommerce product ID linked to this campaign
+#: includes/Admin/Meta_Box.php:261
+#, php-format
+msgid "The donation product linked to this campaign (#%d) is not configured as a subscription product. Donors selecting Monthly or Annually will be charged once instead of being enrolled in a subscription. Configure the product as a subscription via the parent plugin's product editor."
+msgstr ""
+
+#: includes/Admin/Meta_Box.php:271
+#: includes/Frontend/Renderer.php:162
+msgid "One-time"
+msgstr ""
+
+#: includes/Admin/Meta_Box.php:272
+#: includes/Frontend/Renderer.php:163
+msgid "Monthly"
+msgstr ""
+
+#: includes/Admin/Meta_Box.php:273
+#: includes/Frontend/Renderer.php:164
+msgid "Annually"
+msgstr ""
+
+#: includes/Admin/Self_Check.php:77
+msgid "Donations for WooCommerce Companion:"
+msgstr ""
+
+#: includes/Admin/Self_Check.php:96
+msgid "The Donation for WooCommerce AJAX endpoint is not registered. Recurring and one-time donations may both fail. Verify the parent plugin is active and not modified."
+msgstr ""
+
+#: includes/Admin/Self_Check.php:105
+msgid "Donation for WooCommerce is not active. The companion plugin will not function until the parent is enabled."
+msgstr ""
+
+#. translators: %s: detected parent plugin version
+#: includes/Admin/Self_Check.php:114
+#, php-format
+msgid "Donation for WooCommerce %s has not been tested with this companion. Verify recurring donations still complete to cart with the right line-item meta before relying on this site."
+msgstr ""
+
+#. translators: %d: number of campaigns affected
+#: includes/Admin/Self_Check.php:129
+#, php-format
+msgid "%d campaign has Monthly or Annually enabled but no recurring billing engine is active. Donors will only see the One-time tab."
+msgid_plural "%d campaigns have Monthly or Annually enabled but no recurring billing engine is active. Donors will only see the One-time tab."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Config_Resolver.php:91
+msgid "Donate {amount}"
+msgstr ""
+
+#: includes/Config_Resolver.php:95
+msgid "Donate {amount}/month"
+msgstr ""
+
+#: includes/Config_Resolver.php:99
+msgid "Donate {amount}/year"
+msgstr ""
+
+#: includes/Engine_Detector.php:68
+#: templates/meta-box-intervals.php:42
+msgid "WooCommerce Subscriptions"
+msgstr ""
+
+#: includes/Engine_Detector.php:70
+msgid "Subscriptions For WooCommerce"
+msgstr ""
+
+#: includes/Engine_Detector.php:72
+msgid "no recurring engine"
+msgstr ""
+
+#: includes/Frontend/Assets.php:96
+msgid "Something went wrong. Please try again."
+msgstr ""
+
+#: includes/Frontend/Assets.php:97
+msgid "Please choose a preset amount or enter a custom amount."
+msgstr ""
+
+#: includes/Frontend/Assets.php:98
+msgid "Network error. Please check your connection and try again."
+msgstr ""
+
+#: includes/Frontend/Assets.php:99
+#: includes/Frontend/Renderer.php:139
+msgid "month"
+msgstr ""
+
+#: includes/Frontend/Assets.php:100
+#: includes/Frontend/Renderer.php:140
+msgid "year"
+msgstr ""
+
+#: includes/Frontend/Block.php:59
+msgid "Select a donation campaign in the block sidebar."
+msgstr ""
+
+#: includes/Frontend/Block.php:69
+msgid "Donation form preview renders on the frontend. Save and view the post to see it."
+msgstr ""
+
+#: includes/Frontend/Elementor_Widget.php:28
+#: assets/blocks/recurring-donation/index.js:78
+msgid "Recurring Donation"
+msgstr ""
+
+#: includes/Frontend/Elementor_Widget.php:47
+#: assets/blocks/recurring-donation/index.js:63
+msgid "Campaign"
+msgstr ""
+
+#: includes/Frontend/Elementor_Widget.php:55
+#: assets/blocks/recurring-donation/index.js:65
+msgid "Donation campaign"
+msgstr ""
+
+#: includes/Frontend/Elementor_Widget.php:59
+msgid "Pick the campaign whose interval-first form should appear here."
+msgstr ""
+
+#: includes/Frontend/Elementor_Widget.php:72
+msgid "Select a donation campaign in the widget settings."
+msgstr ""
+
+#: includes/Frontend/Elementor_Widget.php:90
+#: assets/blocks/recurring-donation/index.js:58
+msgid "— Select a campaign —"
+msgstr ""
+
+#: includes/Frontend/Submit_Guard.php:70
+msgid "This donation interval is not available for this campaign."
+msgstr ""
+
+#. translators: 1: minimum amount, 2: maximum amount
+#: includes/Frontend/Submit_Guard.php:81
+#, php-format
+msgid "Donation amount must be between %1$s and %2$s."
+msgstr ""
+
+#: includes/Plugin.php:79
+msgid "Donations for WooCommerce Companion requires WooCommerce to be active."
+msgstr ""
+
+#: includes/Plugin.php:87
+msgid "Donations for WooCommerce Companion requires the Donation for WooCommerce plugin to be active."
+msgstr ""
+
+#. translators: 1: detected parent plugin version, 2: required minimum version
+#: includes/Plugin.php:97
+#, php-format
+msgid "Donations for WooCommerce Companion is tested with Donation for WooCommerce %2$s or newer. You are running %1$s; recurring intervals may not behave as expected."
+msgstr ""
+
+#: includes/Plugin.php:108
+msgid "Donations for WooCommerce Companion has not been tested with Donation for WooCommerce 4.x. Please verify recurring donations before relying on this plugin."
+msgstr ""
+
+#: templates/meta-box-intervals.php:36
+msgid "No recurring billing engine is active. Donors will only see the One-time tab."
+msgstr ""
+
+#: templates/meta-box-intervals.php:38
+msgid "Install Subscriptions For WooCommerce (free)"
+msgstr ""
+
+#: templates/meta-box-intervals.php:40
+msgid "or"
+msgstr ""
+
+#: templates/meta-box-intervals.php:44
+msgid "to enable Monthly and Annually."
+msgstr ""
+
+#. translators: %s: interval label (One-time / Monthly / Annually)
+#: templates/meta-box-intervals.php:101
+#, php-format
+msgid "Offer %s donations on this campaign"
+msgstr ""
+
+#: templates/meta-box-intervals.php:109
+msgid "Preset amounts"
+msgstr ""
+
+#: templates/meta-box-intervals.php:114
+msgid "Amount"
+msgstr ""
+
+#: templates/meta-box-intervals.php:115
+msgid "Label (optional)"
+msgstr ""
+
+#: templates/meta-box-intervals.php:116
+msgid "Default"
+msgstr ""
+
+#: templates/meta-box-intervals.php:117
+#: templates/meta-box-intervals.php:155
+#: templates/meta-box-intervals.php:185
+msgid "Remove"
+msgstr ""
+
+#: templates/meta-box-intervals.php:124
+#: templates/meta-box-intervals.php:172
+msgid "Drag to reorder"
+msgstr ""
+
+#: templates/meta-box-intervals.php:142
+#: templates/meta-box-intervals.php:178
+msgid "e.g. Supporter"
+msgstr ""
+
+#: templates/meta-box-intervals.php:165
+msgid "+ Add preset"
+msgstr ""
+
+#: templates/meta-box-intervals.php:193
+msgid "Custom amount range"
+msgstr ""
+
+#: templates/meta-box-intervals.php:196
+msgid "Minimum"
+msgstr ""
+
+#: templates/meta-box-intervals.php:208
+msgid "Maximum"
+msgstr ""
+
+#: templates/meta-box-intervals.php:221
+msgid "Call-to-action template"
+msgstr ""
+
+#. translators: 1: literal {amount} token, 2: literal {interval} token
+#: templates/meta-box-intervals.php:235
+#, php-format
+msgid "Tokens: %1$s (replaced with the formatted price), %2$s (replaced with the interval label)."
+msgstr ""
+
+#: templates/meta-box-intervals.php:246
+msgid "Enabling Monthly or Annually here overrides the parent plugin's \"Recurring\" campaign setting (forces it to \"User chooses\"). One-time-only campaigns leave the parent setting untouched."
+msgstr ""
+
+#: assets/blocks/recurring-donation/index.js:80
+msgid "Loading campaigns…"
+msgstr ""
+
+#: assets/blocks/recurring-donation/index.js:81
+msgid "Choose a campaign in the block sidebar to preview the form."
+msgstr ""
+
+#: assets/blocks/recurring-donation/index.js:90
+msgid "Recurring Donation form (campaign #"
+msgstr ""
+
+#: assets/blocks/recurring-donation/block.json
+msgctxt "block title"
+msgid "Recurring Donation"
+msgstr ""
+
+#: assets/blocks/recurring-donation/block.json
+msgctxt "block description"
+msgid "Interval-first donation form (one-time / monthly / annually)."
+msgstr ""
+
+#: assets/blocks/recurring-donation/block.json
+msgctxt "block keyword"
+msgid "donation"
+msgstr ""
+
+#: assets/blocks/recurring-donation/block.json
+msgctxt "block keyword"
+msgid "recurring"
+msgstr ""
+
+#: assets/blocks/recurring-donation/block.json
+msgctxt "block keyword"
+msgid "subscription"
+msgstr ""
+
+#: assets/blocks/recurring-donation/block.json
+msgctxt "block keyword"
+msgid "fundraising"
+msgstr ""
