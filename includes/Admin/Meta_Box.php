@@ -39,6 +39,87 @@ final class Meta_Box {
 		add_action( 'wc_donation_after_save_campaign_meta', [ $this, 'save' ], 20, 1 );
 		// Fallback for block-editor saves that bypass the parent's hook.
 		add_action( 'save_post_' . self::PARENT_POST_TYPE, [ $this, 'save' ], 20, 1 );
+
+		// 0.6.4: late re-assertion of subscription-product meta. Parent's
+		// class-wcdonationsetting save handler calls wp_update_post on the
+		// linked product later in the same save flow (line 681), which
+		// indirectly fires woocommerce_process_product_meta, which fires
+		// WPS SFW's handler that writes _wps_sfw_product='no' (because there
+		// is no _wps_sfw_product field in $_POST when saving a campaign).
+		// That last write was overwriting the 'yes' we wrote during save().
+		// We now re-assert at two later points to guarantee our 'yes' wins:
+		//
+		//  (a) priority-9999 save_post_wc-donation — runs after all
+		//      priority-10 handlers complete (including parent's product
+		//      update chain).
+		//  (b) priority-99 woocommerce_process_product_meta — runs whenever
+		//      WC processes a product save for any of OUR campaigns'
+		//      products, immediately after WPS SFW's priority-10 default-'no'
+		//      write.
+		add_action( 'save_post_' . self::PARENT_POST_TYPE, [ $this, 'late_reassert_product_subscription' ], 9999, 1 );
+		add_action( 'woocommerce_process_product_meta', [ $this, 'preserve_subscription_product_marker' ], 99, 2 );
+	}
+
+	/**
+	 * Re-run product auto-configuration after all priority-10 save_post
+	 * handlers have completed. Sees the same companion config we just saved
+	 * (since save() already wrote it) and re-asserts the subscription-product
+	 * meta, overriding any 'no' WPS SFW wrote during parent's nested
+	 * wp_update_post call.
+	 */
+	public function late_reassert_product_subscription( int $post_id ): void {
+		if ( self::PARENT_POST_TYPE !== get_post_type( $post_id ) ) {
+			return;
+		}
+		// Re-read the persisted intervals (no $_POST dependency since save()
+		// already ran). is_configured guards against unsaved campaigns.
+		if ( ! Config_Resolver::is_configured( $post_id ) ) {
+			return;
+		}
+		$config = Config_Resolver::resolve( $post_id );
+		$recurring_enabled = ( $config[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] ?? false )
+			|| ( $config[ Config_Resolver::INTERVAL_ANNUAL ]['enabled'] ?? false );
+		if ( ! $recurring_enabled ) {
+			return;
+		}
+		$primary_period = ( $config[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] ?? false ) ? 'month' : 'year';
+		$this->auto_configure_product_subscription( $post_id, $primary_period );
+	}
+
+	/**
+	 * Re-assert our subscription-product meta whenever WC processes a product
+	 * save and the product is linked to one of our recurring-enabled campaigns.
+	 * Hooked at priority 99 so we run AFTER WPS SFW's default-'no' write at
+	 * priority 10. Without this, parent's wp_update_post on the linked product
+	 * during a campaign save (or any other code path that triggers WC product
+	 * processing) silently flips _wps_sfw_product back to 'no'.
+	 *
+	 * @param int      $product_id Product post ID
+	 * @param \WP_Post $post       Unused; kept for hook signature.
+	 */
+	public function preserve_subscription_product_marker( $product_id, $post = null ): void {
+		$product_id = (int) $product_id;
+		if ( $product_id < 1 ) {
+			return;
+		}
+		if ( ! class_exists( '\WcdonationSetting' ) ) {
+			return;
+		}
+		$campaign_id = (int) \WcdonationSetting::get_campaign_id_by_product_id( $product_id );
+		if ( $campaign_id < 1 ) {
+			return;
+		}
+		if ( ! Config_Resolver::is_configured( $campaign_id ) ) {
+			return;
+		}
+		$config = Config_Resolver::resolve( $campaign_id );
+		$recurring_enabled = ( $config[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] ?? false )
+			|| ( $config[ Config_Resolver::INTERVAL_ANNUAL ]['enabled'] ?? false );
+		if ( ! $recurring_enabled ) {
+			return;
+		}
+		$primary_period = ( $config[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] ?? false ) ? 'month' : 'year';
+		$this->auto_configure_product_subscription( $campaign_id, $primary_period );
 	}
 
 	public function register(): void {

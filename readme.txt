@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.6.3
+Stable tag: 0.6.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,13 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 
 == Changelog ==
 
+= 0.6.4 =
+* Fix: subscription-product meta now wins the last-write race against WPS SFW's default. Previously, our save handler wrote `_wps_sfw_product='yes'` correctly, but the parent plugin's `class-wcdonationsetting` save handler then called `wp_update_post` on the linked product later in the same save flow (`class-wcdonationsetting.php:681`). That nested update triggered `woocommerce_process_product_meta`, which fires WPS SFW's handler at priority 10. WPS SFW reads `$_POST['_wps_sfw_product']` — but we're saving a campaign, not a product, so the field is absent and the handler defaults to writing `'no'`. Last write wins; our `'yes'` got clobbered.
+* Two new hooks defend against that race:
+  - `save_post_wc-donation` at priority 9999 runs after every priority-10 handler completes, then re-asserts our subscription meta one final time.
+  - `woocommerce_process_product_meta` at priority 99 catches any product save where WC processes the product (including parent's nested `wp_update_post`) and re-writes our values immediately after WPS SFW's default-`'no'`.
+* Both hooks gate on `Config_Resolver::is_configured()` + recurring enabled, so non-companion products are unaffected.
+
 = 0.6.3 =
 * Diagnostic: warning text in the meta box now includes the actual values read for the WPS SFW subscription markers (`_wps_sfw_product`, `_wps_sfw_users`) so we can see at a glance whether auto-config wrote them or not.
 * Belt-and-suspenders: auto-config now ALSO calls `update_post_meta` directly after `wps_sfw_update_meta_data`, in case the helper takes an unexpected path on some site configs. WP dedupes same-value writes; harmless redundancy.
@@ -163,6 +170,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.6.4 =
+The subscription-product warning now resolves correctly after one save. Adds two late-running hooks that re-assert our `_wps_sfw_product='yes'` write after parent's nested `wp_update_post` triggers WPS SFW's default-`'no'` overwrite.
 
 = 0.6.3 =
 Diagnostic release for the persisting "linked product is not configured" warning. Warning now includes the actual meta read so we can see why detection thinks the product isn't a subscription.
