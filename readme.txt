@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.6.2
+Stable tag: 0.6.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,11 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 
 == Changelog ==
 
+= 0.6.3 =
+* Diagnostic: warning text in the meta box now includes the actual values read for the WPS SFW subscription markers (`_wps_sfw_product`, `_wps_sfw_users`) so we can see at a glance whether auto-config wrote them or not.
+* Belt-and-suspenders: auto-config now ALSO calls `update_post_meta` directly after `wps_sfw_update_meta_data`, in case the helper takes an unexpected path on some site configs. WP dedupes same-value writes; harmless redundancy.
+* When `WP_DEBUG_LOG` is enabled, auto-config logs a single line to `wp-content/debug.log` after each save with the product ID, campaign ID, period, and read-back values. Lets us verify auto-config actually ran (vs. a save handler short-circuit) without exposing internals to end users.
+
 = 0.6.2 =
 * Fix: 0.6.1's product auto-config wrote the wrong meta key. Inspecting the WPS SFW source confirms the engine's "this is a subscription product" marker is `_wps_sfw_product='yes'`, not `_wps_sfw_users='user'` — that latter key is the parent plugin's internal tracking, used in `class-wcdonationorder.php:1601` to decide which subscription POST keys to read. Both 0.6.1's auto-config and the warning detection were checking parent's internal key. Result: product never got recognized by the subscription engine; warning persisted; recurring donations silently downgraded to one-time despite the "fix" in 0.6.1.
   - Auto-config now writes `_wps_sfw_product='yes'` (engine marker) AND keeps `_wps_sfw_users='user'` (parent compat) plus the `wps_sfw_subscription_*` cadence meta.
@@ -158,6 +163,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.6.3 =
+Diagnostic release for the persisting "linked product is not configured" warning. Warning now includes the actual meta read so we can see why detection thinks the product isn't a subscription.
 
 = 0.6.2 =
 Hotfix for 0.6.1: product auto-config now writes the correct WPS SFW marker meta key (`_wps_sfw_product=yes`) so the subscription engine actually recognizes the linked product. If you were on 0.6.1 and the warning persisted, save the campaign once on 0.6.2 and the warning clears.

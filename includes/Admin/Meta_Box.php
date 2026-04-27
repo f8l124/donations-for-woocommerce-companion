@@ -325,6 +325,30 @@ final class Meta_Box {
 					update_post_meta( $product_id, $key, $value );
 				}
 			}
+
+			// Belt-and-suspenders: in case wps_sfw_update_meta_data takes a
+			// different path on some site configs, also write directly via
+			// update_post_meta. WP dedupes same-value writes; harmless if
+			// the helper already wrote there.
+			foreach ( $writes as $key => $value ) {
+				update_post_meta( $product_id, $key, $value );
+			}
+
+			// 0.6.3 diagnostic: log whether the write took. Helps debug cases
+			// where the warning persists after save. Only logged when
+			// WP_DEBUG_LOG is enabled (admin's choice).
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				$verify = (string) \wps_sfw_get_meta_data( $product_id, '_wps_sfw_product', true );
+				$direct = (string) get_post_meta( $product_id, '_wps_sfw_product', true );
+				error_log( sprintf(
+					'[dfwc-companion] auto-configured product #%d for campaign #%d, engine=wps_sfw, period=%s. Read-back via wps_sfw_get_meta_data: "%s"; via get_post_meta: "%s".',
+					$product_id,
+					$campaign_id,
+					$primary_period,
+					$verify,
+					$direct
+				) );
+			}
 		}
 		// engine 'none' falls through — recurring intervals can't be enabled
 		// in that case anyway (companion forces them off in the meta box).
@@ -357,25 +381,37 @@ final class Meta_Box {
 		}
 
 		$is_subscription_product = false;
+		$diagnostic              = '';
 
 		if ( Engine_Detector::ENGINE_WCS === $engine && class_exists( '\WC_Subscriptions_Product' ) ) {
 			$is_subscription_product = (bool) \WC_Subscriptions_Product::is_subscription( $product_id );
+			$product_type            = function_exists( 'wp_get_post_terms' )
+				? implode( ',', wp_get_post_terms( $product_id, 'product_type', [ 'fields' => 'slugs' ] ) )
+				: '';
+			$diagnostic              = "engine=wcs product_type=[{$product_type}] is_subscription=" . ( $is_subscription_product ? 'true' : 'false' );
 		} elseif ( Engine_Detector::ENGINE_WPS === $engine && function_exists( 'wps_sfw_get_meta_data' ) ) {
 			// _wps_sfw_product='yes' is WPS SFW's own marker for "subscription product";
 			// _wps_sfw_users was parent's internal field, which we still write but
 			// don't gate the warning on. (Fixed in 0.6.2 — 0.6.1 incorrectly used
 			// the parent-internal key as the recognition marker.)
-			$is_subscription_product = 'yes' === \wps_sfw_get_meta_data( $product_id, '_wps_sfw_product', true );
+			$prod_marker             = (string) \wps_sfw_get_meta_data( $product_id, '_wps_sfw_product', true );
+			$users_marker            = (string) \wps_sfw_get_meta_data( $product_id, '_wps_sfw_users', true );
+			$is_subscription_product = 'yes' === $prod_marker;
+			$diagnostic              = "engine=wps_sfw _wps_sfw_product='{$prod_marker}' _wps_sfw_users='{$users_marker}'";
 		}
 
 		if ( $is_subscription_product ) {
 			return null;
 		}
 
+		// 0.6.3 diagnostic: include the actual meta read so we can tell from a
+		// screenshot whether (a) auto-config never ran/wrote, (b) auto-config
+		// wrote but something else cleared it, or (c) detection is wrong.
 		return sprintf(
-			/* translators: %d: WooCommerce product ID linked to this campaign */
-			__( 'The donation product linked to this campaign (#%d) is not configured as a subscription product. Donors selecting Monthly or Annually will be charged once instead of being enrolled in a subscription. Configure the product as a subscription via the parent plugin\'s product editor.', 'dfwc-companion' ),
-			$product_id
+			/* translators: 1: WooCommerce product ID linked to this campaign, 2: diagnostic detail (engine + meta read) */
+			__( 'The donation product linked to this campaign (#%1$d) is not yet recognized as a subscription product. Donors selecting Monthly or Annually will be charged once instead of being enrolled in a subscription. Save the campaign once and the companion will auto-configure the product. Diagnostic: %2$s', 'dfwc-companion' ),
+			$product_id,
+			$diagnostic
 		);
 	}
 
