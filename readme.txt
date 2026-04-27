@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.6.0
+Stable tag: 0.6.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,13 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 
 == Changelog ==
 
+= 0.6.1 =
+* Fix: when monthly or annual is enabled on a campaign, the linked WC product is now auto-configured as a subscription product. Previously, parent's "Recurring Donations" tab held the controls that did this — but v0.2.0's tab-injector hid those controls, leaving admins with no UI path to configure the product. Donations would silently downgrade to one-time charges because the subscription engine looks at the product's own subscription configuration, not just the POST data.
+  - WPS SFW path: writes `_wps_sfw_users='user'` plus `wps_sfw_subscription_number/interval/expiry_*` meta on the product.
+  - WCS path: sets the product type taxonomy to `subscription` and seeds `_subscription_period/_period_interval/_length` meta.
+  - No-op when no recurring engine is installed.
+* As a result, the "linked product is not configured as a subscription product" warning in the meta box now goes away after the first save with monthly or annual enabled.
+
 = 0.6.0 =
 * New: per-interval "Allow donors to enter a custom amount" toggle (defaults checked). Admins can now force preset-only amount selection on monthly while still allowing free entry on one-time, etc. The min/max range still applies for preset-amount validation when custom is off.
 * New: Display Options fieldset in the meta box with three controls — "Show campaign title", "Show campaign image" (both default checked, preserve existing behavior), and a "Cause section heading" text field (leave blank for parent's default "Select Cause" text).
@@ -145,6 +152,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.6.1 =
+Fixes the "linked product is not a subscription" warning by auto-configuring the linked WC product as a subscription product when you enable monthly or annual on a campaign. No admin action needed — just save the campaign once on 0.6.1.
 
 = 0.6.0 =
 Adds per-interval custom-amount toggle, campaign title/image show-hide, and cause heading customization in a new Display Options section of the meta box. All defaults preserve existing behavior — safe to upgrade.

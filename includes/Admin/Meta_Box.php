@@ -159,6 +159,16 @@ final class Meta_Box {
 			update_post_meta( $post_id, '_subscription_period', $primary_period );
 			update_post_meta( $post_id, '_subscription_period_interval', '1' );
 			update_post_meta( $post_id, '_subscription_length', '0' );
+
+			// 0.6.1: also auto-configure the linked WC product as a subscription
+			// product. Without this, subscription engines (WPS SFW / WCS) treat
+			// the product as one-time and the donation never enrolls as a
+			// subscription, even though our POST data + the campaign's
+			// wc-donation-recurring='user' meta tell parent to process it as
+			// recurring. The recurring controls that v0.2.0 hid in the parent's
+			// "Recurring Donations" tab were the admin's previous path to
+			// configure this; now the companion does it automatically.
+			$this->auto_configure_product_subscription( $post_id, $primary_period );
 		}
 
 		// 0.3.0: form-mode meta is no longer collected from the form. The
@@ -250,6 +260,65 @@ final class Meta_Box {
 				? sanitize_text_field( (string) $raw['cause_heading'] )
 				: $defaults['cause_heading'],
 		];
+	}
+
+	/**
+	 * Auto-configure the linked WC product as a subscription product for the
+	 * active engine. Called when the admin enables monthly/annual on the
+	 * campaign — without this, subscription engines treat the product as
+	 * one-time and the recurring donation flow silently downgrades despite
+	 * our wc-donation-recurring='user' force-set.
+	 *
+	 * Engine semantics:
+	 * - WPS SFW: the engine recognizes a product as a subscription when the
+	 *   `_wps_sfw_users` meta == 'user'. We also seed the wps_sfw_subscription_*
+	 *   meta on the product so the engine knows the cadence. Empty expiry =
+	 *   open-ended (forever).
+	 * - WCS: product type taxonomy term must be `subscription`. Plus the
+	 *   _subscription_* product meta drives WCS's renewal logic.
+	 *
+	 * No-op when engine='none'. Defensive against missing/non-subscription-
+	 * compatible products.
+	 */
+	private function auto_configure_product_subscription( int $campaign_id, string $primary_period ): void {
+		if ( ! class_exists( '\WcdonationCampaignSetting' ) ) {
+			return;
+		}
+
+		$object     = \WcdonationCampaignSetting::get_product_by_campaign( $campaign_id );
+		$product_id = isset( $object->product['product_id'] ) ? (int) $object->product['product_id'] : 0;
+		if ( $product_id < 1 ) {
+			return;
+		}
+
+		$engine = Engine_Detector::detect();
+
+		if ( Engine_Detector::ENGINE_WCS === $engine ) {
+			// WCS: switch product type to subscription via the product_type taxonomy.
+			wp_set_object_terms( $product_id, 'subscription', 'product_type' );
+			update_post_meta( $product_id, '_subscription_period', $primary_period );
+			update_post_meta( $product_id, '_subscription_period_interval', '1' );
+			update_post_meta( $product_id, '_subscription_length', '0' );
+			// _subscription_price intentionally not set — donor's amount is the price.
+		} elseif ( Engine_Detector::ENGINE_WPS === $engine ) {
+			// WPS SFW: prefer plugin's helper, fall back to update_post_meta.
+			$writes = [
+				'_wps_sfw_users'                       => 'user',
+				'wps_sfw_subscription_number'          => '1',
+				'wps_sfw_subscription_interval'        => $primary_period,
+				'wps_sfw_subscription_expiry_number'   => '',
+				'wps_sfw_subscription_expiry_interval' => '',
+			];
+			foreach ( $writes as $key => $value ) {
+				if ( function_exists( 'wps_sfw_update_meta_data' ) ) {
+					wps_sfw_update_meta_data( $product_id, $key, $value );
+				} else {
+					update_post_meta( $product_id, $key, $value );
+				}
+			}
+		}
+		// engine 'none' falls through — recurring intervals can't be enabled
+		// in that case anyway (companion forces them off in the meta box).
 	}
 
 	/**
