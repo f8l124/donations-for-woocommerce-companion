@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.6.4
+Stable tag: 0.6.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -84,6 +84,16 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * The optional template-replacement mode uses an output-buffering pattern around the parent's documented action hooks (because the parent doesn't expose a "skip default form" filter). The CI watcher monitors this for breakage.
 
 == Changelog ==
+
+= 0.6.6 =
+* Fix: per-interval "Allow donors to enter a custom amount" toggle was re-enabling itself on every save when unchecked. The save-side sanitizer used `isset()`-with-default-`true` to derive the boolean, but HTML form-checkbox semantics send nothing in `$_POST` for an unchecked checkbox — so `isset()` was false and the default-`true` branch fired. Switched to `! empty()` (missing = false), matching the pattern used for the main "Offer X donations" enable checkbox in the same method.
+
+= 0.6.5 =
+* Fix: definitive resolution of the "linked product is not configured as a subscription" warning that 0.6.1–0.6.4 chased through five increasingly defensive layers. Root cause was structural, not a race: the parent plugin's save handler at `class-wcdonationcampaignsetting.php:1739-1744` reads `wc-donation-recurring` from post meta and writes `_wps_sfw_product` / `_wps_sfw_users` based on that value. Our 0.2.0 admin tab injector hid parent's "Display Type" select via `display:none`, so its default value `'disabled'` was POSTing → parent wrote `_wps_sfw_product='no'` on every save → our subsequent override fought the wrong battle.
+* The fix flips the strategy: don't hide parent's recurring control — auto-sync it. The admin tab injector now keeps `<select name="wc-donation-recurring">` visible inside the relocated tab, watches our monthly/annual enable checkboxes, and forces the select to `'user'` (then disables it for visual feedback). Parent's own save handler now writes `_wps_sfw_product='yes'` naturally, with no override needed.
+* Removed the v0.6.4 defensive hooks: `save_post_wc-donation` priority 9999 and `woocommerce_process_product_meta` priority 99. They fought a race that was actually a missing $_POST value, and added 60+ lines of fragile last-write-wins code.
+* Removed the v0.6.3 `error_log` diagnostic in `auto_configure_product_subscription`. No longer needed — parent's natural flow handles the marker meta. Method retained for the WPS SFW cadence meta + WCS product_type taxonomy term, both of which parent does not manage on its own.
+* UX: when monthly or annual is enabled on a campaign, the admin sees parent's "Display Type" select set to `'User chooses'` and disabled, with an italic "Auto-managed by Donations for WooCommerce Companion. Disable Monthly and Annually above to unlock." hint below it. Single source of truth, fully transparent.
 
 = 0.6.4 =
 * Fix: subscription-product meta now wins the last-write race against WPS SFW's default. Previously, our save handler wrote `_wps_sfw_product='yes'` correctly, but the parent plugin's `class-wcdonationsetting` save handler then called `wp_update_post` on the linked product later in the same save flow (`class-wcdonationsetting.php:681`). That nested update triggered `woocommerce_process_product_meta`, which fires WPS SFW's handler at priority 10. WPS SFW reads `$_POST['_wps_sfw_product']` — but we're saving a campaign, not a product, so the field is absent and the handler defaults to writing `'no'`. Last write wins; our `'yes'` got clobbered.
@@ -170,6 +180,12 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.6.6 =
+Fixes the per-interval "Allow custom amount" checkbox silently re-enabling itself every save. Unchecking and saving now correctly persists as off.
+
+= 0.6.5 =
+Definitive fix for the "linked product is not configured as a subscription" warning. Drops the v0.6.4 defensive hook stack; instead, the admin tab injector now keeps parent's "Display Type" select visible (locked to "User chooses" while monthly/annual are enabled), so parent's own save handler writes the WPS SFW marker meta correctly. Save any campaign once and the warning clears.
 
 = 0.6.4 =
 The subscription-product warning now resolves correctly after one save. Adds two late-running hooks that re-assert our `_wps_sfw_product='yes'` write after parent's nested `wp_update_post` triggers WPS SFW's default-`'no'` overwrite.

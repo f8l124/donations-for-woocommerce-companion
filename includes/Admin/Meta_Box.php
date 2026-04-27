@@ -39,87 +39,6 @@ final class Meta_Box {
 		add_action( 'wc_donation_after_save_campaign_meta', [ $this, 'save' ], 20, 1 );
 		// Fallback for block-editor saves that bypass the parent's hook.
 		add_action( 'save_post_' . self::PARENT_POST_TYPE, [ $this, 'save' ], 20, 1 );
-
-		// 0.6.4: late re-assertion of subscription-product meta. Parent's
-		// class-wcdonationsetting save handler calls wp_update_post on the
-		// linked product later in the same save flow (line 681), which
-		// indirectly fires woocommerce_process_product_meta, which fires
-		// WPS SFW's handler that writes _wps_sfw_product='no' (because there
-		// is no _wps_sfw_product field in $_POST when saving a campaign).
-		// That last write was overwriting the 'yes' we wrote during save().
-		// We now re-assert at two later points to guarantee our 'yes' wins:
-		//
-		//  (a) priority-9999 save_post_wc-donation — runs after all
-		//      priority-10 handlers complete (including parent's product
-		//      update chain).
-		//  (b) priority-99 woocommerce_process_product_meta — runs whenever
-		//      WC processes a product save for any of OUR campaigns'
-		//      products, immediately after WPS SFW's priority-10 default-'no'
-		//      write.
-		add_action( 'save_post_' . self::PARENT_POST_TYPE, [ $this, 'late_reassert_product_subscription' ], 9999, 1 );
-		add_action( 'woocommerce_process_product_meta', [ $this, 'preserve_subscription_product_marker' ], 99, 2 );
-	}
-
-	/**
-	 * Re-run product auto-configuration after all priority-10 save_post
-	 * handlers have completed. Sees the same companion config we just saved
-	 * (since save() already wrote it) and re-asserts the subscription-product
-	 * meta, overriding any 'no' WPS SFW wrote during parent's nested
-	 * wp_update_post call.
-	 */
-	public function late_reassert_product_subscription( int $post_id ): void {
-		if ( self::PARENT_POST_TYPE !== get_post_type( $post_id ) ) {
-			return;
-		}
-		// Re-read the persisted intervals (no $_POST dependency since save()
-		// already ran). is_configured guards against unsaved campaigns.
-		if ( ! Config_Resolver::is_configured( $post_id ) ) {
-			return;
-		}
-		$config = Config_Resolver::resolve( $post_id );
-		$recurring_enabled = ( $config[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] ?? false )
-			|| ( $config[ Config_Resolver::INTERVAL_ANNUAL ]['enabled'] ?? false );
-		if ( ! $recurring_enabled ) {
-			return;
-		}
-		$primary_period = ( $config[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] ?? false ) ? 'month' : 'year';
-		$this->auto_configure_product_subscription( $post_id, $primary_period );
-	}
-
-	/**
-	 * Re-assert our subscription-product meta whenever WC processes a product
-	 * save and the product is linked to one of our recurring-enabled campaigns.
-	 * Hooked at priority 99 so we run AFTER WPS SFW's default-'no' write at
-	 * priority 10. Without this, parent's wp_update_post on the linked product
-	 * during a campaign save (or any other code path that triggers WC product
-	 * processing) silently flips _wps_sfw_product back to 'no'.
-	 *
-	 * @param int      $product_id Product post ID
-	 * @param \WP_Post $post       Unused; kept for hook signature.
-	 */
-	public function preserve_subscription_product_marker( $product_id, $post = null ): void {
-		$product_id = (int) $product_id;
-		if ( $product_id < 1 ) {
-			return;
-		}
-		if ( ! class_exists( '\WcdonationSetting' ) ) {
-			return;
-		}
-		$campaign_id = (int) \WcdonationSetting::get_campaign_id_by_product_id( $product_id );
-		if ( $campaign_id < 1 ) {
-			return;
-		}
-		if ( ! Config_Resolver::is_configured( $campaign_id ) ) {
-			return;
-		}
-		$config = Config_Resolver::resolve( $campaign_id );
-		$recurring_enabled = ( $config[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] ?? false )
-			|| ( $config[ Config_Resolver::INTERVAL_ANNUAL ]['enabled'] ?? false );
-		if ( ! $recurring_enabled ) {
-			return;
-		}
-		$primary_period = ( $config[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] ?? false ) ? 'month' : 'year';
-		$this->auto_configure_product_subscription( $campaign_id, $primary_period );
 	}
 
 	public function register(): void {
@@ -277,7 +196,12 @@ final class Meta_Box {
 	 */
 	private function sanitize_interval_block( array $raw ): array {
 		$enabled               = ! empty( $raw['enabled'] );
-		$custom_amount_enabled = isset( $raw['custom_amount_enabled'] ) ? (bool) $raw['custom_amount_enabled'] : true;
+		// HTML form-checkbox semantics: an UNCHECKED checkbox sends nothing in
+		// $_POST. Use !empty() (missing = false) — the previous isset()-with-
+		// default-true logic re-enabled the toggle every save when the admin
+		// unchecked it. The meta-box template always emits the checkbox, so
+		// missing here is a deliberate uncheck, not a legacy-data scenario.
+		$custom_amount_enabled = ! empty( $raw['custom_amount_enabled'] );
 
 		$presets_raw = isset( $raw['presets'] ) && is_array( $raw['presets'] ) ? $raw['presets'] : [];
 		$presets     = [];
@@ -345,16 +269,19 @@ final class Meta_Box {
 
 	/**
 	 * Auto-configure the linked WC product as a subscription product for the
-	 * active engine. Called when the admin enables monthly/annual on the
-	 * campaign — without this, subscription engines treat the product as
-	 * one-time and the recurring donation flow silently downgrades despite
-	 * our wc-donation-recurring='user' force-set.
+	 * active engine. Called from save() when monthly/annual is enabled.
+	 *
+	 * As of v0.6.5 this method is no longer load-bearing for the WPS SFW
+	 * marker meta — parent's own save handler writes _wps_sfw_product /
+	 * _wps_sfw_users from the posted wc-donation-recurring value (which our
+	 * admin tab injector auto-sets to 'user'). We still call this for the
+	 * cadence meta (wps_sfw_subscription_*) and the WCS product_type taxonomy
+	 * term, both of which parent does NOT manage on its own.
 	 *
 	 * Engine semantics:
-	 * - WPS SFW: the engine recognizes a product as a subscription when the
-	 *   `_wps_sfw_users` meta == 'user'. We also seed the wps_sfw_subscription_*
-	 *   meta on the product so the engine knows the cadence. Empty expiry =
-	 *   open-ended (forever).
+	 * - WPS SFW: subscription products marked by `_wps_sfw_product='yes'`.
+	 *   Cadence meta (wps_sfw_subscription_*) drives the engine's renewal
+	 *   schedule. Empty expiry = open-ended (forever).
 	 * - WCS: product type taxonomy term must be `subscription`. Plus the
 	 *   _subscription_* product meta drives WCS's renewal logic.
 	 *
@@ -382,15 +309,19 @@ final class Meta_Box {
 			update_post_meta( $product_id, '_subscription_length', '0' );
 			// _subscription_price intentionally not set — donor's amount is the price.
 		} elseif ( Engine_Detector::ENGINE_WPS === $engine ) {
-			// WPS SFW recognizes subscription products via _wps_sfw_product='yes'
-			// (NOT _wps_sfw_users — that's parent's internal tracking key, used in
-			// parent's AJAX handler at class-wcdonationorder.php:1601). Both must
-			// be set: _wps_sfw_product so the engine treats the product as a
-			// subscription, _wps_sfw_users so parent's flow processes recurring
-			// POST data. Verified against WPS SFW source at
-			// admin/class-subscriptions-for-woocommerce-admin.php:791 (where
-			// admin save handler writes _wps_sfw_product) and parent's
-			// class-wcdonationorder.php:1601 (where parent reads _wps_sfw_users).
+			// WPS SFW recognizes subscription products via _wps_sfw_product='yes'.
+			// As of 0.6.5 the canonical writer is parent's own save handler at
+			// class-wcdonationcampaignsetting.php:1740 — it derives the marker
+			// from $_POST['wc-donation-recurring'], which our admin tab injector
+			// auto-sets to 'user' whenever monthly/annual is enabled. We still
+			// seed the cadence meta here so WPS SFW knows the period without
+			// requiring the admin to fill out parent's now-redundant cadence
+			// inputs. Parent's _wps_sfw_product / _wps_sfw_users writes will
+			// run after this method (we are inside save() at hook
+			// `wc_donation_after_save_campaign_meta`, which fires from line
+			// 1834 — after parent's lines 1740-1744 have already run with the
+			// posted 'user' value). Re-asserting the marker here is harmless
+			// belt-and-suspenders.
 			$writes = [
 				'_wps_sfw_product'                     => 'yes',
 				'_wps_sfw_users'                       => 'user',
@@ -405,30 +336,6 @@ final class Meta_Box {
 				} else {
 					update_post_meta( $product_id, $key, $value );
 				}
-			}
-
-			// Belt-and-suspenders: in case wps_sfw_update_meta_data takes a
-			// different path on some site configs, also write directly via
-			// update_post_meta. WP dedupes same-value writes; harmless if
-			// the helper already wrote there.
-			foreach ( $writes as $key => $value ) {
-				update_post_meta( $product_id, $key, $value );
-			}
-
-			// 0.6.3 diagnostic: log whether the write took. Helps debug cases
-			// where the warning persists after save. Only logged when
-			// WP_DEBUG_LOG is enabled (admin's choice).
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
-				$verify = (string) \wps_sfw_get_meta_data( $product_id, '_wps_sfw_product', true );
-				$direct = (string) get_post_meta( $product_id, '_wps_sfw_product', true );
-				error_log( sprintf(
-					'[dfwc-companion] auto-configured product #%d for campaign #%d, engine=wps_sfw, period=%s. Read-back via wps_sfw_get_meta_data: "%s"; via get_post_meta: "%s".',
-					$product_id,
-					$campaign_id,
-					$primary_period,
-					$verify,
-					$direct
-				) );
 			}
 		}
 		// engine 'none' falls through — recurring intervals can't be enabled
