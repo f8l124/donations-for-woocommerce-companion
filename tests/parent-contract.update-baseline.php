@@ -42,6 +42,8 @@ $RANGES = [
 	[ 'includes/classes/class-wcdonationsubscriptionfree.php',  78,  110, 'WPS SFW expiry handling — open-ended convention (empty expiry fields)' ],
 	// 0.4.0 augmentation overlay dependencies — DOM selectors locked to these line ranges.
 	[ 'includes/views/frontend/frontend-order-donation.php',         1, 100, 'Donor form template top: .wc-donation-in-action wrapper, $blocks ordering' ],
+	[ 'includes/views/frontend/frontend-order-donation.php',       400, 420, 'Title + image render — overlay reads .campaign-title and .block-campaign-thumbnail to optionally hide them per admin display options (v0.6.0)' ],
+	[ 'includes/views/frontend/blocks/frontend-donation-cause-disp.php', 1,  24, 'Cause block — overlay reads .row2 h3.wc-donation-title to optionally override the heading text per admin display options (v0.6.0)' ],
 	[ 'includes/views/frontend/blocks/frontend-donation-amount-disp.php', 1, 183, 'Amount block — overlay depends on .row1, hidden price inputs (.donate_<id>_<rand>), .grab-donation, .wc-donation-f-donation-other-value, wc-donation-cause hidden input' ],
 	[ 'includes/views/frontend/blocks/frontend-donation-subscription-disp.php', 1, 178, 'Recurring block — overlay depends on .donation-is-recurring, _subscription_period/_interval/_length selects, .wps_sfw_subscription_* fields' ],
 	[ 'includes/views/frontend/blocks/frontend-donation-button-disp.php', 14,  22, 'Submit button + hidden campaign/rand inputs — overlay reads .wc_donation_camp / .wp_rand and binds capture-phase guard on .wc-donation-f-submit-donation' ],

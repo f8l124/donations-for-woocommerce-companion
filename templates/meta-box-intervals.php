@@ -6,6 +6,7 @@
  *
  * Variables in scope (from Meta_Box::render_intervals):
  *   array   $config         Resolved per-campaign config (see Config_Resolver).
+ *   array   $display        Display options (show_title/show_image/cause_heading).
  *   string  $engine         'wcs' | 'wps_sfw' | 'none'.
  *   ?string $product_warn   Warning message about linked product, or null.
  *   array   $intervals      Allow-listed interval keys in display order.
@@ -190,7 +191,18 @@ $engine_supports_recurring = Engine_Detector::ENGINE_NONE !== $engine;
 			</fieldset>
 
 			<fieldset class="dfwc-mb__fieldset" <?php disabled( $tab_disabled ); ?>>
-				<legend><?php esc_html_e( 'Custom amount range', 'dfwc-companion' ); ?></legend>
+				<legend><?php esc_html_e( 'Custom amount', 'dfwc-companion' ); ?></legend>
+				<p>
+					<label>
+						<input
+							type="checkbox"
+							name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][custom_amount_enabled]"
+							value="1"
+							<?php checked( ! empty( $block['custom_amount_enabled'] ) ); ?>
+						>
+						<?php esc_html_e( 'Allow donors to enter a custom amount on this tab', 'dfwc-companion' ); ?>
+					</label>
+				</p>
 				<p>
 					<label>
 						<?php esc_html_e( 'Minimum', 'dfwc-companion' ); ?>
@@ -214,6 +226,9 @@ $engine_supports_recurring = Engine_Detector::ENGINE_NONE !== $engine;
 							min="0.01"
 						>
 					</label>
+				</p>
+				<p class="description">
+					<?php esc_html_e( 'When the custom-amount toggle is unchecked, the donor must pick from the preset amounts above on this tab. The min/max range still applies to the preset range validation.', 'dfwc-companion' ); ?>
 				</p>
 			</fieldset>
 
@@ -241,6 +256,47 @@ $engine_supports_recurring = Engine_Detector::ENGINE_NONE !== $engine;
 			</fieldset>
 		</section>
 	<?php endforeach; ?>
+
+	<fieldset class="dfwc-mb__fieldset dfwc-mb__display">
+		<legend><?php esc_html_e( 'Display options', 'dfwc-companion' ); ?></legend>
+		<p>
+			<label>
+				<input
+					type="checkbox"
+					name="dfwc_display[show_title]"
+					value="1"
+					<?php checked( ! empty( $display['show_title'] ) ); ?>
+				>
+				<?php esc_html_e( 'Show campaign title above the form', 'dfwc-companion' ); ?>
+			</label>
+		</p>
+		<p>
+			<label>
+				<input
+					type="checkbox"
+					name="dfwc_display[show_image]"
+					value="1"
+					<?php checked( ! empty( $display['show_image'] ) ); ?>
+				>
+				<?php esc_html_e( 'Show campaign image above the form', 'dfwc-companion' ); ?>
+			</label>
+		</p>
+		<p>
+			<label for="dfwc_display_cause_heading"><?php esc_html_e( 'Cause section heading', 'dfwc-companion' ); ?></label><br>
+			<input
+				id="dfwc_display_cause_heading"
+				type="text"
+				class="large-text"
+				name="dfwc_display[cause_heading]"
+				value="<?php echo esc_attr( (string) ( $display['cause_heading'] ?? '' ) ); ?>"
+				maxlength="120"
+				placeholder="<?php esc_attr_e( 'Select Cause', 'dfwc-companion' ); ?>"
+			>
+		</p>
+		<p class="description">
+			<?php esc_html_e( 'Leave the heading blank to keep the parent plugin\'s default ("Select Cause"). When you uncheck "Show campaign title" or "Show campaign image", the parent plugin still renders those elements — we just hide them on the donor-facing form.', 'dfwc-companion' ); ?>
+		</p>
+	</fieldset>
 
 	<p class="description dfwc-mb__footnote">
 		<?php esc_html_e( 'Enabling Monthly or Annually here overrides the parent plugin\'s "Recurring" campaign setting (forces it to "User chooses"). One-time-only campaigns leave the parent setting untouched.', 'dfwc-companion' ); ?>

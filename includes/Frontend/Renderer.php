@@ -93,23 +93,24 @@ final class Renderer {
 		$attrs = self::build_overlay_attributes( $campaign_id );
 
 		return sprintf(
-			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d" data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s" data-intervals="%5$s">%6$s</div>',
+			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d" data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s" data-intervals="%5$s" data-display="%6$s">%7$s</div>',
 			(int) $campaign_id,
 			esc_attr( $attrs['engine'] ),
 			esc_attr( $attrs['active_interval'] ),
 			esc_attr( (string) wp_json_encode( $attrs['form_config'] ) ),
 			esc_attr( (string) wp_json_encode( $attrs['enabled_intervals'] ) ),
+			esc_attr( (string) wp_json_encode( $attrs['display'] ) ),
 			$inner // already escaped inside parent's shortcode/template
 		);
 	}
 
 	/**
 	 * Compute the overlay's data-* attribute payload (engine, enabled
-	 * intervals, active interval, per-interval config). Used by
-	 * `wrap_with_overlay()` and by Context_Augmenter when emitting the
-	 * wrapper's opening tag separately from its closing tag.
+	 * intervals, active interval, per-interval config, display options).
+	 * Used by `wrap_with_overlay()` and by Context_Augmenter when emitting
+	 * the wrapper's opening tag separately from its closing tag.
 	 *
-	 * @return array{engine:string,enabled_intervals:array<int,string>,active_interval:string,form_config:array<string,array>}
+	 * @return array{engine:string,enabled_intervals:array<int,string>,active_interval:string,form_config:array<string,array>,display:array{show_title:bool,show_image:bool,cause_heading:string}}
 	 */
 	public static function build_overlay_attributes( int $campaign_id ): array {
 		$config            = Config_Resolver::resolve( $campaign_id );
@@ -117,12 +118,14 @@ final class Renderer {
 		$enabled_intervals = self::resolve_enabled_intervals( $config, $engine );
 		$active_interval   = ! empty( $enabled_intervals ) ? $enabled_intervals[0] : Config_Resolver::INTERVAL_ONE_TIME;
 		$form_config       = self::build_form_config( $config, $enabled_intervals );
+		$display           = Config_Resolver::resolve_display( $campaign_id );
 
 		return [
 			'engine'            => $engine,
 			'enabled_intervals' => $enabled_intervals,
 			'active_interval'   => $active_interval,
 			'form_config'       => $form_config,
+			'display'           => $display,
 		];
 	}
 
@@ -202,12 +205,13 @@ final class Renderer {
 		foreach ( $enabled_intervals as $key ) {
 			$block = $config[ $key ];
 			$out[ $key ] = [
-				'min'           => (float) $block['min'],
-				'max'           => (float) $block['max'],
-				'default_index' => (int) $block['default_index'],
-				'cta_template'  => (string) $block['cta_template'],
-				'label'         => (string) ( $interval_labels[ $key ] ?? $key ),
-				'presets'       => array_map(
+				'min'                   => (float) $block['min'],
+				'max'                   => (float) $block['max'],
+				'default_index'         => (int) $block['default_index'],
+				'cta_template'          => (string) $block['cta_template'],
+				'label'                 => (string) ( $interval_labels[ $key ] ?? $key ),
+				'custom_amount_enabled' => ! empty( $block['custom_amount_enabled'] ),
+				'presets'               => array_map(
 					static function ( $p ) {
 						return [
 							'amount' => (float) ( $p['amount'] ?? 0 ),

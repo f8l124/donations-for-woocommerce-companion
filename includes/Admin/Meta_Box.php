@@ -61,6 +61,7 @@ final class Meta_Box {
 		}
 
 		$config         = Config_Resolver::resolve( $post->ID );
+		$display        = Config_Resolver::resolve_display( $post->ID );
 		$engine         = Engine_Detector::detect();
 		$product_warn   = $this->detect_linked_product_warning( $post->ID, $config, $engine );
 		$intervals      = Config_Resolver::intervals();
@@ -163,7 +164,19 @@ final class Meta_Box {
 		// 0.3.0: form-mode meta is no longer collected from the form. The
 		// _dfwc_companion_form_mode key remains in the DB on legacy campaigns
 		// but is now unused. We do not delete it (preserves user state in case
-		// 0.4.0 reintroduces the opt-out as something more granular).
+		// a future minor reintroduces the opt-out as something more granular).
+
+		// 0.6.0: display options. Save the show_title/show_image/cause_heading
+		// triplet under a separate meta key so it's clearly distinct from the
+		// per-interval config and easy for power users to override via filter.
+		$display_raw = isset( $_POST['dfwc_display'] ) && is_array( $_POST['dfwc_display'] )
+			? wp_unslash( $_POST['dfwc_display'] )
+			: [];
+		update_post_meta(
+			$post_id,
+			Config_Resolver::META_KEY_DISPLAY,
+			$this->sanitize_display( $display_raw )
+		);
 	}
 
 	/**
@@ -172,7 +185,8 @@ final class Meta_Box {
 	 * already-stored array.
 	 */
 	private function sanitize_interval_block( array $raw ): array {
-		$enabled = ! empty( $raw['enabled'] );
+		$enabled               = ! empty( $raw['enabled'] );
+		$custom_amount_enabled = isset( $raw['custom_amount_enabled'] ) ? (bool) $raw['custom_amount_enabled'] : true;
 
 		$presets_raw = isset( $raw['presets'] ) && is_array( $raw['presets'] ) ? $raw['presets'] : [];
 		$presets     = [];
@@ -209,12 +223,32 @@ final class Meta_Box {
 		$cta = isset( $raw['cta_template'] ) ? sanitize_text_field( (string) $raw['cta_template'] ) : '';
 
 		return [
-			'enabled'       => $enabled,
-			'presets'       => $presets,
-			'min'           => $min,
-			'max'           => $max,
-			'default_index' => $default_index,
-			'cta_template'  => $cta,
+			'enabled'               => $enabled,
+			'presets'               => $presets,
+			'min'                   => $min,
+			'max'                   => $max,
+			'default_index'         => $default_index,
+			'cta_template'          => $cta,
+			'custom_amount_enabled' => $custom_amount_enabled,
+		];
+	}
+
+	/**
+	 * Sanitize the display-options block from raw POST. All fields default
+	 * to their `display_defaults()` values when missing.
+	 */
+	private function sanitize_display( array $raw ): array {
+		$defaults = Config_Resolver::display_defaults();
+		// HTML form-checkbox semantics: an UNCHECKED checkbox sends nothing in
+		// $_POST. We can distinguish "missing" (treated as false) from "checked"
+		// (string '1') only because we always emit the checkbox in our template.
+		// Therefore, save handler honors form intent: missing = unchecked = false.
+		return [
+			'show_title'    => ! empty( $raw['show_title'] ),
+			'show_image'    => ! empty( $raw['show_image'] ),
+			'cause_heading' => isset( $raw['cause_heading'] )
+				? sanitize_text_field( (string) $raw['cause_heading'] )
+				: $defaults['cause_heading'],
 		];
 	}
 

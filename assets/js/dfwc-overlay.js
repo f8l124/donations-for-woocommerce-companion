@@ -69,6 +69,16 @@
 			return;
 		}
 
+		var display;
+		try {
+			display = JSON.parse( wrapper.getAttribute( 'data-display' ) || '{}' );
+		} catch ( e ) { display = {}; }
+		// Defaults match Config_Resolver::display_defaults() — show everything,
+		// don't override the cause heading.
+		if ( typeof display.show_title    !== 'boolean' ) { display.show_title    = true; }
+		if ( typeof display.show_image    !== 'boolean' ) { display.show_image    = true; }
+		if ( typeof display.cause_heading !== 'string'  ) { display.cause_heading = ''; }
+
 		var campaignId = parseInt( wrapper.getAttribute( 'data-campaign-id' ), 10 ) || 0;
 		var engine     = wrapper.getAttribute( 'data-engine' ) || 'none';
 		var initialKey = wrapper.getAttribute( 'data-active-interval' ) || enabledIntervals[ 0 ];
@@ -104,6 +114,9 @@
 		hideAll( scope.querySelectorAll( '.donation_subscription' ) );
 		hideAll( scope.querySelectorAll( '.wc_donation_subscription_table' ) );
 		hideAll( scope.querySelectorAll( '.subscription-options' ) );
+
+		// Apply admin's display options (campaign title, image, cause heading).
+		applyDisplay( scope, display );
 
 		var state = {
 			interval:    initialKey,
@@ -320,37 +333,42 @@
 				panel.appendChild( grid );
 			}
 
-			// Custom amount.
-			var customWrap = document.createElement( 'div' );
-			customWrap.className = 'dfwc-overlay__custom';
-			var customLabel       = document.createElement( 'label' );
-			customLabel.className = 'dfwc-overlay__custom-label';
-			customLabel.textContent = 'Or enter your own amount';
-			customWrap.appendChild( customLabel );
+			// Custom amount — only render when admin enabled it for this interval.
+			// Default (config flag undefined) is to show, matching pre-0.6.0 behavior.
+			var customAllowed = entry.custom_amount_enabled !== false;
+			if ( customAllowed ) {
+				var customWrap = document.createElement( 'div' );
+				customWrap.className = 'dfwc-overlay__custom';
+				var customLabel       = document.createElement( 'label' );
+				customLabel.className = 'dfwc-overlay__custom-label';
+				customLabel.textContent = 'Or enter your own amount';
+				customWrap.appendChild( customLabel );
 
-			var customInputWrap = document.createElement( 'div' );
-			customInputWrap.className = 'dfwc-overlay__custom-input-wrap';
+				var customInputWrap = document.createElement( 'div' );
+				customInputWrap.className = 'dfwc-overlay__custom-input-wrap';
 
-			var sym = document.createElement( 'span' );
-			sym.className = 'dfwc-overlay__currency';
-			sym.setAttribute( 'aria-hidden', 'true' );
-			sym.textContent = ( window.dfwcCompanion && window.dfwcCompanion.currencySymbol ) || '$';
-			customInputWrap.appendChild( sym );
+				var sym = document.createElement( 'span' );
+				sym.className = 'dfwc-overlay__currency';
+				sym.setAttribute( 'aria-hidden', 'true' );
+				sym.textContent = ( window.dfwcCompanion && window.dfwcCompanion.currencySymbol ) || '$';
+				customInputWrap.appendChild( sym );
 
-			var input         = document.createElement( 'input' );
-			input.type        = 'number';
-			input.className   = 'dfwc-overlay__custom-input';
-			input.setAttribute( 'data-dfwc-custom', '' );
-			input.setAttribute( 'data-interval', key );
-			input.setAttribute( 'inputmode', 'decimal' );
-			input.setAttribute( 'step', '0.01' );
-			input.setAttribute( 'min', String( entry.min ) );
-			input.setAttribute( 'max', String( entry.max ) );
-			input.setAttribute( 'placeholder', 'Between ' + formatCurrency( entry.min ) + ' and ' + formatCurrency( entry.max ) );
-			customInputWrap.appendChild( input );
-			customWrap.appendChild( customInputWrap );
+				var input         = document.createElement( 'input' );
+				input.type        = 'number';
+				input.className   = 'dfwc-overlay__custom-input';
+				input.setAttribute( 'data-dfwc-custom', '' );
+				input.setAttribute( 'data-interval', key );
+				input.setAttribute( 'inputmode', 'decimal' );
+				input.setAttribute( 'step', '0.01' );
+				input.setAttribute( 'min', String( entry.min ) );
+				input.setAttribute( 'max', String( entry.max ) );
+				input.setAttribute( 'placeholder', 'Between ' + formatCurrency( entry.min ) + ' and ' + formatCurrency( entry.max ) );
+				customInputWrap.appendChild( input );
+				customWrap.appendChild( customInputWrap );
 
-			panel.appendChild( customWrap );
+				panel.appendChild( customWrap );
+			}
+
 			root.appendChild( panel );
 			panels[ key ] = panel;
 		} );
@@ -528,6 +546,28 @@
 		Array.prototype.forEach.call( nodeList || [], function ( el ) {
 			el.classList.add( 'dfwc-overlay-hidden' );
 		} );
+	}
+
+	/**
+	 * Apply admin display options to parent's rendered form. Selectors locked
+	 * to parent v3.9.8 (frontend-order-donation.php:401-419 for title+image,
+	 * frontend-donation-cause-disp.php:5 for cause heading).
+	 */
+	function applyDisplay( scope, display ) {
+		if ( ! display.show_title ) {
+			hideAll( scope.querySelectorAll( '.campaign-title' ) );
+		}
+		if ( ! display.show_image ) {
+			hideAll( scope.querySelectorAll( '.block-campaign-thumbnail' ) );
+		}
+		if ( display.cause_heading && typeof display.cause_heading === 'string' ) {
+			// Cause block uses h3.wc-donation-title with hardcoded "Select Cause".
+			// XSS-safe: textContent, never innerHTML.
+			var heading = scope.querySelector( '.row2 h3.wc-donation-title' );
+			if ( heading ) {
+				heading.textContent = display.cause_heading;
+			}
+		}
 	}
 
 	function showError( root, message ) {

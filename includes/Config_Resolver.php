@@ -22,6 +22,7 @@ defined( 'ABSPATH' ) || exit;
 final class Config_Resolver {
 
 	public const META_KEY_INTERVALS = '_dfwc_companion_intervals';
+	public const META_KEY_DISPLAY   = '_dfwc_companion_display';
 
 	public const INTERVAL_ONE_TIME = 'one_time';
 	public const INTERVAL_MONTHLY  = 'monthly';
@@ -54,6 +55,41 @@ final class Config_Resolver {
 	}
 
 	/**
+	 * Display-options defaults. Showing title + image preserves parent's
+	 * default behavior; cause_heading empty string = use parent's hardcoded
+	 * "Select Cause" text.
+	 *
+	 * @return array{show_title:bool,show_image:bool,cause_heading:string}
+	 */
+	public static function display_defaults(): array {
+		return [
+			'show_title'    => true,
+			'show_image'    => true,
+			'cause_heading' => '',
+		];
+	}
+
+	/**
+	 * Resolve display options for a campaign, filling missing fields from defaults.
+	 *
+	 * @return array{show_title:bool,show_image:bool,cause_heading:string}
+	 */
+	public static function resolve_display( int $campaign_id ): array {
+		$stored   = get_post_meta( $campaign_id, self::META_KEY_DISPLAY, true );
+		$defaults = self::display_defaults();
+		if ( ! is_array( $stored ) ) {
+			return $defaults;
+		}
+		return [
+			'show_title'    => isset( $stored['show_title'] ) ? (bool) $stored['show_title'] : $defaults['show_title'],
+			'show_image'    => isset( $stored['show_image'] ) ? (bool) $stored['show_image'] : $defaults['show_image'],
+			'cause_heading' => isset( $stored['cause_heading'] ) && is_string( $stored['cause_heading'] )
+				? $stored['cause_heading']
+				: $defaults['cause_heading'],
+		];
+	}
+
+	/**
 	 * Has the admin explicitly saved companion config for this campaign?
 	 * Used to gate auto-augmentation of parent's cart/checkout/widget/single
 	 * render contexts: we only augment campaigns the admin opted in to.
@@ -73,16 +109,17 @@ final class Config_Resolver {
 	 */
 	public static function defaults(): array {
 		$preset_skeleton = [
-			'enabled'       => false,
-			'presets'       => [
+			'enabled'               => false,
+			'presets'               => [
 				[ 'amount' => 25.0, 'label' => '' ],
 				[ 'amount' => 50.0, 'label' => '' ],
 				[ 'amount' => 100.0, 'label' => '' ],
 			],
-			'min'           => 5.0,
-			'max'           => 10000.0,
-			'default_index' => 1,
-			'cta_template'  => '',
+			'min'                   => 5.0,
+			'max'                   => 10000.0,
+			'default_index'         => 1,
+			'cta_template'          => '',
+			'custom_amount_enabled' => true,
 		];
 
 		return [
@@ -113,14 +150,15 @@ final class Config_Resolver {
 			$block            = isset( $stored[ $key ] ) && is_array( $stored[ $key ] ) ? $stored[ $key ] : [];
 			$default_block    = $defaults[ $key ];
 			$merged[ $key ]   = [
-				'enabled'       => isset( $block['enabled'] ) ? (bool) $block['enabled'] : $default_block['enabled'],
-				'presets'       => self::coerce_presets( $block['presets'] ?? $default_block['presets'] ),
-				'min'           => isset( $block['min'] ) ? (float) $block['min'] : $default_block['min'],
-				'max'           => isset( $block['max'] ) ? (float) $block['max'] : $default_block['max'],
-				'default_index' => isset( $block['default_index'] ) ? (int) $block['default_index'] : $default_block['default_index'],
-				'cta_template'  => isset( $block['cta_template'] ) && is_string( $block['cta_template'] ) && '' !== $block['cta_template']
+				'enabled'               => isset( $block['enabled'] ) ? (bool) $block['enabled'] : $default_block['enabled'],
+				'presets'               => self::coerce_presets( $block['presets'] ?? $default_block['presets'] ),
+				'min'                   => isset( $block['min'] ) ? (float) $block['min'] : $default_block['min'],
+				'max'                   => isset( $block['max'] ) ? (float) $block['max'] : $default_block['max'],
+				'default_index'         => isset( $block['default_index'] ) ? (int) $block['default_index'] : $default_block['default_index'],
+				'cta_template'          => isset( $block['cta_template'] ) && is_string( $block['cta_template'] ) && '' !== $block['cta_template']
 					? $block['cta_template']
 					: $default_block['cta_template'],
+				'custom_amount_enabled' => isset( $block['custom_amount_enabled'] ) ? (bool) $block['custom_amount_enabled'] : $default_block['custom_amount_enabled'],
 			];
 
 			// Clamp default_index to the valid range so the UI always has a selectable default.

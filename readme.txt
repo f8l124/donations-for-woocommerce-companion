@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.5.1
+Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,13 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 
 == Changelog ==
 
+= 0.6.0 =
+* New: per-interval "Allow donors to enter a custom amount" toggle (defaults checked). Admins can now force preset-only amount selection on monthly while still allowing free entry on one-time, etc. The min/max range still applies for preset-amount validation when custom is off.
+* New: Display Options fieldset in the meta box with three controls — "Show campaign title", "Show campaign image" (both default checked, preserve existing behavior), and a "Cause section heading" text field (leave blank for parent's default "Select Cause" text).
+* New: `_dfwc_companion_display` post meta key stores the display options as a separate concern from per-interval config.
+* Internal: overlay JS reads a new `data-display` attribute carrying display options as JSON; on init, it hides parent's `.campaign-title` / `.block-campaign-thumbnail` per admin choice and replaces parent's `.row2 h3.wc-donation-title` text via `textContent` (XSS-safe) when a custom heading is set.
+* Internal: parent-contract baseline grows from 14 to 16 locked line ranges. New entries: parent's title+image render block at `frontend-order-donation.php:400-420` and the entire cause block at `frontend-donation-cause-disp.php:1-24`. Watcher fails CI if either restructures.
+
 = 0.5.1 =
 * Fix: overlay UI now inserts at parent's amount-block position (replacing the `.row1` block in place) instead of being prepended above the entire form. Parent's "Frontend Ordering" admin choice (Cause → Amount → Subscription → Tribute → …) is now respected: wherever the admin placed "Donation Amount" in the sequence, our interval-first UI takes that spot. Cause selector, image, title, and other parent blocks now appear in their admin-configured order around the overlay instead of after it.
 
@@ -138,6 +145,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.6.0 =
+Adds per-interval custom-amount toggle, campaign title/image show-hide, and cause heading customization in a new Display Options section of the meta box. All defaults preserve existing behavior — safe to upgrade.
 
 = 0.5.1 =
 Fixes overlay placement: the interval-first UI now drops into the parent plugin's amount-block position (respecting the admin's Frontend Ordering setting). Cause selector and other blocks now render in their configured positions around the overlay.

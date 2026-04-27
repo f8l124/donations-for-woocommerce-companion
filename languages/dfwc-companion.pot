@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Donations for WooCommerce Companion 0.5.1\n"
+"Project-Id-Version: Donations for WooCommerce Companion 0.6.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/dfwc-companion\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-04-27T00:08:53+00:00\n"
+"POT-Creation-Date: 2026-04-27T03:31:45+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: dfwc-companion\n"
@@ -48,29 +48,29 @@ msgid "Interval-First Donation Form"
 msgstr ""
 
 #. translators: %s: interval name (Monthly / Annually)
-#: includes/Admin/Meta_Box.php:132
+#: includes/Admin/Meta_Box.php:133
 #, php-format
 msgid "The %s tab is enabled but has no presets and an unusually high minimum. Please review the configuration."
 msgstr ""
 
 #. translators: %d: WooCommerce product ID linked to this campaign
-#: includes/Admin/Meta_Box.php:261
+#: includes/Admin/Meta_Box.php:295
 #, php-format
 msgid "The donation product linked to this campaign (#%d) is not configured as a subscription product. Donors selecting Monthly or Annually will be charged once instead of being enrolled in a subscription. Configure the product as a subscription via the parent plugin's product editor."
 msgstr ""
 
-#: includes/Admin/Meta_Box.php:271
-#: includes/Frontend/Renderer.php:162
+#: includes/Admin/Meta_Box.php:305
+#: includes/Frontend/Renderer.php:165
 msgid "One-time"
 msgstr ""
 
-#: includes/Admin/Meta_Box.php:272
-#: includes/Frontend/Renderer.php:163
+#: includes/Admin/Meta_Box.php:306
+#: includes/Frontend/Renderer.php:166
 msgid "Monthly"
 msgstr ""
 
-#: includes/Admin/Meta_Box.php:273
-#: includes/Frontend/Renderer.php:164
+#: includes/Admin/Meta_Box.php:307
+#: includes/Frontend/Renderer.php:167
 msgid "Annually"
 msgstr ""
 
@@ -100,20 +100,20 @@ msgid_plural "%d campaigns have Monthly or Annually enabled but no recurring bil
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/Config_Resolver.php:91
+#: includes/Config_Resolver.php:128
 msgid "Donate {amount}"
 msgstr ""
 
-#: includes/Config_Resolver.php:95
+#: includes/Config_Resolver.php:132
 msgid "Donate {amount}/month"
 msgstr ""
 
-#: includes/Config_Resolver.php:99
+#: includes/Config_Resolver.php:136
 msgid "Donate {amount}/year"
 msgstr ""
 
 #: includes/Engine_Detector.php:68
-#: templates/meta-box-intervals.php:42
+#: templates/meta-box-intervals.php:43
 msgid "WooCommerce Subscriptions"
 msgstr ""
 
@@ -138,12 +138,12 @@ msgid "Network error. Please check your connection and try again."
 msgstr ""
 
 #: includes/Frontend/Assets.php:99
-#: includes/Frontend/Renderer.php:139
+#: includes/Frontend/Renderer.php:142
 msgid "month"
 msgstr ""
 
 #: includes/Frontend/Assets.php:100
-#: includes/Frontend/Renderer.php:140
+#: includes/Frontend/Renderer.php:143
 msgid "year"
 msgstr ""
 
@@ -211,87 +211,119 @@ msgstr ""
 msgid "Donations for WooCommerce Companion has not been tested with Donation for WooCommerce 4.x. Please verify recurring donations before relying on this plugin."
 msgstr ""
 
-#: templates/meta-box-intervals.php:36
+#: templates/meta-box-intervals.php:37
 msgid "No recurring billing engine is active. Donors will only see the One-time tab."
 msgstr ""
 
-#: templates/meta-box-intervals.php:38
+#: templates/meta-box-intervals.php:39
 msgid "Install Subscriptions For WooCommerce (free)"
 msgstr ""
 
-#: templates/meta-box-intervals.php:40
+#: templates/meta-box-intervals.php:41
 msgid "or"
 msgstr ""
 
-#: templates/meta-box-intervals.php:44
+#: templates/meta-box-intervals.php:45
 msgid "to enable Monthly and Annually."
 msgstr ""
 
 #. translators: %s: interval label (One-time / Monthly / Annually)
-#: templates/meta-box-intervals.php:101
+#: templates/meta-box-intervals.php:102
 #, php-format
 msgid "Offer %s donations on this campaign"
 msgstr ""
 
-#: templates/meta-box-intervals.php:109
+#: templates/meta-box-intervals.php:110
 msgid "Preset amounts"
 msgstr ""
 
-#: templates/meta-box-intervals.php:114
+#: templates/meta-box-intervals.php:115
 msgid "Amount"
 msgstr ""
 
-#: templates/meta-box-intervals.php:115
+#: templates/meta-box-intervals.php:116
 msgid "Label (optional)"
 msgstr ""
 
-#: templates/meta-box-intervals.php:116
+#: templates/meta-box-intervals.php:117
 msgid "Default"
 msgstr ""
 
-#: templates/meta-box-intervals.php:117
-#: templates/meta-box-intervals.php:155
-#: templates/meta-box-intervals.php:185
+#: templates/meta-box-intervals.php:118
+#: templates/meta-box-intervals.php:156
+#: templates/meta-box-intervals.php:186
 msgid "Remove"
 msgstr ""
 
-#: templates/meta-box-intervals.php:124
-#: templates/meta-box-intervals.php:172
+#: templates/meta-box-intervals.php:125
+#: templates/meta-box-intervals.php:173
 msgid "Drag to reorder"
 msgstr ""
 
-#: templates/meta-box-intervals.php:142
-#: templates/meta-box-intervals.php:178
+#: templates/meta-box-intervals.php:143
+#: templates/meta-box-intervals.php:179
 msgid "e.g. Supporter"
 msgstr ""
 
-#: templates/meta-box-intervals.php:165
+#: templates/meta-box-intervals.php:166
 msgid "+ Add preset"
 msgstr ""
 
-#: templates/meta-box-intervals.php:193
-msgid "Custom amount range"
+#: templates/meta-box-intervals.php:194
+msgid "Custom amount"
 msgstr ""
 
-#: templates/meta-box-intervals.php:196
-msgid "Minimum"
+#: templates/meta-box-intervals.php:203
+msgid "Allow donors to enter a custom amount on this tab"
 msgstr ""
 
 #: templates/meta-box-intervals.php:208
+msgid "Minimum"
+msgstr ""
+
+#: templates/meta-box-intervals.php:220
 msgid "Maximum"
 msgstr ""
 
-#: templates/meta-box-intervals.php:221
+#: templates/meta-box-intervals.php:231
+msgid "When the custom-amount toggle is unchecked, the donor must pick from the preset amounts above on this tab. The min/max range still applies to the preset range validation."
+msgstr ""
+
+#: templates/meta-box-intervals.php:236
 msgid "Call-to-action template"
 msgstr ""
 
 #. translators: 1: literal {amount} token, 2: literal {interval} token
-#: templates/meta-box-intervals.php:235
+#: templates/meta-box-intervals.php:250
 #, php-format
 msgid "Tokens: %1$s (replaced with the formatted price), %2$s (replaced with the interval label)."
 msgstr ""
 
-#: templates/meta-box-intervals.php:246
+#: templates/meta-box-intervals.php:261
+msgid "Display options"
+msgstr ""
+
+#: templates/meta-box-intervals.php:270
+msgid "Show campaign title above the form"
+msgstr ""
+
+#: templates/meta-box-intervals.php:281
+msgid "Show campaign image above the form"
+msgstr ""
+
+#: templates/meta-box-intervals.php:285
+msgid "Cause section heading"
+msgstr ""
+
+#: templates/meta-box-intervals.php:293
+msgid "Select Cause"
+msgstr ""
+
+#: templates/meta-box-intervals.php:297
+msgid "Leave the heading blank to keep the parent plugin's default (\"Select Cause\"). When you uncheck \"Show campaign title\" or \"Show campaign image\", the parent plugin still renders those elements — we just hide them on the donor-facing form."
+msgstr ""
+
+#: templates/meta-box-intervals.php:302
 msgid "Enabling Monthly or Annually here overrides the parent plugin's \"Recurring\" campaign setting (forces it to \"User chooses\"). One-time-only campaigns leave the parent setting untouched."
 msgstr ""
 
