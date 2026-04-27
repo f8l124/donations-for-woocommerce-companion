@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.6.1
+Stable tag: 0.6.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,12 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 
 == Changelog ==
 
+= 0.6.2 =
+* Fix: 0.6.1's product auto-config wrote the wrong meta key. Inspecting the WPS SFW source confirms the engine's "this is a subscription product" marker is `_wps_sfw_product='yes'`, not `_wps_sfw_users='user'` — that latter key is the parent plugin's internal tracking, used in `class-wcdonationorder.php:1601` to decide which subscription POST keys to read. Both 0.6.1's auto-config and the warning detection were checking parent's internal key. Result: product never got recognized by the subscription engine; warning persisted; recurring donations silently downgraded to one-time despite the "fix" in 0.6.1.
+  - Auto-config now writes `_wps_sfw_product='yes'` (engine marker) AND keeps `_wps_sfw_users='user'` (parent compat) plus the `wps_sfw_subscription_*` cadence meta.
+  - Warning detection now checks `_wps_sfw_product='yes'` so it clears correctly after the next save.
+* Internal: new `tests/smoke-product-config.php` smoke harness invokes the private auto-config method via Reflection and asserts the written meta. Confirms in wp-env that `_wps_sfw_product=yes`, `_wps_sfw_users=user`, `interval=month`, `number=1` all land on the linked product.
+
 = 0.6.1 =
 * Fix: when monthly or annual is enabled on a campaign, the linked WC product is now auto-configured as a subscription product. Previously, parent's "Recurring Donations" tab held the controls that did this — but v0.2.0's tab-injector hid those controls, leaving admins with no UI path to configure the product. Donations would silently downgrade to one-time charges because the subscription engine looks at the product's own subscription configuration, not just the POST data.
   - WPS SFW path: writes `_wps_sfw_users='user'` plus `wps_sfw_subscription_number/interval/expiry_*` meta on the product.
@@ -152,6 +158,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.6.2 =
+Hotfix for 0.6.1: product auto-config now writes the correct WPS SFW marker meta key (`_wps_sfw_product=yes`) so the subscription engine actually recognizes the linked product. If you were on 0.6.1 and the warning persisted, save the campaign once on 0.6.2 and the warning clears.
 
 = 0.6.1 =
 Fixes the "linked product is not a subscription" warning by auto-configuring the linked WC product as a subscription product when you enable monthly or annual on a campaign. No admin action needed — just save the campaign once on 0.6.1.

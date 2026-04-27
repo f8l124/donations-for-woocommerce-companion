@@ -1,6 +1,6 @@
 {
   "name": "donations-for-woocommerce-companion",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Companion plugin adding interval-first recurring donation support to Donation for WooCommerce.",
   "private": true,
   "license": "GPL-2.0-or-later",

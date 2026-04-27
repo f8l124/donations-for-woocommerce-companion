@@ -2,14 +2,14 @@
 # This file is distributed under the GPLv2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Donations for WooCommerce Companion 0.6.1\n"
+"Project-Id-Version: Donations for WooCommerce Companion 0.6.2\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/dfwc-companion\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-04-27T04:38:58+00:00\n"
+"POT-Creation-Date: 2026-04-27T04:50:18+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: dfwc-companion\n"
@@ -54,22 +54,22 @@ msgid "The %s tab is enabled but has no presets and an unusually high minimum. P
 msgstr ""
 
 #. translators: %d: WooCommerce product ID linked to this campaign
-#: includes/Admin/Meta_Box.php:364
+#: includes/Admin/Meta_Box.php:377
 #, php-format
 msgid "The donation product linked to this campaign (#%d) is not configured as a subscription product. Donors selecting Monthly or Annually will be charged once instead of being enrolled in a subscription. Configure the product as a subscription via the parent plugin's product editor."
 msgstr ""
 
-#: includes/Admin/Meta_Box.php:374
+#: includes/Admin/Meta_Box.php:387
 #: includes/Frontend/Renderer.php:165
 msgid "One-time"
 msgstr ""
 
-#: includes/Admin/Meta_Box.php:375
+#: includes/Admin/Meta_Box.php:388
 #: includes/Frontend/Renderer.php:166
 msgid "Monthly"
 msgstr ""
 
-#: includes/Admin/Meta_Box.php:376
+#: includes/Admin/Meta_Box.php:389
 #: includes/Frontend/Renderer.php:167
 msgid "Annually"
 msgstr ""

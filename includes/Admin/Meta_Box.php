@@ -301,8 +301,17 @@ final class Meta_Box {
 			update_post_meta( $product_id, '_subscription_length', '0' );
 			// _subscription_price intentionally not set — donor's amount is the price.
 		} elseif ( Engine_Detector::ENGINE_WPS === $engine ) {
-			// WPS SFW: prefer plugin's helper, fall back to update_post_meta.
+			// WPS SFW recognizes subscription products via _wps_sfw_product='yes'
+			// (NOT _wps_sfw_users — that's parent's internal tracking key, used in
+			// parent's AJAX handler at class-wcdonationorder.php:1601). Both must
+			// be set: _wps_sfw_product so the engine treats the product as a
+			// subscription, _wps_sfw_users so parent's flow processes recurring
+			// POST data. Verified against WPS SFW source at
+			// admin/class-subscriptions-for-woocommerce-admin.php:791 (where
+			// admin save handler writes _wps_sfw_product) and parent's
+			// class-wcdonationorder.php:1601 (where parent reads _wps_sfw_users).
 			$writes = [
+				'_wps_sfw_product'                     => 'yes',
 				'_wps_sfw_users'                       => 'user',
 				'wps_sfw_subscription_number'          => '1',
 				'wps_sfw_subscription_interval'        => $primary_period,
@@ -352,7 +361,11 @@ final class Meta_Box {
 		if ( Engine_Detector::ENGINE_WCS === $engine && class_exists( '\WC_Subscriptions_Product' ) ) {
 			$is_subscription_product = (bool) \WC_Subscriptions_Product::is_subscription( $product_id );
 		} elseif ( Engine_Detector::ENGINE_WPS === $engine && function_exists( 'wps_sfw_get_meta_data' ) ) {
-			$is_subscription_product = 'user' === \wps_sfw_get_meta_data( $product_id, '_wps_sfw_users', true );
+			// _wps_sfw_product='yes' is WPS SFW's own marker for "subscription product";
+			// _wps_sfw_users was parent's internal field, which we still write but
+			// don't gate the warning on. (Fixed in 0.6.2 — 0.6.1 incorrectly used
+			// the parent-internal key as the recognition marker.)
+			$is_subscription_product = 'yes' === \wps_sfw_get_meta_data( $product_id, '_wps_sfw_product', true );
 		}
 
 		if ( $is_subscription_product ) {
