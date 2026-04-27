@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wpml-config>
+    <!--
+    WPML compatibility declaration for Donations for WooCommerce Companion.
+    See plans/v2/AA-wpml-integration.md for the full integration spec.
+
+    This file is read by WPML on plugin activation and on WPML's cache rebuilds.
+    It is the single declarative source of truth for "what content surface
+    does this plugin have, and how should WPML handle each piece."
+
+    The companion does NOT register the wc-donation post type — the parent
+    plugin owns it. WPML's WooCommerce Multilingual already handles
+    wc-donation translation natively.
+    -->
+
+    <!-- Custom fields the companion writes to wc-donation campaign posts. -->
+    <!-- action="copy" means: WPML copies the value verbatim from source to -->
+    <!-- translation. Our config blobs (intervals, presets, amounts) are -->
+    <!-- structurally identical across translations; the strings INSIDE the -->
+    <!-- blobs are translated separately via WPML String Translation. -->
+    <custom-fields>
+        <!-- v0.6.x meta keys -->
+        <custom-field action="copy">_dfwc_companion_intervals</custom-field>
+        <custom-field action="copy">_dfwc_companion_display</custom-field>
+    </custom-fields>
+
+    <!-- Admin texts: option-stored strings that should appear in WPML's -->
+    <!-- String Translation UI for translators to handle. The dotted nesting -->
+    <!-- mirrors the option's array structure. -->
+    <admin-texts>
+        <!-- Reserved for v0.7.0+ global settings; populated as Phase 3 ships. -->
+    </admin-texts>
+
+    <!-- Custom taxonomies (Phase 4 — v0.8.0). -->
+    <!-- translate="1" means each taxonomy term is itself translatable. -->
+    <!-- Reserved for Phase 4; entries added when taxonomies are registered. -->
+    <taxonomies>
+        <!-- <taxonomy translate="1">dfwc_cause</taxonomy> -->
+        <!-- <taxonomy translate="1">dfwc_region</taxonomy> -->
+        <!-- <taxonomy translate="1">dfwc_country</taxonomy> -->
+        <!-- <taxonomy translate="1">dfwc_program</taxonomy> -->
+        <!-- <taxonomy translate="1">dfwc_sponsorship_type</taxonomy> -->
+        <!-- <taxonomy translate="1">dfwc_urgency</taxonomy> -->
+    </taxonomies>
+</wpml-config>
