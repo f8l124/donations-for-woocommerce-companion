@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.5.0
+Stable tag: 0.5.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 
 == Changelog ==
 
+= 0.5.1 =
+* Fix: overlay UI now inserts at parent's amount-block position (replacing the `.row1` block in place) instead of being prepended above the entire form. Parent's "Frontend Ordering" admin choice (Cause → Amount → Subscription → Tribute → …) is now respected: wherever the admin placed "Donation Amount" in the sequence, our interval-first UI takes that spot. Cause selector, image, title, and other parent blocks now appear in their admin-configured order around the overlay instead of after it.
+
 = 0.5.0 =
 * New: auto-augmentation across all six render paths the parent plugin uses — single-campaign permalink, parent's `[wc_woo_donation]` shortcode, donation widget, donation-on-cart, donation-on-cart-block, and donation-on-checkout. Previously only our `[dfwc_recurring_donation]` shortcode/block/widget triggered augmentation; now any place parent renders a donation form will get the interval-first overlay automatically (when the campaign has companion config saved).
 * New: per-campaign + per-context opt-out filter `dfwc_should_augment_parent_form` (signature: `apply_filters( 'dfwc_should_augment_parent_form', bool $augment, int $campaign_id, string $context )` where context is one of single/shortcode/widget/checkout/cart/cart_block).
@@ -135,6 +138,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.5.1 =
+Fixes overlay placement: the interval-first UI now drops into the parent plugin's amount-block position (respecting the admin's Frontend Ordering setting). Cause selector and other blocks now render in their configured positions around the overlay.
 
 = 0.5.0 =
 Auto-augmentation now extends to all six contexts where parent renders a donation form (cart, checkout, widget, etc.) — previously only our shortcode/block triggered it. Includes a `.pot` translation template. If you put `[dfwc_recurring_donation]` directly in a campaign's post content as a workaround in 0.4.x, you can remove it.

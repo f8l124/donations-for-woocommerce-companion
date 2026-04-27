@@ -82,15 +82,28 @@
 			return;
 		}
 
-		// Hide parent's amount block(s) and recurring block(s).
+		// Build our overlay UI.
+		var ui = buildOverlayUi( config, enabledIntervals, initialKey, campaignId );
+
+		// Insert our UI in parent's natural amount-block position so the
+		// admin's "Frontend Ordering" choice (Cause → Amount → Subscription
+		// → Tribute → ...) is preserved. Parent's amount block is always
+		// `.row1` per its template; if absent (custom theme override), fall
+		// back to prepending so the donor still sees the overlay.
+		var amountBlock = scope.querySelector( '.row1' );
+		if ( amountBlock && amountBlock.parentNode ) {
+			amountBlock.parentNode.insertBefore( ui.root, amountBlock );
+		} else {
+			scope.insertBefore( ui.root, scope.firstChild );
+		}
+
+		// Hide parent's amount block(s) and recurring block(s) AFTER our UI
+		// is inserted so the visible flow goes:
+		//   [parent's blocks above amount] → [our overlay] → [parent's blocks below amount]
 		hideAll( scope.querySelectorAll( '.row1' ) );
 		hideAll( scope.querySelectorAll( '.donation_subscription' ) );
 		hideAll( scope.querySelectorAll( '.wc_donation_subscription_table' ) );
 		hideAll( scope.querySelectorAll( '.subscription-options' ) );
-
-		// Build the overlay UI and prepend to scope (above parent's other rows).
-		var ui = buildOverlayUi( config, enabledIntervals, initialKey, campaignId );
-		scope.insertBefore( ui.root, scope.firstChild );
 
 		var state = {
 			interval:    initialKey,
