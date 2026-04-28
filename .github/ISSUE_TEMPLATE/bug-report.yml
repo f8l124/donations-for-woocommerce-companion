@@ -1,0 +1,115 @@
+name: Bug report
+description: Report a defect in the plugin's behavior. Use this for things that should work but don't.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please include enough detail that we can reproduce.
+
+        **Do NOT post sensitive information** (donor data, payment IDs, API keys, customer email addresses) in this issue. If reproducing the bug requires that data, redact it or contact the maintainer privately first.
+
+        For security-sensitive issues, see [SECURITY.md](https://github.com/f8l124/donations-for-woocommerce-companion/blob/main/SECURITY.md) for the private reporting channel.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe what you observed.
+      placeholder: I expected X. Instead Y happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps that take a fresh wp-env install to the broken state.
+      placeholder: |
+        1. Activate WooCommerce + Donation for WooCommerce + Subscriptions for WooCommerce
+        2. Activate this companion plugin
+        3. Edit a campaign…
+        4. Click X
+        5. Observe Y
+    validations:
+      required: true
+
+  - type: input
+    id: companion-version
+    attributes:
+      label: Companion plugin version
+      placeholder: e.g. 1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: parent-version
+    attributes:
+      label: Donation for WooCommerce (parent) version
+      placeholder: e.g. 3.9.8
+    validations:
+      required: true
+
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Subscription engine
+      options:
+        - "WooCommerce Subscriptions (paid)"
+        - "Subscriptions for WooCommerce (WPS, free)"
+        - "None — one-time only"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: input
+    id: wp-version
+    attributes:
+      label: WordPress version
+      placeholder: e.g. 6.7
+    validations:
+      required: true
+
+  - type: input
+    id: wc-version
+    attributes:
+      label: WooCommerce version
+      placeholder: e.g. 10.2
+    validations:
+      required: true
+
+  - type: input
+    id: php-version
+    attributes:
+      label: PHP version
+      placeholder: e.g. 8.2
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostic-report
+    attributes:
+      label: Diagnostic report (optional but recommended)
+      description: |
+        Run `wp dfwc-companion health --format=markdown` (or copy from *WooCommerce → Donations Companion → Diagnostics*) and paste the output here. Helps us narrow down environment issues.
+      render: markdown
+
+  - type: textarea
+    id: console-errors
+    attributes:
+      label: Browser console errors (if frontend)
+      description: Open DevTools → Console; copy any errors. Redact URLs / tokens before posting.
+      render: text
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Pre-flight
+      options:
+        - label: I searched existing issues for duplicates
+          required: true
+        - label: I'm running the latest 1.x release of the companion (or have explained why not)
+          required: true
+        - label: This is not a security issue (security issues should be reported privately per SECURITY.md)
+          required: true

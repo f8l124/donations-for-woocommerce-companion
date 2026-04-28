@@ -159,6 +159,45 @@ namespace {
             return null;
         }
     }
+
+    // === WP-CLI stubs (Phase 11) ===
+
+    if ( ! defined( 'WP_CLI' ) ) {
+        define( 'WP_CLI', false );
+    }
+
+    if ( ! class_exists( 'WP_CLI' ) ) {
+        /**
+         * Stub for the WP-CLI runtime class. Real definition is loaded by
+         * WP-CLI itself when running under `wp` — never present in tests
+         * or under regular HTTP requests.
+         */
+        class WP_CLI {
+            /** @param string $name @param string|callable $callable */
+            public static function add_command( $name, $callable, $args = array() ): void {}
+            /** @param string $msg */
+            public static function line( $msg = '' ): void {}
+            /** @param string $msg */
+            public static function success( $msg ): void {}
+            /** @param string $msg */
+            public static function warning( $msg ): void {}
+            /** @param string $msg @param bool $exit */
+            public static function error( $msg, $exit = true ): void {}
+            /** @param int $code */
+            public static function halt( $code ): void {}
+        }
+    }
+}
+
+namespace WP_CLI\Utils {
+    if ( ! function_exists( 'WP_CLI\\Utils\\format_items' ) ) {
+        /**
+         * @param string                          $format
+         * @param array<int,array<string,mixed>>  $items
+         * @param array<int,string>|string        $fields
+         */
+        function format_items( $format, $items, $fields ): void {}
+    }
 }
 
 // === Elementor stubs in their own namespace ===

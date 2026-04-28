@@ -1,0 +1,51 @@
+name: Feature request
+description: Suggest a new feature, enhancement, or capability.
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest a feature. The companion's scope intentionally stays narrow — interval-first donor UX layered on the parent plugin — so not every idea will be a fit. We'll discuss in the issue thread.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation that prompted this. "As an X, I want Y so that Z."
+      placeholder: As a nonprofit running a year-end giving campaign, I want…
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would you like this to work? Be as concrete as you can — UI sketches, hook signatures, example shortcode usage, etc. all help.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you tried solving this another way? Workarounds you've used? Other plugins that do something similar?
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope hint
+      description: Roughly how big do you think this is?
+      options:
+        - "Small — single config option / single new hook"
+        - "Medium — new admin UI surface, new sanitizer rules"
+        - "Large — new architectural surface (post type, REST endpoint, admin page)"
+        - "Not sure"
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Screenshots, mockups, links to similar features in other plugins, prior issue references — anything that helps the conversation.

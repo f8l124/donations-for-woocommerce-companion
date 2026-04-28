@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.9.0
+Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,14 +18,19 @@ The companion plugin works by feeding the parent plugin's existing AJAX pipeline
 
 = Key features =
 
-* Per-campaign admin meta box: independently configure preset amounts, custom-amount min/max, and CTA text for each interval
-* Donor-facing interval-first form via three integration points — shortcode, Gutenberg block, OR Elementor widget — all calling the same renderer for consistent behavior
-* Auto-detects WooCommerce Subscriptions vs Subscriptions For WooCommerce; sends both engines' AJAX key sets in one request so it works no matter which is active
-* Graceful degradation: when no recurring engine is installed, monthly/annual tabs are visibly disabled, one-time still works
-* Optional override of the parent plugin's single-campaign template via opt-in per-campaign meta
-* HPOS-compatible and WooCommerce Cart/Checkout Block-compatible
-* Self-check probe surfaces an admin notice if a parent plugin update breaks the integration contract
-* Production security baseline: nonces on all forms, capability gates on admin, output escaping, server-side amount range enforcement, no direct SQL, no remote runtime fetches
+* **Per-campaign admin meta box:** independently configure preset amounts, custom-amount min/max, and CTA text for each interval
+* **Donor-facing interval-first form** via four integration points — shortcode, Gutenberg block, Elementor widget, or auto-augmentation of the parent plugin's own form — all calling the same renderer for consistent behavior
+* **Layered config model:** Defaults → Global → Named Template → Campaign Overrides. Save once, apply to many.
+* **Per-currency presets** (v1.0.0): admins define psychologically rounded amounts per currency ("$25 / £20 / €22") that resolve at render time based on the donor's active WCML currency. Filter-based extension for WCPay Multi-Currency, Aelia Currency Switcher.
+* **Advanced cadences** (v1.0.0, opt-in): weekly, quarterly, semi-annually, and admin-defined custom cadence ("every 6 weeks") in addition to the standard one-time / monthly / annually.
+* **Donor impact messaging:** per-preset impact labels with four display modes (inline, below preset, tooltip, card), featured-preset badges, per-interval subtitles, and live annual-equivalency text with token substitution.
+* **Live admin preview pane** on the campaign edit screen, Templates page, and Settings page — debounced 350ms updates render the donor form into an iframe with viewport / engine / language / currency simulation. Defense-in-depth prevents preview HTML from ever submitting a real donation.
+* **Donor-facing campaign directory** with six taxonomies (cause / region / country / program / sponsorship type / urgency), filterable grid via shortcode + block + Elementor widget, featured campaigns, REST-driven live search.
+* **WPML + WCML support** end-to-end: all admin-defined strings registered with WPML String Translation; taxonomies translate per-term; per-currency preset amounts resolve via WCML.
+* **Auto-detects** WooCommerce Subscriptions vs Subscriptions For WooCommerce; sends both engines' AJAX key sets in one request so it works no matter which is active.
+* **Graceful degradation:** when no recurring engine is installed, recurring tabs are visibly disabled and one-time still works. Diagnostics page surfaces 13 contract checks with actionable remediations.
+* **HPOS** + **WooCommerce Cart/Checkout Block** + **WP-CLI** (`wp dfwc-companion health`) compatible.
+* **Production security baseline:** nonces on all forms, capability gates on admin, output escaping, server-side amount range enforcement, server-side interval allow-listing, no direct SQL outside `$wpdb->prepare`, no remote runtime fetches.
 
 == Installation ==
 
@@ -79,11 +84,26 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 
 == Known limitations ==
 
-* Companion does NOT support the parent's "fixed admin recurring" mode. Interval-first UX is donor-choice by design. Admins who want fixed recurring should keep using the parent plugin's own form on those campaigns.
-* Per-currency preset amounts not supported in v1; presets render in the store base currency.
-* The optional template-replacement mode uses an output-buffering pattern around the parent's documented action hooks (because the parent doesn't expose a "skip default form" filter). The CI watcher monitors this for breakage.
+* Companion does NOT support the parent plugin's "fixed admin recurring" mode. Interval-first UX is donor-choice by design. Admins who want fixed recurring should keep using the parent plugin's own form on those campaigns.
+* The auto-augmentation pattern uses CSS / JS to replace parent's amount block in place. If the parent plugin restructures the relevant DOM regions in a future major release, the companion's CI watcher (`tests/parent-contract.test.php`) will catch it; the donor falls back to parent's vanilla form rather than producing a half-broken UI.
+* Advanced intervals (weekly / quarterly / semi-annually / custom cadence) are off by default — admins must opt in via *WooCommerce → Donations Companion → Settings → Advanced giving intervals*.
+* Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 1.0.0 =
+First stable release. Bundles the v0.9.0 → v1.0.0 changes: per-currency preset amounts (WCML primary, WC base fallback, filter-based WCPay/Aelia extension) and advanced giving intervals (weekly / quarterly / semi-annually / admin-defined custom cadence). Plus a clean uninstall path that respects the admin's data-preservation preference, a `wp dfwc-companion health` CLI command, GitHub repo polish, and the v1.0.0 documentation suite.
+
+* **New: per-currency preset amounts (Phase 6).** Define psychologically rounded amounts per currency ("$25 monthly" in USD, "£20 monthly" in GBP, "€22 monthly" in EUR) — sparse storage; only fields that differ from base are saved; per-currency labels / impact_label inherit from the base preset by design. WCML primary integration: active currency via `wcml_get_user_currency()`, supported set via `wcml_multi_currency()->get_active_currencies()`. Three filter hooks (`dfwc_companion_active_currency`, `dfwc_companion_resolved_currency_block`, `dfwc_companion_supported_currencies`) cover non-WCML stacks (WCPay Multi-Currency, Aelia Currency Switcher) via a 5-line snippet. Donor-side `Submit_Guard` honors per-currency min/max so a donor in GBP isn't rejected against a base-USD threshold. Admin UI adds a per-interval "Per-currency preset amounts" section with sparse preset tables for each non-base supported currency.
+* **New: advanced giving intervals (Phase 7).** Off by default. Flip *WooCommerce → Donations Companion → Settings → Advanced giving intervals* to expose four extra cadences in the campaign meta box and Templates page: weekly, quarterly (every 3 months), semi-annually (every 6 months), and a fully admin-defined custom cadence ("every N day/week/month/year"). Each gets the same preset / min-max / CTA / impact / per-currency configuration as the standard three. Custom interval also gets a translatable donor-facing label ("every 6 weeks") and a `{custom_label}` token usable in the CTA template.
+* **New: `Engine_Interval_Map`.** Single source of truth for the interval → engine cadence translation. Both supported subscription engines (WCS, WPS SFW) accept the full set; both engine key sets ship in every recurring submit.
+* **New: donor-side overflow menu.** When ≥5 intervals are enabled on a campaign, the first 3 stay inline and the rest move into a "More options ▾" dropdown. Click outside / Escape / item-select all close. Narrow-screen fallback stacks the menu inline.
+* **New: `wp dfwc-companion health` CLI command.** Runs the parent-contract diagnostic checks and prints the report in JSON / table / markdown formats. Suitable for piping into Slack / monitoring agents.
+* **New: `uninstall.php`.** Respects the admin's `preserve_data_on_uninstall` setting (default: on). Opt-in deletion wipes companion options, post meta on `wc-donation` posts, and `dfwc_`-prefixed transients via `$wpdb->prepare`. Never touches campaign posts, orders, or non-companion data.
+* **New: documentation suite.** `docs/getting-started.md`, `docs/release-process.md`, `docs/privacy.md`, `docs/multi-currency.md` (Phase 6), `docs/advanced-intervals.md` (Phase 7), `SECURITY.md`, `CODE_OF_CONDUCT.md`, GitHub issue + PR templates. Existing architecture docs at `docs/architecture/` updated for the v1.0.0 surface.
+* **New: diagnostic check `advanced_intervals_engine`.** Surfaces a warning on the Diagnostics page when admins enable advanced intervals globally without an active subscription engine. Silent when toggle off or engine present.
+* **Internal:** test coverage 145 → 186 cases, 362 → 466 assertions. New `Currency_Preset_Resolver_Test` (17 cases), `Engine_Interval_Map_Test` (23 cases), additional `Defaults_Test` cases for the v1.0.0 schema additions.
+* **Backward compat:** existing v0.9.x campaigns continue to render unchanged. Per-interval `currency_overrides` and the four advanced-interval slots default to empty/disabled — no UI changes for upgrading users until they opt in.
 
 = 0.9.0 =
 Conversion UX release. Per-preset impact labels turn abstract amounts into concrete outcomes; admins see a faithful donor-form preview as they configure templates and campaigns.
@@ -229,6 +249,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 1.0.0 =
+First stable release. Adds per-currency preset amounts (WCML primary; WCPay/Aelia via filter), opt-in advanced cadences (weekly / quarterly / semi-annually / custom "every N period"), `wp dfwc-companion health` CLI, and a clean opt-in uninstall path. Backward-compatible — existing campaigns render unchanged until admins opt into the new features.
 
 = 0.9.0 =
 Conversion UX release. Per-preset impact labels with four display modes (inline, below button, tooltip, card), featured-preset badges, per-interval subtitles, annual equivalency text with live token substitution, and a custom-amount impact label. Plus a live admin preview pane on the campaign edit screen, Templates page, and Settings page — debounced 350ms updates render the donor form into an iframe so admins can see exactly what donors will see before saving. Backward-compatible.

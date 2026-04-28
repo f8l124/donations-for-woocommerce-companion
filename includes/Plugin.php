@@ -82,6 +82,9 @@ final class Plugin {
 		new Admin\Preview_Controller();
 		new REST\Preview_REST_Controller();
 
+		// Phase 11 — `wp dfwc-companion` CLI commands. No-op outside WP-CLI.
+		CLI\CLI_Commands::register();
+
 		$this->booted = true;
 	}
 
