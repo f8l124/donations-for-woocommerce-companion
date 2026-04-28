@@ -244,6 +244,23 @@ $wpml_active = WPML_Strings::wpml_active();
 							>
 							<?php esc_html_e( 'Allow donors to enter a custom amount on this tab.', 'dfwc-companion' ); ?>
 						</label>
+						<p>
+							<label for="dfwc-tpl-<?php echo esc_attr( $interval_key ); ?>-custom-impact" style="display:block;margin-top:8px">
+								<?php esc_html_e( 'Custom-amount impact label (optional)', 'dfwc-companion' ); ?>
+							</label>
+							<input
+								type="text"
+								class="large-text"
+								id="dfwc-tpl-<?php echo esc_attr( $interval_key ); ?>-custom-impact"
+								name="template[config][<?php echo esc_attr( $interval_key ); ?>][custom_amount_impact_label]"
+								value="<?php echo esc_attr( (string) ( $block['custom_amount_impact_label'] ?? '' ) ); ?>"
+								maxlength="120"
+								placeholder="<?php esc_attr_e( 'e.g. Every gift makes a difference', 'dfwc-companion' ); ?>"
+							>
+							<span class="description">
+								<?php esc_html_e( 'Shown alongside the donor\'s custom-amount input. Use this when admin doesn\'t want a per-preset impact label to lose meaning when donors type their own amount.', 'dfwc-companion' ); ?>
+							</span>
+						</p>
 					</td>
 				</tr>
 				<tr>
@@ -266,6 +283,77 @@ $wpml_active = WPML_Strings::wpml_active();
 							);
 							?>
 						</p>
+					</td>
+				</tr>
+				<tr>
+					<td colspan="2" style="padding-left:0">
+						<details class="dfwc-tpl-advanced">
+							<summary><?php esc_html_e( 'Advanced impact messaging', 'dfwc-companion' ); ?></summary>
+
+							<table class="form-table dfwc-tpl-advanced__table" role="presentation">
+								<tr>
+									<th><?php esc_html_e( 'Subtitle', 'dfwc-companion' ); ?></th>
+									<td>
+										<input
+											type="text"
+											class="large-text"
+											name="template[config][<?php echo esc_attr( $interval_key ); ?>][subtitle]"
+											value="<?php echo esc_attr( (string) ( $block['subtitle'] ?? '' ) ); ?>"
+											maxlength="120"
+											placeholder="<?php esc_attr_e( 'e.g. Become a monthly sponsor', 'dfwc-companion' ); ?>"
+										>
+									</td>
+								</tr>
+								<tr>
+									<th><?php esc_html_e( 'Annual equivalency', 'dfwc-companion' ); ?></th>
+									<td>
+										<input
+											type="text"
+											class="large-text"
+											name="template[config][<?php echo esc_attr( $interval_key ); ?>][annual_equivalency]"
+											value="<?php echo esc_attr( (string) ( $block['annual_equivalency'] ?? '' ) ); ?>"
+											maxlength="160"
+											placeholder="<?php esc_attr_e( '{amount}/month equals {annual_amount}/year', 'dfwc-companion' ); ?>"
+										>
+										<p class="description">
+											<?php
+											printf(
+												/* translators: 1: literal {amount}, 2: literal {annual_amount} */
+												esc_html__( 'Tokens: %1$s (current selected amount), %2$s (12× current amount). Most useful on the Monthly tab.', 'dfwc-companion' ),
+												'<code>{amount}</code>',
+												'<code>{annual_amount}</code>'
+											);
+											?>
+										</p>
+									</td>
+								</tr>
+								<tr>
+									<th><?php esc_html_e( 'Impact display mode', 'dfwc-companion' ); ?></th>
+									<td>
+										<?php
+										$dfwc_mode        = $block['impact_display_mode'] ?? 'below_button';
+										$dfwc_mode_labels = array(
+											'inline'       => __( 'Inline (next to amount)', 'dfwc-companion' ),
+											'below_button' => __( 'Below preset (default)', 'dfwc-companion' ),
+											'tooltip'      => __( 'Tooltip on hover/focus', 'dfwc-companion' ),
+											'card'         => __( 'Card layout (per preset)', 'dfwc-companion' ),
+										);
+										?>
+										<?php foreach ( $dfwc_mode_labels as $value => $label ) : ?>
+											<label style="display:block;margin:4px 0">
+												<input
+													type="radio"
+													name="template[config][<?php echo esc_attr( $interval_key ); ?>][impact_display_mode]"
+													value="<?php echo esc_attr( $value ); ?>"
+													<?php checked( $dfwc_mode, $value ); ?>
+												>
+												<?php echo esc_html( $label ); ?>
+											</label>
+										<?php endforeach; ?>
+									</td>
+								</tr>
+							</table>
+						</details>
 					</td>
 				</tr>
 			</table>

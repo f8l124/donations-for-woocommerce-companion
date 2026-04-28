@@ -203,19 +203,26 @@ final class Renderer {
 		$out             = array();
 		$interval_labels = self::interval_labels();
 		foreach ( $enabled_intervals as $key ) {
-			$block = $config[ $key ];
+			$block       = $config[ $key ];
 			$out[ $key ] = array(
-				'min'                   => (float) $block['min'],
-				'max'                   => (float) $block['max'],
-				'default_index'         => (int) $block['default_index'],
-				'cta_template'          => (string) $block['cta_template'],
-				'label'                 => (string) ( $interval_labels[ $key ] ?? $key ),
-				'custom_amount_enabled' => ! empty( $block['custom_amount_enabled'] ),
-				'presets'               => array_map(
+				'min'                        => (float) $block['min'],
+				'max'                        => (float) $block['max'],
+				'default_index'              => (int) $block['default_index'],
+				'cta_template'               => (string) $block['cta_template'],
+				'label'                      => (string) ( $interval_labels[ $key ] ?? $key ),
+				'custom_amount_enabled'      => ! empty( $block['custom_amount_enabled'] ),
+				// Phase 5: donor impact messaging fields.
+				'subtitle'                   => (string) ( $block['subtitle'] ?? '' ),
+				'annual_equivalency'         => (string) ( $block['annual_equivalency'] ?? '' ),
+				'impact_display_mode'        => (string) ( $block['impact_display_mode'] ?? 'below_button' ),
+				'custom_amount_impact_label' => (string) ( $block['custom_amount_impact_label'] ?? '' ),
+				'presets'                    => array_map(
 					static function ( $p ) {
 						return array(
-							'amount' => (float) ( $p['amount'] ?? 0 ),
-							'label'  => (string) ( $p['label'] ?? '' ),
+							'amount'       => (float) ( $p['amount'] ?? 0 ),
+							'label'        => (string) ( $p['label'] ?? '' ),
+							'impact_label' => (string) ( $p['impact_label'] ?? '' ),
+							'is_featured'  => ! empty( $p['is_featured'] ),
 						);
 					},
 					(array) ( $block['presets'] ?? array() )

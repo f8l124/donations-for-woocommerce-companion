@@ -302,7 +302,7 @@ final class Meta_Box {
 			if ( ! is_array( $block ) ) {
 				continue;
 			}
-			foreach ( array( 'cta_template', 'subtitle', 'annual_equivalency' ) as $field ) {
+			foreach ( array( 'cta_template', 'subtitle', 'annual_equivalency', 'custom_amount_impact_label' ) as $field ) {
 				if ( ! empty( $block[ $field ] ) ) {
 					WPML_Strings::register(
 						$namespace . '.' . $interval . '.' . $field,
@@ -348,7 +348,7 @@ final class Meta_Box {
 
 		$presets_raw = isset( $raw['presets'] ) && is_array( $raw['presets'] ) ? $raw['presets'] : array();
 		$presets     = array();
-		foreach ( $presets_raw as $row ) {
+		foreach ( $presets_raw as $idx => $row ) {
 			if ( ! is_array( $row ) ) {
 				continue;
 			}
@@ -357,11 +357,24 @@ final class Meta_Box {
 			if ( $amount <= 0 ) {
 				continue;
 			}
-			$label     = isset( $row['label'] ) ? sanitize_text_field( (string) $row['label'] ) : '';
 			$presets[] = array(
-				'amount' => $amount,
-				'label' => $label,
+				'amount'       => $amount,
+				'label'        => isset( $row['label'] ) ? sanitize_text_field( (string) $row['label'] ) : '',
+				'impact_label' => isset( $row['impact_label'] ) ? sanitize_text_field( (string) $row['impact_label'] ) : '',
+				'is_featured'  => ! empty( $row['is_featured'] ),
+				'sort_order'   => isset( $row['sort_order'] ) ? (int) $row['sort_order'] : ( ( $idx + 1 ) * 10 ),
 			);
+		}
+
+		// Enforce single-featured per interval (last-write-wins); admins
+		// often forget the radio-style semantics, so we make the data honest.
+		$found_featured = false;
+		foreach ( $presets as $i => $preset ) {
+			if ( $preset['is_featured'] && $found_featured ) {
+				$presets[ $i ]['is_featured'] = false;
+			} elseif ( $preset['is_featured'] ) {
+				$found_featured = true;
+			}
 		}
 
 		$min = isset( $raw['min'] ) ? (float) wc_format_decimal( (string) $raw['min'], wc_get_price_decimals() ) : 0.0;
@@ -383,14 +396,27 @@ final class Meta_Box {
 
 		$cta = isset( $raw['cta_template'] ) ? sanitize_text_field( (string) $raw['cta_template'] ) : '';
 
+		// Phase 5 — donor impact messaging fields.
+		$subtitle                   = isset( $raw['subtitle'] ) ? sanitize_text_field( (string) $raw['subtitle'] ) : '';
+		$annual_equivalency         = isset( $raw['annual_equivalency'] ) ? sanitize_text_field( (string) $raw['annual_equivalency'] ) : '';
+		$custom_amount_impact_label = isset( $raw['custom_amount_impact_label'] ) ? sanitize_text_field( (string) $raw['custom_amount_impact_label'] ) : '';
+		$impact_mode                = isset( $raw['impact_display_mode'] ) ? sanitize_key( (string) $raw['impact_display_mode'] ) : 'below_button';
+		if ( ! in_array( $impact_mode, \DFWC\Companion\Config\Defaults::impact_display_modes(), true ) ) {
+			$impact_mode = 'below_button';
+		}
+
 		return array(
-			'enabled'               => $enabled,
-			'presets'               => $presets,
-			'min'                   => $min,
-			'max'                   => $max,
-			'default_index'         => $default_index,
-			'cta_template'          => $cta,
-			'custom_amount_enabled' => $custom_amount_enabled,
+			'enabled'                    => $enabled,
+			'presets'                    => $presets,
+			'min'                        => $min,
+			'max'                        => $max,
+			'default_index'              => $default_index,
+			'cta_template'               => $cta,
+			'custom_amount_enabled'      => $custom_amount_enabled,
+			'subtitle'                   => $subtitle,
+			'annual_equivalency'         => $annual_equivalency,
+			'impact_display_mode'        => $impact_mode,
+			'custom_amount_impact_label' => $custom_amount_impact_label,
 		);
 	}
 

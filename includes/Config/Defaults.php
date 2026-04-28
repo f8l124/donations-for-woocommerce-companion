@@ -98,12 +98,30 @@ final class Defaults {
 					'sort_order'   => 30,
 				),
 			),
-			'min'                   => 5.0,
-			'max'                   => 10000.0,
-			'default_index'         => 1,
-			'cta_template'          => $cta_template,
-			'custom_amount_enabled' => true,
+			'min'                       => 5.0,
+			'max'                       => 10000.0,
+			'default_index'             => 1,
+			'cta_template'              => $cta_template,
+			'custom_amount_enabled'     => true,
+			// Phase 5 — donor impact messaging.
+			'subtitle'                  => '',
+			'annual_equivalency'        => '',
+			'impact_display_mode'       => 'below_button',
+			// Custom-amount impact text shown alongside the donor's custom-
+			// amount input (parallel to per-preset impact_label). Free-form;
+			// admin can use it for "Every gift makes a difference" or
+			// "Each $1 provides one meal" style messaging.
+			'custom_amount_impact_label' => '',
 		);
+	}
+
+	/**
+	 * Allow-listed impact-display modes. Used by sanitizers + admin UI.
+	 *
+	 * @return array<int,string>
+	 */
+	public static function impact_display_modes(): array {
+		return array( 'inline', 'below_button', 'tooltip', 'card' );
 	}
 
 	/**

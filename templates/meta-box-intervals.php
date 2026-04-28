@@ -185,7 +185,9 @@ $current_tpl    = '' !== $current_tpl_id && isset( $all_templates[ $current_tpl_
 						<tr>
 							<th class="dfwc-mb__col-handle" aria-hidden="true"></th>
 							<th class="dfwc-mb__col-amount"><?php esc_html_e( 'Amount', 'dfwc-companion' ); ?></th>
-							<th class="dfwc-mb__col-label"><?php esc_html_e( 'Label (optional)', 'dfwc-companion' ); ?></th>
+							<th class="dfwc-mb__col-label"><?php esc_html_e( 'Label', 'dfwc-companion' ); ?></th>
+							<th class="dfwc-mb__col-impact"><?php esc_html_e( 'Impact label', 'dfwc-companion' ); ?></th>
+							<th class="dfwc-mb__col-featured" title="<?php esc_attr_e( 'Marks one preset as "Most popular" with a badge on the donor form.', 'dfwc-companion' ); ?>"><?php esc_html_e( 'Featured', 'dfwc-companion' ); ?></th>
 							<th class="dfwc-mb__col-default"><?php esc_html_e( 'Default', 'dfwc-companion' ); ?></th>
 							<th class="dfwc-mb__col-remove"><?php esc_html_e( 'Remove', 'dfwc-companion' ); ?></th>
 						</tr>
@@ -210,9 +212,31 @@ $current_tpl    = '' !== $current_tpl_id && isset( $all_templates[ $current_tpl_
 									<input
 										type="text"
 										name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][presets][<?php echo (int) $idx; ?>][label]"
-										value="<?php echo esc_attr( $preset['label'] ); ?>"
+										value="<?php echo esc_attr( $preset['label'] ?? '' ); ?>"
 										maxlength="60"
 										placeholder="<?php esc_attr_e( 'e.g. Supporter', 'dfwc-companion' ); ?>"
+									>
+								</td>
+								<td class="dfwc-mb__col-impact">
+									<input
+										type="text"
+										name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][presets][<?php echo (int) $idx; ?>][impact_label]"
+										value="<?php echo esc_attr( (string) ( $preset['impact_label'] ?? '' ) ); ?>"
+										maxlength="120"
+										placeholder="<?php esc_attr_e( 'Provides school supplies for one student', 'dfwc-companion' ); ?>"
+									>
+								</td>
+								<td class="dfwc-mb__col-featured">
+									<input
+										type="checkbox"
+										name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][presets][<?php echo (int) $idx; ?>][is_featured]"
+										value="1"
+										<?php checked( ! empty( $preset['is_featured'] ) ); ?>
+									>
+									<input
+										type="hidden"
+										name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][presets][<?php echo (int) $idx; ?>][sort_order]"
+										value="<?php echo esc_attr( (string) ( $preset['sort_order'] ?? ( ( $idx + 1 ) * 10 ) ) ); ?>"
 									>
 								</td>
 								<td class="dfwc-mb__col-default">
@@ -249,6 +273,13 @@ $current_tpl    = '' !== $current_tpl_id && isset( $all_templates[ $current_tpl_
 						</td>
 						<td class="dfwc-mb__col-label">
 							<input type="text" name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][presets][__INDEX__][label]" value="" maxlength="60" placeholder="<?php esc_attr_e( 'e.g. Supporter', 'dfwc-companion' ); ?>">
+						</td>
+						<td class="dfwc-mb__col-impact">
+							<input type="text" name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][presets][__INDEX__][impact_label]" value="" maxlength="120" placeholder="<?php esc_attr_e( 'e.g. Provides school supplies', 'dfwc-companion' ); ?>">
+						</td>
+						<td class="dfwc-mb__col-featured">
+							<input type="checkbox" name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][presets][__INDEX__][is_featured]" value="1">
+							<input type="hidden" name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][presets][__INDEX__][sort_order]" value="">
 						</td>
 						<td class="dfwc-mb__col-default">
 							<input type="radio" name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][default_index]" value="__INDEX__">
@@ -299,9 +330,88 @@ $current_tpl    = '' !== $current_tpl_id && isset( $all_templates[ $current_tpl_
 						>
 					</label>
 				</p>
-				<p class="description">
-					<?php esc_html_e( 'When the custom-amount toggle is unchecked, the donor must pick from the preset amounts above on this tab. The min/max range still applies to the preset range validation.', 'dfwc-companion' ); ?>
+				<p>
+					<label>
+						<?php esc_html_e( 'Custom-amount impact label (optional)', 'dfwc-companion' ); ?>
+						<input
+							type="text"
+							class="large-text"
+							name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][custom_amount_impact_label]"
+							value="<?php echo esc_attr( (string) ( $block['custom_amount_impact_label'] ?? '' ) ); ?>"
+							maxlength="120"
+							placeholder="<?php esc_attr_e( 'e.g. Every gift makes a difference', 'dfwc-companion' ); ?>"
+						>
+					</label>
 				</p>
+				<p class="description">
+					<?php esc_html_e( 'When custom amount is unchecked, donors must pick a preset. Min/max still applies to preset validation.', 'dfwc-companion' ); ?>
+				</p>
+				<p class="description">
+					<?php esc_html_e( 'The custom-amount impact label appears alongside the donor\'s free-form amount — useful when per-preset impact labels don\'t apply to arbitrary amounts.', 'dfwc-companion' ); ?>
+				</p>
+			</fieldset>
+
+			<fieldset class="dfwc-mb__fieldset" <?php disabled( $tab_disabled ); ?>>
+				<legend><?php esc_html_e( 'Advanced impact messaging', 'dfwc-companion' ); ?></legend>
+				<p>
+					<label style="display:block">
+						<?php esc_html_e( 'Subtitle', 'dfwc-companion' ); ?>
+						<input
+							type="text"
+							class="large-text"
+							name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][subtitle]"
+							value="<?php echo esc_attr( (string) ( $block['subtitle'] ?? '' ) ); ?>"
+							maxlength="120"
+							placeholder="<?php esc_attr_e( 'e.g. Become a monthly sponsor', 'dfwc-companion' ); ?>"
+						>
+					</label>
+				</p>
+				<p>
+					<label style="display:block">
+						<?php esc_html_e( 'Annual equivalency', 'dfwc-companion' ); ?>
+						<input
+							type="text"
+							class="large-text"
+							name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][annual_equivalency]"
+							value="<?php echo esc_attr( (string) ( $block['annual_equivalency'] ?? '' ) ); ?>"
+							maxlength="160"
+							placeholder="<?php esc_attr_e( '{amount}/month equals {annual_amount}/year', 'dfwc-companion' ); ?>"
+						>
+					</label>
+					<span class="description">
+						<?php
+						printf(
+							/* translators: 1: literal {amount}, 2: literal {annual_amount} */
+							esc_html__( 'Tokens: %1$s (current selected amount), %2$s (12× current). Most useful on the Monthly tab.', 'dfwc-companion' ),
+							'<code>{amount}</code>',
+							'<code>{annual_amount}</code>'
+						);
+						?>
+					</span>
+				</p>
+				<fieldset class="dfwc-mb__display-mode-group">
+					<legend style="font-weight:normal"><?php esc_html_e( 'Impact display mode', 'dfwc-companion' ); ?></legend>
+					<?php
+					$current_mode = $block['impact_display_mode'] ?? 'below_button';
+					$mode_labels  = array(
+						'inline'       => __( 'Inline (next to amount in preset button)', 'dfwc-companion' ),
+						'below_button' => __( 'Below preset (default)', 'dfwc-companion' ),
+						'tooltip'      => __( 'Tooltip on hover/focus (a11y-safe)', 'dfwc-companion' ),
+						'card'         => __( 'Card layout (each preset becomes a full card)', 'dfwc-companion' ),
+					);
+					foreach ( $mode_labels as $mode_value => $mode_label ) :
+						?>
+						<label style="display:block;margin:4px 0">
+							<input
+								type="radio"
+								name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][impact_display_mode]"
+								value="<?php echo esc_attr( $mode_value ); ?>"
+								<?php checked( $current_mode, $mode_value ); ?>
+							>
+							<?php echo esc_html( $mode_label ); ?>
+						</label>
+					<?php endforeach; ?>
+				</fieldset>
 			</fieldset>
 
 			<fieldset class="dfwc-mb__fieldset" <?php disabled( $tab_disabled ); ?>>

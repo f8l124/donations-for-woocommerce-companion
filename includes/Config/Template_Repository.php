@@ -221,7 +221,7 @@ final class Template_Repository {
 			if ( ! is_array( $block ) ) {
 				continue;
 			}
-			foreach ( array( 'cta_template', 'subtitle', 'annual_equivalency' ) as $field ) {
+			foreach ( array( 'cta_template', 'subtitle', 'annual_equivalency', 'custom_amount_impact_label' ) as $field ) {
 				if ( ! empty( $block[ $field ] ) ) {
 					WPML_Strings::register(
 						$template->id . '.' . $interval . '.' . $field,

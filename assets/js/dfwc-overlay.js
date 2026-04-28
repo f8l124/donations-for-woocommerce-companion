@@ -296,6 +296,16 @@
 				grid.setAttribute( 'role', 'radiogroup' );
 				grid.setAttribute( 'aria-label', 'Donation amounts' );
 
+				// Phase 5: subtitle (per interval) above the preset grid.
+				if ( entry.subtitle ) {
+					var subtitleEl = document.createElement( 'p' );
+					subtitleEl.className = 'dfwc-overlay__subtitle';
+					subtitleEl.textContent = entry.subtitle;
+					panel.appendChild( subtitleEl );
+				}
+
+				var displayMode = entry.impact_display_mode || 'below_button';
+
 				entry.presets.forEach( function ( p, idx ) {
 					var presetId = 'dfwc-preset-' + campaignId + '-' + key + '-' + idx;
 					var input    = document.createElement( 'input' );
@@ -313,6 +323,9 @@
 					var label = document.createElement( 'label' );
 					label.className = 'dfwc-overlay__preset-label';
 					label.setAttribute( 'for', presetId );
+					if ( p.is_featured ) {
+						label.classList.add( 'dfwc-overlay__preset-label--featured' );
+					}
 
 					var amt = document.createElement( 'span' );
 					amt.className = 'dfwc-overlay__preset-amount';
@@ -326,9 +339,51 @@
 						label.appendChild( tag );
 					}
 
+					// Phase 5: featured badge.
+					if ( p.is_featured ) {
+						var badge = document.createElement( 'span' );
+						badge.className = 'dfwc-overlay__featured-badge';
+						badge.textContent = ( window.dfwcCompanion && window.dfwcCompanion.i18n && window.dfwcCompanion.i18n.featured ) || 'Most popular';
+						label.appendChild( badge );
+					}
+
+					// Phase 5: impact label, rendered per chosen display mode.
+					if ( p.impact_label ) {
+						if ( 'inline' === displayMode ) {
+							var inlineImpact = document.createElement( 'span' );
+							inlineImpact.className = 'dfwc-overlay__preset-impact-inline';
+							inlineImpact.textContent = p.impact_label;
+							label.appendChild( inlineImpact );
+						} else if ( 'tooltip' === displayMode ) {
+							var ttId = 'dfwc-impact-tt-' + campaignId + '-' + key + '-' + idx;
+							label.setAttribute( 'data-dfwc-tooltip', p.impact_label );
+							input.setAttribute( 'aria-describedby', ttId );
+							var srImpact = document.createElement( 'span' );
+							srImpact.className = 'dfwc-overlay__sr-only';
+							srImpact.id = ttId;
+							srImpact.textContent = p.impact_label;
+							label.appendChild( srImpact );
+						}
+						// 'below_button' and 'card' modes append a sibling row outside the label.
+					}
+
 					grid.appendChild( input );
 					grid.appendChild( label );
+
+					// Below-button impact: full-width row beneath each preset.
+					if ( p.impact_label && ( 'below_button' === displayMode || 'card' === displayMode ) ) {
+						var impactBelow = document.createElement( 'div' );
+						impactBelow.className = 'dfwc-overlay__preset-impact';
+						impactBelow.textContent = p.impact_label;
+						impactBelow.id = 'dfwc-impact-' + campaignId + '-' + key + '-' + idx;
+						input.setAttribute( 'aria-describedby', impactBelow.id );
+						grid.appendChild( impactBelow );
+					}
 				} );
+
+				if ( 'card' === displayMode ) {
+					grid.classList.add( 'dfwc-overlay__presets--card' );
+				}
 
 				panel.appendChild( grid );
 			}
@@ -366,7 +421,25 @@
 				customInputWrap.appendChild( input );
 				customWrap.appendChild( customInputWrap );
 
+				// Phase 5: custom-amount impact label.
+				if ( entry.custom_amount_impact_label ) {
+					var customImpact = document.createElement( 'p' );
+					customImpact.className = 'dfwc-overlay__custom-impact';
+					customImpact.textContent = entry.custom_amount_impact_label;
+					customWrap.appendChild( customImpact );
+				}
+
 				panel.appendChild( customWrap );
+			}
+
+			// Phase 5: annual equivalency footer (token replacement updated by applyState).
+			if ( entry.annual_equivalency ) {
+				var equivWrap = document.createElement( 'p' );
+				equivWrap.className = 'dfwc-overlay__equivalency';
+				equivWrap.setAttribute( 'data-dfwc-equivalency', key );
+				equivWrap.setAttribute( 'data-template', entry.annual_equivalency );
+				equivWrap.textContent = ''; // populated by applyState
+				panel.appendChild( equivWrap );
 			}
 
 			root.appendChild( panel );
@@ -471,7 +544,38 @@
 			parentEls.submitBtn.textContent = label;
 		}
 
-		// 5) Clear inline error if amount is now valid.
+		// 5) Phase 5: update annual-equivalency text using {amount}/{annual_amount} tokens.
+		var equivWraps = ui.root.querySelectorAll( '[data-dfwc-equivalency]' );
+		Array.prototype.forEach.call( equivWraps, function ( eq ) {
+			var equivKey = eq.getAttribute( 'data-dfwc-equivalency' );
+			var template = eq.getAttribute( 'data-template' ) || '';
+			if ( ! template ) { eq.textContent = ''; return; }
+			// Only show for the active interval; hide on other panels (panels are
+			// already hidden via `[hidden]`, but the inner text shouldn't carry
+			// stale values when an SR re-reads).
+			if ( equivKey !== state.interval ) {
+				eq.textContent = '';
+				return;
+			}
+			if ( state.amount <= 0 ) {
+				eq.textContent = '';
+				return;
+			}
+			var multiplier = 'monthly' === state.interval ? 12
+				: 'weekly' === state.interval ? 52
+				: 'quarterly' === state.interval ? 4
+				: 'semiannual' === state.interval ? 2
+				: 'annual' === state.interval ? 1
+				: 1;
+			var annual = state.amount * multiplier;
+			var rendered = template
+				.split( '{amount}' ).join( formatCurrency( state.amount ) )
+				.split( '{annual_amount}' ).join( formatCurrency( annual ) )
+				.replace( /\{[a-z_]+\}/g, '' );
+			eq.textContent = rendered;
+		} );
+
+		// 6) Clear inline error if amount is now valid.
 		if ( state.amount > 0 && amountInRange( state.amount, state.interval, config ) ) {
 			showError( ui.root, '' );
 		}

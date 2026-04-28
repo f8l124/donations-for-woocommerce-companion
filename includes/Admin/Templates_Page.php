@@ -270,14 +270,27 @@ final class Templates_Page {
 
 		$cta = isset( $raw['cta_template'] ) ? sanitize_text_field( (string) $raw['cta_template'] ) : (string) $defaults['cta_template'];
 
+		// Phase 5 — donor impact messaging fields.
+		$subtitle                   = isset( $raw['subtitle'] ) ? sanitize_text_field( (string) $raw['subtitle'] ) : (string) ( $defaults['subtitle'] ?? '' );
+		$annual_equivalency         = isset( $raw['annual_equivalency'] ) ? sanitize_text_field( (string) $raw['annual_equivalency'] ) : (string) ( $defaults['annual_equivalency'] ?? '' );
+		$custom_amount_impact_label = isset( $raw['custom_amount_impact_label'] ) ? sanitize_text_field( (string) $raw['custom_amount_impact_label'] ) : (string) ( $defaults['custom_amount_impact_label'] ?? '' );
+		$impact_mode                = isset( $raw['impact_display_mode'] ) ? sanitize_key( (string) $raw['impact_display_mode'] ) : (string) ( $defaults['impact_display_mode'] ?? 'below_button' );
+		if ( ! in_array( $impact_mode, Defaults::impact_display_modes(), true ) ) {
+			$impact_mode = 'below_button';
+		}
+
 		return array(
-			'enabled'               => $enabled,
-			'presets'               => $presets,
-			'min'                   => $min,
-			'max'                   => $max,
-			'default_index'         => $default_index,
-			'cta_template'          => $cta,
-			'custom_amount_enabled' => $custom_amount_enabled,
+			'enabled'                    => $enabled,
+			'presets'                    => $presets,
+			'min'                        => $min,
+			'max'                        => $max,
+			'default_index'              => $default_index,
+			'cta_template'               => $cta,
+			'custom_amount_enabled'      => $custom_amount_enabled,
+			'subtitle'                   => $subtitle,
+			'annual_equivalency'         => $annual_equivalency,
+			'impact_display_mode'        => $impact_mode,
+			'custom_amount_impact_label' => $custom_amount_impact_label,
 		);
 	}
 

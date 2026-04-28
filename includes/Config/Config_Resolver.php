@@ -403,7 +403,7 @@ final class Config_Resolver {
 				continue;
 			}
 			$block = $config[ $interval ];
-			foreach ( array( 'cta_template', 'subtitle', 'annual_equivalency' ) as $field ) {
+			foreach ( array( 'cta_template', 'subtitle', 'annual_equivalency', 'custom_amount_impact_label' ) as $field ) {
 				if ( ! empty( $block[ $field ] ) ) {
 					$block[ $field ] = WPML_Strings::translate(
 						(string) $block[ $field ],
