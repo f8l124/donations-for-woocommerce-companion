@@ -210,7 +210,10 @@ namespace Elementor {
         class Controls_Manager {
             const TAB_CONTENT = 'content';
             const SELECT2     = 'select2';
+            const SELECT      = 'select';
             const TEXT        = 'text';
+            const NUMBER      = 'number';
+            const SWITCHER    = 'switcher';
         }
     }
 }

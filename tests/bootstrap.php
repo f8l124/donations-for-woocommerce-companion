@@ -98,6 +98,17 @@ if ( ! function_exists( 'sanitize_key' ) ) {
 		return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
 	}
 }
+if ( ! function_exists( 'sanitize_title' ) ) {
+	function sanitize_title( $title, $fallback = '', $context = 'save' ) {
+		// Minimal stub: lowercase, replace spaces+underscores with dashes, strip non-slug chars.
+		$str = strtolower( (string) $title );
+		$str = preg_replace( '/[\s_]+/', '-', $str );
+		$str = preg_replace( '/[^a-z0-9\-]/', '', $str );
+		$str = preg_replace( '/-+/', '-', $str );
+		$str = trim( $str, '-' );
+		return '' !== $str ? $str : (string) $fallback;
+	}
+}
 if ( ! function_exists( 'wp_unslash' ) ) {
 	function wp_unslash( $value ) {
 		return is_string( $value ) ? stripslashes( $value ) : $value;

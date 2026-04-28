@@ -22,6 +22,7 @@ use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Template_Repository;
 use DFWC\Companion\Engine_Detector;
 use DFWC\Companion\I18n\WPML_Strings;
+use DFWC\Companion\Taxonomy\Campaign_Taxonomies;
 
 final class Meta_Box {
 
@@ -53,9 +54,39 @@ final class Meta_Box {
 			'normal',
 			'high'
 		);
-		// 0.3.0: removed the form-mode side meta box. Replacement is now
-		// unconditional; opt-out is via the `dfwc_should_replace_parent_form`
-		// filter for power users.
+
+		// Phase 4: featured-status side meta box for the directory grid.
+		add_meta_box(
+			'dfwc_companion_featured',
+			__( 'Featured campaign', 'dfwc-companion' ),
+			array( $this, 'render_featured' ),
+			self::PARENT_POST_TYPE,
+			'side',
+			'default'
+		);
+	}
+
+	public function render_featured( \WP_Post $post ): void {
+		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
+			return;
+		}
+		$is_featured = (bool) get_post_meta( $post->ID, Campaign_Taxonomies::META_KEY_FEATURED, true );
+		?>
+		<p>
+			<label>
+				<input
+					type="checkbox"
+					name="dfwc_featured"
+					value="1"
+					<?php checked( $is_featured ); ?>
+				>
+				<?php esc_html_e( 'Mark this campaign as featured', 'dfwc-companion' ); ?>
+			</label>
+		</p>
+		<p class="description">
+			<?php esc_html_e( 'Featured campaigns sort first in the [dfwc_campaign_grid] directory when sorted by "Featured first".', 'dfwc-companion' ); ?>
+		</p>
+		<?php
 	}
 
 	public function render_intervals( \WP_Post $post ): void {
@@ -197,6 +228,17 @@ final class Meta_Box {
 		// No-op when WPML inactive or delta is empty.
 		if ( WPML_Strings::wpml_active() && ! empty( $delta ) ) {
 			$this->register_campaign_strings_with_wpml( $post_id, $delta );
+		}
+
+		// Phase 4: featured flag (separate side meta box).
+		// HTML form-checkbox semantics: missing = unchecked = false.
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce checked above
+		$is_featured = ! empty( $_POST['dfwc_featured'] );
+		// phpcs:enable
+		if ( $is_featured ) {
+			update_post_meta( $post_id, Campaign_Taxonomies::META_KEY_FEATURED, '1' );
+		} else {
+			delete_post_meta( $post_id, Campaign_Taxonomies::META_KEY_FEATURED );
 		}
 	}
 

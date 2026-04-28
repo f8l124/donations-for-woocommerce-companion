@@ -71,6 +71,13 @@ final class Plugin {
 		new Frontend\Context_Augmenter();
 		new Frontend\Elementor_Adapter();
 
+		// Phase 4 — campaign directory + taxonomies.
+		new Taxonomy\Campaign_Taxonomies();
+		new Frontend\Campaign_Grid_Shortcode();
+		new Frontend\Campaign_Grid_Block();
+		new Frontend\Directory_Assets();
+		new REST\Grid_REST_Controller();
+
 		$this->booted = true;
 	}
 

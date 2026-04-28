@@ -25,6 +25,9 @@
         <custom-field action="copy">_dfwc_companion_template_id</custom-field>
         <custom-field action="copy">_dfwc_companion_overrides</custom-field>
         <custom-field action="copy">_dfwc_companion_detached</custom-field>
+
+        <!-- v0.8.0 meta keys — Phase 4 directory grid. -->
+        <custom-field action="copy">_dfwc_companion_featured</custom-field>
     </custom-fields>
 
     <!-- Admin texts: option-stored strings that should appear in WPML's -->
@@ -55,13 +58,13 @@
 
     <!-- Custom taxonomies (Phase 4 — v0.8.0). -->
     <!-- translate="1" means each taxonomy term is itself translatable. -->
-    <!-- Reserved for Phase 4; entries will be uncommented when taxonomies register. -->
+    <!-- WPML's Translation Management handles per-term translation natively. -->
     <taxonomies>
-        <!-- <taxonomy translate="1">dfwc_cause</taxonomy> -->
-        <!-- <taxonomy translate="1">dfwc_region</taxonomy> -->
-        <!-- <taxonomy translate="1">dfwc_country</taxonomy> -->
-        <!-- <taxonomy translate="1">dfwc_program</taxonomy> -->
-        <!-- <taxonomy translate="1">dfwc_sponsorship_type</taxonomy> -->
-        <!-- <taxonomy translate="1">dfwc_urgency</taxonomy> -->
+        <taxonomy translate="1">dfwc_cause</taxonomy>
+        <taxonomy translate="1">dfwc_region</taxonomy>
+        <taxonomy translate="1">dfwc_country</taxonomy>
+        <taxonomy translate="1">dfwc_program</taxonomy>
+        <taxonomy translate="1">dfwc_sponsorship_type</taxonomy>
+        <taxonomy translate="1">dfwc_urgency</taxonomy>
     </taxonomies>
 </wpml-config>

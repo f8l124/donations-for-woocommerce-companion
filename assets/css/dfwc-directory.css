@@ -1,0 +1,283 @@
+/**
+ * Donations for WooCommerce Companion — campaign directory grid styles.
+ *
+ * BEM-prefixed `.dfwc-directory__*` and `.dfwc-card__*` for theme isolation.
+ * Themable via custom-property overrides:
+ *
+ *   .dfwc-directory {
+ *     --dfwc-card-radius: 12px;
+ *     --dfwc-grid-min-col: 240px;
+ *   }
+ *
+ * @package   DFWC\Companion
+ * @copyright Copyright (c) 2026 David Stells
+ * @license   GPL-2.0-or-later https://www.gnu.org/licenses/gpl-2.0.html
+ */
+
+.dfwc-directory {
+	--dfwc-card-radius: 8px;
+	--dfwc-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	--dfwc-card-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.12);
+	--dfwc-grid-gap: 1.5rem;
+	--dfwc-grid-min-col: 280px;
+	--dfwc-card-bg: #fff;
+	--dfwc-card-border: #e5e5e5;
+	--dfwc-meta-color: #5f6368;
+	--dfwc-featured-bg: #fff3cd;
+	--dfwc-featured-fg: #856404;
+	--dfwc-cta-bg: #2271b1;
+	--dfwc-cta-fg: #fff;
+
+	margin: 1.5rem 0;
+}
+
+/* ---------- Filter bar ---------- */
+
+.dfwc-directory__filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 1rem;
+	align-items: end;
+	margin: 0 0 1.5rem;
+	padding: 1rem;
+	background: rgba(0, 0, 0, 0.02);
+	border-radius: var(--dfwc-card-radius);
+}
+
+.dfwc-directory__filter {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	min-width: 140px;
+	flex: 1 1 140px;
+}
+
+.dfwc-directory__filter--search {
+	flex: 2 1 240px;
+}
+
+.dfwc-directory__filter-label {
+	font-size: 0.85em;
+	font-weight: 600;
+	color: var(--dfwc-meta-color);
+}
+
+.dfwc-directory__filter input,
+.dfwc-directory__filter select {
+	padding: 0.5rem;
+	border: 1px solid var(--dfwc-card-border);
+	border-radius: 4px;
+	font-size: 0.95em;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.dfwc-directory__submit {
+	padding: 0.5rem 1.25rem;
+}
+
+/* ---------- Grid layout ---------- */
+
+.dfwc-directory__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(var(--dfwc-grid-min-col), 1fr));
+	gap: var(--dfwc-grid-gap);
+}
+
+.dfwc-directory--list .dfwc-directory__grid {
+	grid-template-columns: 1fr;
+}
+
+/* ---------- Card ---------- */
+
+.dfwc-card {
+	background: var(--dfwc-card-bg);
+	border: 1px solid var(--dfwc-card-border);
+	border-radius: var(--dfwc-card-radius);
+	box-shadow: var(--dfwc-card-shadow);
+	overflow: hidden;
+	transition: box-shadow 200ms ease-out, transform 200ms ease-out;
+}
+
+.dfwc-card:hover,
+.dfwc-card:focus-within {
+	box-shadow: var(--dfwc-card-shadow-hover);
+	transform: translateY(-2px);
+}
+
+.dfwc-card--featured {
+	border-color: var(--dfwc-featured-fg);
+}
+
+.dfwc-card__link {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	color: inherit;
+	text-decoration: none;
+}
+
+.dfwc-directory--list .dfwc-card__link {
+	flex-direction: row;
+}
+
+/* ---------- Image ---------- */
+
+.dfwc-card__image-wrap {
+	position: relative;
+	aspect-ratio: 16 / 9;
+	overflow: hidden;
+	background: #f0f0f0;
+}
+
+.dfwc-directory--list .dfwc-card__image-wrap {
+	flex: 0 0 240px;
+	aspect-ratio: 1;
+}
+
+.dfwc-card__image {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.dfwc-card__featured-badge {
+	position: absolute;
+	top: 0.5rem;
+	left: 0.5rem;
+	padding: 0.2em 0.7em;
+	background: var(--dfwc-featured-bg);
+	color: var(--dfwc-featured-fg);
+	border-radius: 999px;
+	font-size: 0.75em;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+}
+
+/* ---------- Body ---------- */
+
+.dfwc-card__body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 1rem 1.25rem 1.25rem;
+	flex: 1;
+}
+
+.dfwc-card__title {
+	margin: 0;
+	font-size: 1.1em;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+.dfwc-card__excerpt {
+	margin: 0;
+	color: var(--dfwc-meta-color);
+	font-size: 0.95em;
+	line-height: 1.5;
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.dfwc-card__meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-top: auto;
+	font-size: 0.85em;
+	color: var(--dfwc-meta-color);
+}
+
+.dfwc-card__country,
+.dfwc-card__cause {
+	padding: 0.15em 0.7em;
+	background: rgba(0, 0, 0, 0.04);
+	border-radius: 999px;
+}
+
+.dfwc-card__cta {
+	margin-top: 0.5rem;
+	padding: 0.5rem 1rem;
+	background: var(--dfwc-cta-bg);
+	color: var(--dfwc-cta-fg);
+	border-radius: 4px;
+	text-align: center;
+	font-weight: 600;
+	display: inline-block;
+	align-self: start;
+}
+
+/* ---------- Pagination + count ---------- */
+
+.dfwc-directory__pagination {
+	margin: 1.5rem 0;
+	text-align: center;
+}
+
+.dfwc-directory__pagination .page-numbers {
+	display: inline-block;
+	padding: 0.4rem 0.75rem;
+	margin: 0 0.15rem;
+	border: 1px solid var(--dfwc-card-border);
+	border-radius: 4px;
+	text-decoration: none;
+	color: inherit;
+}
+
+.dfwc-directory__pagination .page-numbers.current {
+	background: var(--dfwc-cta-bg);
+	color: var(--dfwc-cta-fg);
+	border-color: var(--dfwc-cta-bg);
+}
+
+.dfwc-directory__count {
+	margin: 0.5rem 0 0;
+	color: var(--dfwc-meta-color);
+	font-size: 0.9em;
+	text-align: center;
+}
+
+.dfwc-directory__empty {
+	margin: 2rem 0;
+	padding: 2rem;
+	text-align: center;
+	color: var(--dfwc-meta-color);
+	background: rgba(0, 0, 0, 0.02);
+	border-radius: var(--dfwc-card-radius);
+}
+
+/* ---------- Loading state during live search ---------- */
+
+.dfwc-directory--loading {
+	opacity: 0.6;
+	pointer-events: none;
+	transition: opacity 150ms ease-out;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 600px) {
+	.dfwc-directory__filters {
+		gap: 0.5rem;
+	}
+
+	.dfwc-directory__filter {
+		min-width: 100%;
+		flex: 1 1 100%;
+	}
+
+	.dfwc-directory--list .dfwc-card__link {
+		flex-direction: column;
+	}
+
+	.dfwc-directory--list .dfwc-card__image-wrap {
+		flex: 0 0 auto;
+		aspect-ratio: 16 / 9;
+	}
+}

@@ -36,19 +36,27 @@ final class Elementor_Adapter {
 			return;
 		}
 
-		// Loading the widget file is gated on Elementor being present, so the
-		// conditional class definition inside it always succeeds when reached.
+		// Loading widget files is gated on Elementor being present, so the
+		// conditional class definitions inside always succeed when reached.
 		require_once DFWC_COMPANION_PATH . 'includes/Frontend/Elementor_Widget.php';
+		require_once DFWC_COMPANION_PATH . 'includes/Frontend/Elementor_Campaign_Grid_Widget.php';
 
-		if ( ! class_exists( __NAMESPACE__ . '\\Elementor_Widget' ) ) {
+		$this->register_widget( $widgets_manager, __NAMESPACE__ . '\\Elementor_Widget' );
+		$this->register_widget( $widgets_manager, __NAMESPACE__ . '\\Elementor_Campaign_Grid_Widget' );
+	}
+
+	/**
+	 * @param object $widgets_manager
+	 */
+	private function register_widget( $widgets_manager, string $class ): void {
+		if ( ! class_exists( $class ) ) {
 			return;
 		}
-
 		if ( method_exists( $widgets_manager, 'register' ) ) {
-			$widgets_manager->register( new Elementor_Widget() );
+			$widgets_manager->register( new $class() );
 		} elseif ( method_exists( $widgets_manager, 'register_widget_type' ) ) {
 			// Elementor < 3.5 fallback.
-			$widgets_manager->register_widget_type( new Elementor_Widget() );
+			$widgets_manager->register_widget_type( new $class() );
 		}
 	}
 }

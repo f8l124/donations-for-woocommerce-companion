@@ -1,0 +1,32 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "dfwc-companion/campaign-grid",
+    "version": "1.0.0",
+    "title": "Donation Campaign Grid",
+    "category": "widgets",
+    "icon": "grid-view",
+    "description": "Filterable grid of donation campaigns. Pair with Donation for WooCommerce campaigns; filter by cause, country, region, program, sponsorship type, urgency.",
+    "keywords": ["donation", "campaign", "grid", "directory", "fundraising", "nonprofit"],
+    "supports": {
+        "html": false,
+        "align": ["wide", "full"],
+        "anchor": true
+    },
+    "textdomain": "dfwc-companion",
+    "attributes": {
+        "cause":            { "type": "string", "default": "" },
+        "region":           { "type": "string", "default": "" },
+        "country":          { "type": "string", "default": "" },
+        "program":          { "type": "string", "default": "" },
+        "sponsorship_type": { "type": "string", "default": "" },
+        "urgency":          { "type": "string", "default": "" },
+        "featured":         { "type": "boolean", "default": false },
+        "orderby":          { "type": "string", "default": "menu_order" },
+        "order":            { "type": "string", "default": "ASC" },
+        "per_page":         { "type": "number",  "default": 12 },
+        "layout":           { "type": "string", "default": "grid" },
+        "show_filters":     { "type": "boolean", "default": true }
+    },
+    "editorScript": "file:./index.js"
+}
