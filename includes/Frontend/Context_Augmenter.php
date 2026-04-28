@@ -37,14 +37,14 @@ final class Context_Augmenter {
 	 *
 	 * @var array<string,array{0:string,1:string,2:int}>
 	 */
-	private const CONTEXTS = [
-		'single'     => [ 'wc_donation_before_single_add_donation',     'wc_donation_after_single_add_donation',     2 ],
-		'shortcode'  => [ 'wc_donation_before_shortcode_add_donation',  'wc_donation_after_shortcode_add_donation',  1 ],
-		'widget'     => [ 'wc_donation_before_widget_add_donation',     'wc_donation_after_widget_add_donation',     1 ],
-		'checkout'   => [ 'wc_donation_before_checkout_add_donation',   'wc_donation_after_checkout_add_donation',   1 ],
-		'cart'       => [ 'wc_donation_before_cart_add_donation',       'wc_donation_after_cart_add_donation',       1 ],
-		'cart_block' => [ 'wc_donation_before_cart_add_donation_block', 'wc_donation_after_cart_add_donation_block', 1 ],
-	];
+	private const CONTEXTS = array(
+		'single'     => array( 'wc_donation_before_single_add_donation', 'wc_donation_after_single_add_donation', 2 ),
+		'shortcode'  => array( 'wc_donation_before_shortcode_add_donation', 'wc_donation_after_shortcode_add_donation', 1 ),
+		'widget'     => array( 'wc_donation_before_widget_add_donation', 'wc_donation_after_widget_add_donation', 1 ),
+		'checkout'   => array( 'wc_donation_before_checkout_add_donation', 'wc_donation_after_checkout_add_donation', 1 ),
+		'cart'       => array( 'wc_donation_before_cart_add_donation', 'wc_donation_after_cart_add_donation', 1 ),
+		'cart_block' => array( 'wc_donation_before_cart_add_donation_block', 'wc_donation_after_cart_add_donation_block', 1 ),
+	);
 
 	/**
 	 * Per-pair state — tracks which (context, campaign_id) pairs we opened a
@@ -53,17 +53,27 @@ final class Context_Augmenter {
 	 *
 	 * @var array<string,bool>
 	 */
-	private array $opened = [];
+	private array $opened = array();
 
 	public function __construct() {
 		foreach ( self::CONTEXTS as $context => $tuple ) {
 			list( $before, $after, $args ) = $tuple;
-			add_action( $before, function ( $campaign_id, $post_id = 0 ) use ( $context ) {
-				$this->emit_open( $context, (int) $campaign_id );
-			}, 1, $args );
-			add_action( $after, function ( $campaign_id, $post_id = 0 ) use ( $context ) {
-				$this->emit_close( $context, (int) $campaign_id );
-			}, 1, $args );
+			add_action(
+				$before,
+				function ( $campaign_id, $post_id = 0 ) use ( $context ) {
+					$this->emit_open( $context, (int) $campaign_id );
+				},
+				1,
+				$args
+			);
+			add_action(
+				$after,
+				function ( $campaign_id, $post_id = 0 ) use ( $context ) {
+					$this->emit_close( $context, (int) $campaign_id );
+				},
+				1,
+				$args
+			);
 		}
 	}
 

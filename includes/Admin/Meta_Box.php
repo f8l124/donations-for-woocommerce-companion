@@ -32,20 +32,20 @@ final class Meta_Box {
 	 * `wc_donation_after_save_campaign_meta` and the `save_post_wc-donation`
 	 * fallback (both fire on classic-editor saves).
 	 */
-	private static array $saved_in_request = [];
+	private static array $saved_in_request = array();
 
 	public function __construct() {
-		add_action( 'add_meta_boxes', [ $this, 'register' ] );
-		add_action( 'wc_donation_after_save_campaign_meta', [ $this, 'save' ], 20, 1 );
+		add_action( 'add_meta_boxes', array( $this, 'register' ) );
+		add_action( 'wc_donation_after_save_campaign_meta', array( $this, 'save' ), 20, 1 );
 		// Fallback for block-editor saves that bypass the parent's hook.
-		add_action( 'save_post_' . self::PARENT_POST_TYPE, [ $this, 'save' ], 20, 1 );
+		add_action( 'save_post_' . self::PARENT_POST_TYPE, array( $this, 'save' ), 20, 1 );
 	}
 
 	public function register(): void {
 		add_meta_box(
 			self::META_BOX_ID,
 			__( 'Interval-First Donation Form', 'dfwc-companion' ),
-			[ $this, 'render_intervals' ],
+			array( $this, 'render_intervals' ),
 			self::PARENT_POST_TYPE,
 			'normal',
 			'high'
@@ -111,19 +111,19 @@ final class Meta_Box {
 
 		$raw = isset( $_POST['dfwc_intervals'] ) && is_array( $_POST['dfwc_intervals'] )
 			? wp_unslash( $_POST['dfwc_intervals'] )
-			: [];
+			: array();
 
-		$config = [];
+		$config = array();
 		foreach ( Config_Resolver::intervals() as $key ) {
 			$config[ $key ] = $this->sanitize_interval_block(
-				is_array( $raw[ $key ] ?? null ) ? $raw[ $key ] : []
+				is_array( $raw[ $key ] ?? null ) ? $raw[ $key ] : array()
 			);
 		}
 
 		// Reject a config where a recurring tab is enabled with no usable presets
 		// AND a min that's so high it can't yield a custom amount either —
 		// almost always misconfiguration. Surface as admin notice; do NOT save.
-		foreach ( [ Config_Resolver::INTERVAL_MONTHLY, Config_Resolver::INTERVAL_ANNUAL ] as $rk ) {
+		foreach ( array( Config_Resolver::INTERVAL_MONTHLY, Config_Resolver::INTERVAL_ANNUAL ) as $rk ) {
 			if ( $config[ $rk ]['enabled'] && empty( $config[ $rk ]['presets'] ) && $config[ $rk ]['min'] > 1000 ) {
 				add_settings_error(
 					'dfwc_companion',
@@ -181,7 +181,7 @@ final class Meta_Box {
 		// per-interval config and easy for power users to override via filter.
 		$display_raw = isset( $_POST['dfwc_display'] ) && is_array( $_POST['dfwc_display'] )
 			? wp_unslash( $_POST['dfwc_display'] )
-			: [];
+			: array();
 		update_post_meta(
 			$post_id,
 			Config_Resolver::META_KEY_DISPLAY,
@@ -203,8 +203,8 @@ final class Meta_Box {
 		// missing here is a deliberate uncheck, not a legacy-data scenario.
 		$custom_amount_enabled = ! empty( $raw['custom_amount_enabled'] );
 
-		$presets_raw = isset( $raw['presets'] ) && is_array( $raw['presets'] ) ? $raw['presets'] : [];
-		$presets     = [];
+		$presets_raw = isset( $raw['presets'] ) && is_array( $raw['presets'] ) ? $raw['presets'] : array();
+		$presets     = array();
 		foreach ( $presets_raw as $row ) {
 			if ( ! is_array( $row ) ) {
 				continue;
@@ -215,7 +215,10 @@ final class Meta_Box {
 				continue;
 			}
 			$label     = isset( $row['label'] ) ? sanitize_text_field( (string) $row['label'] ) : '';
-			$presets[] = [ 'amount' => $amount, 'label' => $label ];
+			$presets[] = array(
+				'amount' => $amount,
+				'label' => $label,
+			);
 		}
 
 		$min = isset( $raw['min'] ) ? (float) wc_format_decimal( (string) $raw['min'], wc_get_price_decimals() ) : 0.0;
@@ -237,7 +240,7 @@ final class Meta_Box {
 
 		$cta = isset( $raw['cta_template'] ) ? sanitize_text_field( (string) $raw['cta_template'] ) : '';
 
-		return [
+		return array(
 			'enabled'               => $enabled,
 			'presets'               => $presets,
 			'min'                   => $min,
@@ -245,7 +248,7 @@ final class Meta_Box {
 			'default_index'         => $default_index,
 			'cta_template'          => $cta,
 			'custom_amount_enabled' => $custom_amount_enabled,
-		];
+		);
 	}
 
 	/**
@@ -258,13 +261,13 @@ final class Meta_Box {
 		// $_POST. We can distinguish "missing" (treated as false) from "checked"
 		// (string '1') only because we always emit the checkbox in our template.
 		// Therefore, save handler honors form intent: missing = unchecked = false.
-		return [
+		return array(
 			'show_title'    => ! empty( $raw['show_title'] ),
 			'show_image'    => ! empty( $raw['show_image'] ),
 			'cause_heading' => isset( $raw['cause_heading'] )
 				? sanitize_text_field( (string) $raw['cause_heading'] )
 				: $defaults['cause_heading'],
-		];
+		);
 	}
 
 	/**
@@ -322,14 +325,14 @@ final class Meta_Box {
 			// 1834 — after parent's lines 1740-1744 have already run with the
 			// posted 'user' value). Re-asserting the marker here is harmless
 			// belt-and-suspenders.
-			$writes = [
+			$writes = array(
 				'_wps_sfw_product'                     => 'yes',
 				'_wps_sfw_users'                       => 'user',
 				'wps_sfw_subscription_number'          => '1',
 				'wps_sfw_subscription_interval'        => $primary_period,
 				'wps_sfw_subscription_expiry_number'   => '',
 				'wps_sfw_subscription_expiry_interval' => '',
-			];
+			);
 			foreach ( $writes as $key => $value ) {
 				if ( function_exists( 'wps_sfw_update_meta_data' ) ) {
 					wps_sfw_update_meta_data( $product_id, $key, $value );
@@ -374,7 +377,7 @@ final class Meta_Box {
 		if ( Engine_Detector::ENGINE_WCS === $engine && class_exists( '\WC_Subscriptions_Product' ) ) {
 			$is_subscription_product = (bool) \WC_Subscriptions_Product::is_subscription( $product_id );
 			$product_type            = function_exists( 'wp_get_post_terms' )
-				? implode( ',', wp_get_post_terms( $product_id, 'product_type', [ 'fields' => 'slugs' ] ) )
+				? implode( ',', wp_get_post_terms( $product_id, 'product_type', array( 'fields' => 'slugs' ) ) )
 				: '';
 			$diagnostic              = "engine=wcs product_type=[{$product_type}] is_subscription=" . ( $is_subscription_product ? 'true' : 'false' );
 		} elseif ( Engine_Detector::ENGINE_WPS === $engine && function_exists( 'wps_sfw_get_meta_data' ) ) {
@@ -407,10 +410,10 @@ final class Meta_Box {
 	 * Display labels for each interval. Translatable.
 	 */
 	public static function interval_labels(): array {
-		return [
+		return array(
 			Config_Resolver::INTERVAL_ONE_TIME => __( 'One-time', 'dfwc-companion' ),
 			Config_Resolver::INTERVAL_MONTHLY  => __( 'Monthly', 'dfwc-companion' ),
 			Config_Resolver::INTERVAL_ANNUAL   => __( 'Annually', 'dfwc-companion' ),
-		];
+		);
 	}
 }

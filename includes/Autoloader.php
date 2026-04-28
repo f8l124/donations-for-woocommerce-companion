@@ -16,7 +16,7 @@ final class Autoloader {
 	private const PREFIX = 'DFWC\\Companion\\';
 
 	public static function register(): void {
-		spl_autoload_register( [ self::class, 'load' ] );
+		spl_autoload_register( array( self::class, 'load' ) );
 	}
 
 	public static function load( string $class ): void {

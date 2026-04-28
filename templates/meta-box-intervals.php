@@ -54,7 +54,8 @@ $engine_supports_recurring = Engine_Detector::ENGINE_NONE !== $engine;
 	<?php endif; ?>
 
 	<div class="dfwc-mb__tabs" role="tablist">
-		<?php foreach ( $intervals as $i => $key ) :
+		<?php
+		foreach ( $intervals as $i => $key ) :
 			$tab_disabled = ( Config_Resolver::INTERVAL_ONE_TIME !== $key ) && ! $engine_supports_recurring;
 			?>
 			<button
@@ -72,7 +73,8 @@ $engine_supports_recurring = Engine_Detector::ENGINE_NONE !== $engine;
 		<?php endforeach; ?>
 	</div>
 
-	<?php foreach ( $intervals as $i => $key ) :
+	<?php
+	foreach ( $intervals as $i => $key ) :
 		$block         = $config[ $key ];
 		$panel_hidden  = 0 !== $i;
 		$tab_disabled  = ( Config_Resolver::INTERVAL_ONE_TIME !== $key ) && ! $engine_supports_recurring;
@@ -85,7 +87,10 @@ $engine_supports_recurring = Engine_Detector::ENGINE_NONE !== $engine;
 			id="dfwc-panel-<?php echo esc_attr( $key ); ?>"
 			aria-labelledby="dfwc-tab-<?php echo esc_attr( $key ); ?>"
 			data-dfwc-panel="<?php echo esc_attr( $key ); ?>"
-			<?php if ( $panel_hidden ) : ?>hidden<?php endif; ?>
+			<?php
+			if ( $panel_hidden ) :
+				?>
+				hidden<?php endif; ?>
 		>
 			<p class="dfwc-mb__enable">
 				<label>

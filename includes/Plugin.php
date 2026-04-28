@@ -44,7 +44,7 @@ final class Plugin {
 	private function boot(): void {
 		// HPOS / Cart Blocks declaration must run before WC's own init regardless of
 		// dependency check outcome (so we don't appear "incompatible" on the WC screen).
-		add_action( 'before_woocommerce_init', [ $this, 'declare_compatibility' ] );
+		add_action( 'before_woocommerce_init', array( $this, 'declare_compatibility' ) );
 
 		if ( ! $this->check_dependencies() ) {
 			return;

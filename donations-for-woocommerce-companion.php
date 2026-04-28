@@ -41,15 +41,21 @@ if ( PHP_VERSION_ID < 70400 ) {
 	return;
 }
 
-define( 'DFWC_COMPANION_VERSION',            '0.6.6' );
-define( 'DFWC_COMPANION_FILE',               __FILE__ );
-define( 'DFWC_COMPANION_PATH',               plugin_dir_path( __FILE__ ) );
-define( 'DFWC_COMPANION_URL',                plugin_dir_url( __FILE__ ) );
-define( 'DFWC_COMPANION_BASENAME',           plugin_basename( __FILE__ ) );
+define( 'DFWC_COMPANION_VERSION', '0.6.6' );
+define( 'DFWC_COMPANION_FILE', __FILE__ );
+define( 'DFWC_COMPANION_PATH', plugin_dir_path( __FILE__ ) );
+define( 'DFWC_COMPANION_URL', plugin_dir_url( __FILE__ ) );
+define( 'DFWC_COMPANION_BASENAME', plugin_basename( __FILE__ ) );
 define( 'DFWC_COMPANION_MIN_PARENT_VERSION', '3.9.8' );
-define( 'DFWC_COMPANION_MIN_PHP',            '7.4' );
+define( 'DFWC_COMPANION_MIN_PHP', '7.4' );
 
 require_once DFWC_COMPANION_PATH . 'includes/Autoloader.php';
 \DFWC\Companion\Autoloader::register();
 
-add_action( 'plugins_loaded', [ \DFWC\Companion\Plugin::class, 'instance' ], 20 );
+add_action(
+	'plugins_loaded',
+	static function () {
+		\DFWC\Companion\Plugin::instance();
+	},
+	20
+);

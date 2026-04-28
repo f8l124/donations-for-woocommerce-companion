@@ -21,11 +21,9 @@ defined( 'ABSPATH' ) || exit;
 final class Elementor_Adapter {
 
 	public function __construct() {
-		// Bail early if Elementor will never load on this request.
-		if ( ! did_action( 'elementor/loaded' ) && ! defined( 'ELEMENTOR_VERSION' ) ) {
-			// Elementor may still load after us; defer to its own register hook.
-		}
-		add_action( 'elementor/widgets/register', [ $this, 'register' ] );
+		// Elementor's `elementor/widgets/register` hook is the right place to
+		// register; if Elementor never loads, the hook never fires and we no-op.
+		add_action( 'elementor/widgets/register', array( $this, 'register' ) );
 	}
 
 	/**

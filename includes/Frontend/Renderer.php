@@ -23,10 +23,10 @@ use DFWC\Companion\Engine_Detector;
 
 final class Renderer {
 
-	private const ALLOWED_PRICE_TAGS = [
-		'bdi'  => [],
-		'span' => [ 'class' => true ],
-	];
+	private const ALLOWED_PRICE_TAGS = array(
+		'bdi'  => array(),
+		'span' => array( 'class' => true ),
+	);
 
 	/**
 	 * Re-entrancy guard. True while we are inside `render()` and have called
@@ -120,13 +120,13 @@ final class Renderer {
 		$form_config       = self::build_form_config( $config, $enabled_intervals );
 		$display           = Config_Resolver::resolve_display( $campaign_id );
 
-		return [
+		return array(
 			'engine'            => $engine,
 			'enabled_intervals' => $enabled_intervals,
 			'active_interval'   => $active_interval,
 			'form_config'       => $form_config,
 			'display'           => $display,
-		];
+		);
 	}
 
 	/**
@@ -137,11 +137,11 @@ final class Renderer {
 	 * client-side via textContent for runtime updates.
 	 */
 	public static function format_cta( string $template, float $amount, string $interval_key ): string {
-		$intervals = [
+		$intervals = array(
 			Config_Resolver::INTERVAL_ONE_TIME => '',
 			Config_Resolver::INTERVAL_MONTHLY  => '/' . __( 'month', 'dfwc-companion' ),
 			Config_Resolver::INTERVAL_ANNUAL   => '/' . __( 'year', 'dfwc-companion' ),
-		];
+		);
 		$interval_suffix = $intervals[ $interval_key ] ?? '';
 
 		$price_html = wc_price( $amount );
@@ -161,17 +161,17 @@ final class Renderer {
 	}
 
 	public static function interval_labels(): array {
-		return [
+		return array(
 			Config_Resolver::INTERVAL_ONE_TIME => __( 'One-time', 'dfwc-companion' ),
 			Config_Resolver::INTERVAL_MONTHLY  => __( 'Monthly', 'dfwc-companion' ),
 			Config_Resolver::INTERVAL_ANNUAL   => __( 'Annually', 'dfwc-companion' ),
-		];
+		);
 	}
 
 	private static function resolve_enabled_intervals( array $config, string $engine ): array {
-		$out             = [];
+		$out             = array();
 		$recurring_ok    = Engine_Detector::ENGINE_NONE !== $engine;
-		$recurring_keys  = [ Config_Resolver::INTERVAL_MONTHLY, Config_Resolver::INTERVAL_ANNUAL ];
+		$recurring_keys  = array( Config_Resolver::INTERVAL_MONTHLY, Config_Resolver::INTERVAL_ANNUAL );
 
 		foreach ( Config_Resolver::intervals() as $key ) {
 			if ( ! ( $config[ $key ]['enabled'] ?? false ) ) {
@@ -200,11 +200,11 @@ final class Renderer {
 	 * parent's `selectedLabel` POST field via JS.
 	 */
 	private static function build_form_config( array $config, array $enabled_intervals ): array {
-		$out             = [];
+		$out             = array();
 		$interval_labels = self::interval_labels();
 		foreach ( $enabled_intervals as $key ) {
 			$block = $config[ $key ];
-			$out[ $key ] = [
+			$out[ $key ] = array(
 				'min'                   => (float) $block['min'],
 				'max'                   => (float) $block['max'],
 				'default_index'         => (int) $block['default_index'],
@@ -213,14 +213,14 @@ final class Renderer {
 				'custom_amount_enabled' => ! empty( $block['custom_amount_enabled'] ),
 				'presets'               => array_map(
 					static function ( $p ) {
-						return [
+						return array(
 							'amount' => (float) ( $p['amount'] ?? 0 ),
 							'label'  => (string) ( $p['label'] ?? '' ),
-						];
+						);
 					},
-					(array) ( $block['presets'] ?? [] )
+					(array) ( $block['presets'] ?? array() )
 				),
-			];
+			);
 		}
 		return $out;
 	}

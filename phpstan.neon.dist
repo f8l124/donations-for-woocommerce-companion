@@ -1,0 +1,33 @@
+parameters:
+    level: 5
+    paths:
+        - donations-for-woocommerce-companion.php
+        - includes
+    excludePaths:
+        # Templates are include-d from method-local scope; PHPStan can't trace
+        # variable origin so it false-positives on every $config / $display etc.
+        # Real correctness verified by render-time integration tests.
+        - templates/*
+        - tests/donation-for-woocommerce/*
+        - vendor/*
+        - node_modules/*
+        - dist/*
+        - build/*
+        - plans/*
+        - docs/*
+    bootstrapFiles:
+        - tests/phpstan-bootstrap.php
+    scanFiles:
+        - vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
+    inferPrivatePropertyTypeFromConstructor: true
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        # WPML filter signatures are dynamic; we apply_filters with WPML's hook names.
+        - '#Call to an undefined function (icl_object_id|wcml_get_user_currency|wpml_).*\(\)#'
+        # Parent plugin classes/functions stubbed in phpstan-bootstrap.php — some methods
+        # we call may be undocumented in the stub but exist on the real class.
+        - '#Call to an undefined method WcdonationCampaignSetting::#'
+        - '#Call to an undefined method WcdonationSetting::#'
+includes:
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon

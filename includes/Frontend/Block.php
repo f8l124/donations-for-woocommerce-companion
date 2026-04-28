@@ -20,7 +20,7 @@ final class Block {
 	public const EDITOR_HANDLE  = 'dfwc-companion-block-editor';
 
 	public function __construct() {
-		add_action( 'init', [ $this, 'register' ] );
+		add_action( 'init', array( $this, 'register' ) );
 	}
 
 	public function register(): void {
@@ -29,7 +29,7 @@ final class Block {
 		wp_register_script(
 			self::EDITOR_HANDLE,
 			DFWC_COMPANION_URL . 'assets/blocks/recurring-donation/index.js',
-			[
+			array(
 				'wp-blocks',
 				'wp-element',
 				'wp-block-editor',
@@ -37,14 +37,14 @@ final class Block {
 				'wp-i18n',
 				'wp-server-side-render',
 				'wp-core-data',
-			],
+			),
 			DFWC_COMPANION_VERSION,
 			true
 		);
 
 		register_block_type(
 			DFWC_COMPANION_PATH . 'assets/blocks/recurring-donation',
-			[ 'render_callback' => [ $this, 'render' ] ]
+			array( 'render_callback' => array( $this, 'render' ) )
 		);
 	}
 

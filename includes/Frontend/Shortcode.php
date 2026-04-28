@@ -16,11 +16,11 @@ final class Shortcode {
 	public const TAG = 'dfwc_recurring_donation';
 
 	public function __construct() {
-		add_action( 'init', [ $this, 'register' ] );
+		add_action( 'init', array( $this, 'register' ) );
 	}
 
 	public function register(): void {
-		add_shortcode( self::TAG, [ $this, 'render' ] );
+		add_shortcode( self::TAG, array( $this, 'render' ) );
 	}
 
 	/**
@@ -28,8 +28,8 @@ final class Shortcode {
 	 */
 	public function render( $atts ): string {
 		$atts = shortcode_atts(
-			[ 'campaign_id' => '0' ],
-			is_array( $atts ) ? $atts : [],
+			array( 'campaign_id' => '0' ),
+			is_array( $atts ) ? $atts : array(),
 			self::TAG
 		);
 

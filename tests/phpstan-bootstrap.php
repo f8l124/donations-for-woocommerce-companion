@@ -1,0 +1,215 @@
+<?php
+/**
+ * PHPStan / PHPUnit bootstrap — minimal stubs for parent-plugin classes and
+ * third-party compatibility surfaces (WPML, WCS, WPS SFW, Elementor) that the
+ * companion references but whose source isn't part of our repo.
+ *
+ * Stubs only declare the methods/constants we actually call. They don't try to
+ * accurately reflect the upstream signatures; PHPStan just needs the names to
+ * exist. Real behavior is verified in Playwright E2E and manual QA.
+ *
+ * When upstream changes a signature in a way that breaks the companion, this
+ * file is the first thing to update — keep stubs minimal so updating is cheap.
+ *
+ * Bracketed namespace syntax is used because the file declares stubs in
+ * multiple namespaces (root + \Elementor). Mid-file `namespace Foo;` is a
+ * parse error; `namespace Foo { ... }` is the only valid form when mixing.
+ *
+ * @package DFWC\Companion
+ */
+
+namespace {
+
+    defined( 'ABSPATH' ) || define( 'ABSPATH', __DIR__ );
+    defined( 'WPINC' )   || define( 'WPINC', 'wp-includes' );
+
+    // === Plugin constants (defined at runtime by the main plugin file) ===
+    defined( 'DFWC_COMPANION_VERSION' )            || define( 'DFWC_COMPANION_VERSION', '0.6.6' );
+    defined( 'DFWC_COMPANION_FILE' )               || define( 'DFWC_COMPANION_FILE', '' );
+    defined( 'DFWC_COMPANION_PATH' )               || define( 'DFWC_COMPANION_PATH', '' );
+    defined( 'DFWC_COMPANION_URL' )                || define( 'DFWC_COMPANION_URL', '' );
+    defined( 'DFWC_COMPANION_BASENAME' )           || define( 'DFWC_COMPANION_BASENAME', '' );
+    defined( 'DFWC_COMPANION_MIN_PARENT_VERSION' ) || define( 'DFWC_COMPANION_MIN_PARENT_VERSION', '3.9.8' );
+    defined( 'DFWC_COMPANION_MIN_PHP' )            || define( 'DFWC_COMPANION_MIN_PHP', '7.4' );
+
+    // === Parent plugin constants ===
+    defined( 'WC_DONATION_VERSION' ) || define( 'WC_DONATION_VERSION', '3.9.8' );
+    defined( 'WC_DONATION_PATH' )    || define( 'WC_DONATION_PATH', '' );
+
+    // === Parent plugin: minimal class stubs ===
+
+    if ( ! class_exists( 'WcdonationCampaignSetting' ) ) {
+        /**
+         * Parent plugin class — stub only; real source at
+         * includes/classes/class-wcdonationcampaignsetting.php in the parent plugin.
+         */
+        class WcdonationCampaignSetting {
+            /** @var array<string,mixed>|object|null */
+            public $product;
+
+            /**
+             * @param int $campaign_id
+             * @return self|null
+             */
+            public static function get_product_by_campaign( $campaign_id ) {
+                return null;
+            }
+        }
+    }
+
+    if ( ! class_exists( 'WcdonationSetting' ) ) {
+        class WcdonationSetting {
+            /**
+             * @param int $product_id
+             * @return int
+             */
+            public static function get_campaign_id_by_product_id( $product_id ) {
+                return 0;
+            }
+        }
+    }
+
+    if ( ! class_exists( 'WcDonation' ) ) {
+        class WcDonation {
+            /**
+             * @return array<string,string>
+             */
+            public static function DISPLAY_RECURRING_TYPE() {
+                return [];
+            }
+        }
+    }
+
+    // === Subscription engine stubs ===
+
+    if ( ! class_exists( 'WC_Subscriptions' ) ) {
+        class WC_Subscriptions {}
+    }
+
+    if ( ! class_exists( 'WC_Subscriptions_Product' ) ) {
+        class WC_Subscriptions_Product {
+            /**
+             * @param int $product_id
+             * @return bool
+             */
+            public static function is_subscription( $product_id ) {
+                return false;
+            }
+        }
+    }
+
+    if ( ! class_exists( 'Subscriptions_For_Woocommerce' ) ) {
+        class Subscriptions_For_Woocommerce {}
+    }
+
+    if ( ! function_exists( 'wps_sfw_get_meta_data' ) ) {
+        /**
+         * @param int|string $object_id
+         * @param string     $meta_key
+         * @param bool       $single
+         * @return mixed
+         */
+        function wps_sfw_get_meta_data( $object_id, $meta_key, $single = false ) {
+            return '';
+        }
+    }
+
+    if ( ! function_exists( 'wps_sfw_update_meta_data' ) ) {
+        /**
+         * @param int|string $object_id
+         * @param string     $meta_key
+         * @param mixed      $value
+         * @return bool
+         */
+        function wps_sfw_update_meta_data( $object_id, $meta_key, $value ) {
+            return true;
+        }
+    }
+
+    // === WPML / WCML stubs (Phase 6+ integration) ===
+
+    if ( ! function_exists( 'icl_object_id' ) ) {
+        /**
+         * @param int    $element_id
+         * @param string $element_type
+         * @param bool   $return_original_if_missing
+         * @param string|null $language_code
+         * @return int
+         */
+        function icl_object_id( $element_id, $element_type = 'post', $return_original_if_missing = false, $language_code = null ) {
+            return $element_id;
+        }
+    }
+
+    if ( ! function_exists( 'wcml_get_user_currency' ) ) {
+        /**
+         * @return string
+         */
+        function wcml_get_user_currency() {
+            return 'USD';
+        }
+    }
+
+    if ( ! function_exists( 'wcml_multi_currency' ) ) {
+        /**
+         * @return object|null
+         */
+        function wcml_multi_currency() {
+            return null;
+        }
+    }
+}
+
+// === Elementor stubs in their own namespace ===
+namespace Elementor {
+
+    if ( ! class_exists( '\Elementor\Widget_Base' ) ) {
+        class Widget_Base {
+            /**
+             * @return array<string,mixed>
+             */
+            public function get_settings_for_display() {
+                return [];
+            }
+
+            /** @return string */
+            public function get_name() {
+                return '';
+            }
+
+            /** @return string */
+            public function get_title() {
+                return '';
+            }
+
+            /** @return string */
+            public function get_icon() {
+                return '';
+            }
+
+            /** @return array<int,string> */
+            public function get_categories() {
+                return [];
+            }
+
+            /** @return array<int,string> */
+            public function get_keywords() {
+                return [];
+            }
+
+            protected function start_controls_section( $id, array $args = [] ) {}
+
+            protected function add_control( $id, array $args = [] ) {}
+
+            protected function end_controls_section() {}
+        }
+    }
+
+    if ( ! class_exists( '\Elementor\Controls_Manager' ) ) {
+        class Controls_Manager {
+            const TAB_CONTENT = 'content';
+            const SELECT2     = 'select2';
+            const TEXT        = 'text';
+        }
+    }
+}

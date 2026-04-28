@@ -24,27 +24,27 @@ final class Assets {
 	public const HANDLE_JS  = 'dfwc-overlay';
 
 	public function __construct() {
-		add_action( 'wp_enqueue_scripts', [ $this, 'register' ], 5 );
-		add_action( 'wp_enqueue_scripts', [ $this, 'maybe_enqueue' ], 10 );
+		add_action( 'wp_enqueue_scripts', array( $this, 'register' ), 5 );
+		add_action( 'wp_enqueue_scripts', array( $this, 'maybe_enqueue' ), 10 );
 	}
 
 	public function register(): void {
 		wp_register_style(
 			self::HANDLE_CSS,
 			DFWC_COMPANION_URL . 'assets/css/dfwc-overlay.css',
-			[],
+			array(),
 			DFWC_COMPANION_VERSION
 		);
 
 		wp_register_script(
 			self::HANDLE_JS,
 			DFWC_COMPANION_URL . 'assets/js/dfwc-overlay.js',
-			[],
+			array(),
 			DFWC_COMPANION_VERSION,
-			[
+			array(
 				'in_footer' => true,
 				'strategy'  => 'defer',
-			]
+			)
 		);
 
 		wp_localize_script( self::HANDLE_JS, 'dfwcCompanion', $this->build_localize() );
@@ -84,7 +84,7 @@ final class Assets {
 	}
 
 	private function build_localize(): array {
-		return [
+		return array(
 			'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
 			'nonce'          => wp_create_nonce( '_wcdnonce' ),
 			'action'         => 'donation_to_order',
@@ -92,13 +92,13 @@ final class Assets {
 			'currency'       => get_woocommerce_currency(),
 			'currencySymbol' => html_entity_decode( get_woocommerce_currency_symbol() ),
 			'locale'         => str_replace( '_', '-', get_locale() ),
-			'i18n'           => [
+			'i18n'           => array(
 				'errorGeneric'        => __( 'Something went wrong. Please try again.', 'dfwc-companion' ),
 				'errorAmountRequired' => __( 'Please choose a preset amount or enter a custom amount.', 'dfwc-companion' ),
 				'errorNetwork'        => __( 'Network error. Please check your connection and try again.', 'dfwc-companion' ),
 				'monthly'             => '/' . __( 'month', 'dfwc-companion' ),
 				'annual'              => '/' . __( 'year', 'dfwc-companion' ),
-			],
-		];
+			),
+		);
 	}
 }

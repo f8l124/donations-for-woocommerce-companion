@@ -28,7 +28,7 @@ final class Submit_Guard {
 
 	public function __construct() {
 		// Priority 5 = before any other listener on this hook.
-		add_action( 'wc_donation_before_donate', [ $this, 'enforce' ], 5 );
+		add_action( 'wc_donation_before_donate', array( $this, 'enforce' ), 5 );
 	}
 
 	public function enforce(): void {
@@ -111,10 +111,10 @@ final class Submit_Guard {
 	 */
 	private function reject( string $message ): void {
 		wp_send_json_error(
-			[
+			array(
 				'response' => 'error',
 				'message'  => $message,
-			],
+			),
 			422
 		);
 		// wp_send_json_error calls wp_die — execution stops here.

@@ -22,6 +22,13 @@ composer.json
 composer.lock
 vendor
 scripts
+phpcs.xml.dist
+phpstan.neon.dist
+phpunit.xml.dist
+.phpunit.result.cache
+.phpunit.cache
+.phpcs.cache
+.phpstan.cache
 
 # Tests
 tests
@@ -57,3 +64,8 @@ desktop.ini
 # Documentation source (keep readme.txt; exclude internal docs)
 docs
 .distignore
+
+# Contributor-facing files (not user-facing)
+CONTRIBUTING.md
+SECURITY.md
+CODE_OF_CONDUCT.md

@@ -33,31 +33,31 @@ if ( class_exists( '\Elementor\Widget_Base' ) ) {
 		}
 
 		public function get_categories() {
-			return [ 'general' ];
+			return array( 'general' );
 		}
 
 		public function get_keywords() {
-			return [ 'donation', 'recurring', 'subscription', 'fundraising' ];
+			return array( 'donation', 'recurring', 'subscription', 'fundraising' );
 		}
 
 		protected function register_controls() {
 			$this->start_controls_section(
 				'section_main',
-				[
+				array(
 					'label' => __( 'Campaign', 'dfwc-companion' ),
 					'tab'   => \Elementor\Controls_Manager::TAB_CONTENT,
-				]
+				)
 			);
 
 			$this->add_control(
 				'campaign_id',
-				[
+				array(
 					'label'       => __( 'Donation campaign', 'dfwc-companion' ),
 					'type'        => \Elementor\Controls_Manager::SELECT2,
 					'options'     => $this->get_campaign_options(),
 					'default'     => '',
 					'description' => __( 'Pick the campaign whose interval-first form should appear here.', 'dfwc-companion' ),
-				]
+				)
 			);
 
 			$this->end_controls_section();
@@ -87,17 +87,17 @@ if ( class_exists( '\Elementor\Widget_Base' ) ) {
 		 * @return array<string,string>
 		 */
 		private function get_campaign_options(): array {
-			$opts = [ '' => __( '— Select a campaign —', 'dfwc-companion' ) ];
+			$opts = array( '' => __( '— Select a campaign —', 'dfwc-companion' ) );
 
 			$campaigns = get_posts(
-				[
+				array(
 					'post_type'      => 'wc-donation',
 					'post_status'    => 'publish',
 					'numberposts'    => -1,
 					'orderby'        => 'title',
 					'order'          => 'ASC',
 					'suppress_filters' => false,
-				]
+				)
 			);
 
 			foreach ( $campaigns as $post ) {

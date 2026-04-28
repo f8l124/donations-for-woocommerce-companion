@@ -29,8 +29,8 @@ final class Self_Check {
 	private const SEVERITY_INFO    = 'info';
 
 	public function __construct() {
-		add_action( 'admin_init', [ $this, 'maybe_run' ] );
-		add_action( 'admin_notices', [ $this, 'render_notices' ] );
+		add_action( 'admin_init', array( $this, 'maybe_run' ) );
+		add_action( 'admin_notices', array( $this, 'render_notices' ) );
 	}
 
 	public function maybe_run(): void {
@@ -87,27 +87,27 @@ final class Self_Check {
 	 * @return array<int,array<string,string>>
 	 */
 	private function run_checks(): array {
-		$findings = [];
+		$findings = array();
 
 		// Check 1: parent's AJAX endpoint must be registered.
 		if ( false === has_action( 'wp_ajax_donation_to_order' ) ) {
-			$findings[] = [
+			$findings[] = array(
 				'severity' => self::SEVERITY_ERROR,
 				'message'  => __( 'The Donation for WooCommerce AJAX endpoint is not registered. Recurring and one-time donations may both fail. Verify the parent plugin is active and not modified.', 'dfwc-companion' ),
 				'code'     => 'ajax_endpoint_missing',
-			];
+			);
 		}
 
 		// Check 2: parent plugin must define its version constant.
 		if ( ! defined( 'WC_DONATION_VERSION' ) ) {
-			$findings[] = [
+			$findings[] = array(
 				'severity' => self::SEVERITY_ERROR,
 				'message'  => __( 'Donation for WooCommerce is not active. The companion plugin will not function until the parent is enabled.', 'dfwc-companion' ),
 				'code'     => 'parent_inactive',
-			];
+			);
 		} elseif ( version_compare( WC_DONATION_VERSION, '4.0.0', '>=' ) ) {
 			// Check 3: warn on untested major-version bump.
-			$findings[] = [
+			$findings[] = array(
 				'severity' => self::SEVERITY_WARNING,
 				'message'  => sprintf(
 					/* translators: %s: detected parent plugin version */
@@ -115,14 +115,14 @@ final class Self_Check {
 					WC_DONATION_VERSION
 				),
 				'code'     => 'parent_major_bump',
-			];
+			);
 		}
 
 		// Check 4: campaigns offering recurring intervals while no engine is active.
 		if ( ! Engine_Detector::supports_recurring() ) {
 			$count = $this->count_campaigns_with_recurring_enabled();
 			if ( $count > 0 ) {
-				$findings[] = [
+				$findings[] = array(
 					'severity' => self::SEVERITY_WARNING,
 					'message'  => sprintf(
 						/* translators: %d: number of campaigns affected */
@@ -135,7 +135,7 @@ final class Self_Check {
 						$count
 					),
 					'code'     => 'recurring_no_engine',
-				];
+				);
 			}
 		}
 
@@ -149,7 +149,7 @@ final class Self_Check {
 	 */
 	private function count_campaigns_with_recurring_enabled(): int {
 		$ids = get_posts(
-			[
+			array(
 				'post_type'      => 'wc-donation',
 				'post_status'    => 'publish',
 				'numberposts'    => -1,
@@ -157,7 +157,7 @@ final class Self_Check {
 				'fields'         => 'ids',
 				'no_found_rows'  => true,
 				'suppress_filters' => false,
-			]
+			)
 		);
 
 		$count = 0;
@@ -181,7 +181,7 @@ final class Self_Check {
 			return true;
 		}
 		// Suppress on update / customize / installer screens.
-		$blocked = [ 'update-core', 'update', 'customize', 'install-plugins', 'plugin-install' ];
+		$blocked = array( 'update-core', 'update', 'customize', 'install-plugins', 'plugin-install' );
 		if ( in_array( $screen->id, $blocked, true ) ) {
 			return false;
 		}

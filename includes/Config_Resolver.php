@@ -37,7 +37,7 @@ final class Config_Resolver {
 	 * Allow-listed interval keys, in display order.
 	 */
 	public static function intervals(): array {
-		return [ self::INTERVAL_ONE_TIME, self::INTERVAL_MONTHLY, self::INTERVAL_ANNUAL ];
+		return array( self::INTERVAL_ONE_TIME, self::INTERVAL_MONTHLY, self::INTERVAL_ANNUAL );
 	}
 
 	/**
@@ -62,11 +62,11 @@ final class Config_Resolver {
 	 * @return array{show_title:bool,show_image:bool,cause_heading:string}
 	 */
 	public static function display_defaults(): array {
-		return [
+		return array(
 			'show_title'    => true,
 			'show_image'    => true,
 			'cause_heading' => '',
-		];
+		);
 	}
 
 	/**
@@ -80,13 +80,13 @@ final class Config_Resolver {
 		if ( ! is_array( $stored ) ) {
 			return $defaults;
 		}
-		return [
+		return array(
 			'show_title'    => isset( $stored['show_title'] ) ? (bool) $stored['show_title'] : $defaults['show_title'],
 			'show_image'    => isset( $stored['show_image'] ) ? (bool) $stored['show_image'] : $defaults['show_image'],
 			'cause_heading' => isset( $stored['cause_heading'] ) && is_string( $stored['cause_heading'] )
 				? $stored['cause_heading']
 				: $defaults['cause_heading'],
-		];
+		);
 	}
 
 	/**
@@ -108,34 +108,46 @@ final class Config_Resolver {
 	 * intervals disabled (admin opts in via the meta box).
 	 */
 	public static function defaults(): array {
-		$preset_skeleton = [
+		$preset_skeleton = array(
 			'enabled'               => false,
-			'presets'               => [
-				[ 'amount' => 25.0, 'label' => '' ],
-				[ 'amount' => 50.0, 'label' => '' ],
-				[ 'amount' => 100.0, 'label' => '' ],
-			],
+			'presets'               => array(
+				array(
+					'amount' => 25.0,
+					'label' => '',
+				),
+				array(
+					'amount' => 50.0,
+					'label' => '',
+				),
+				array(
+					'amount' => 100.0,
+					'label' => '',
+				),
+			),
 			'min'                   => 5.0,
 			'max'                   => 10000.0,
 			'default_index'         => 1,
 			'cta_template'          => '',
 			'custom_amount_enabled' => true,
-		];
+		);
 
-		return [
+		return array(
 			self::INTERVAL_ONE_TIME => array_merge(
 				$preset_skeleton,
-				[ 'enabled' => true, 'cta_template' => __( 'Donate {amount}', 'dfwc-companion' ) ]
+				array(
+					'enabled' => true,
+					'cta_template' => __( 'Donate {amount}', 'dfwc-companion' ),
+				)
 			),
 			self::INTERVAL_MONTHLY  => array_merge(
 				$preset_skeleton,
-				[ 'cta_template' => __( 'Donate {amount}/month', 'dfwc-companion' ) ]
+				array( 'cta_template' => __( 'Donate {amount}/month', 'dfwc-companion' ) )
 			),
 			self::INTERVAL_ANNUAL   => array_merge(
 				$preset_skeleton,
-				[ 'cta_template' => __( 'Donate {amount}/year', 'dfwc-companion' ) ]
+				array( 'cta_template' => __( 'Donate {amount}/year', 'dfwc-companion' ) )
 			),
-		];
+		);
 	}
 
 	/**
@@ -144,12 +156,12 @@ final class Config_Resolver {
 	 */
 	private static function merge_with_defaults( array $stored ): array {
 		$defaults = self::defaults();
-		$merged   = [];
+		$merged   = array();
 
 		foreach ( self::intervals() as $key ) {
-			$block            = isset( $stored[ $key ] ) && is_array( $stored[ $key ] ) ? $stored[ $key ] : [];
+			$block            = isset( $stored[ $key ] ) && is_array( $stored[ $key ] ) ? $stored[ $key ] : array();
 			$default_block    = $defaults[ $key ];
-			$merged[ $key ]   = [
+			$merged[ $key ]   = array(
 				'enabled'               => isset( $block['enabled'] ) ? (bool) $block['enabled'] : $default_block['enabled'],
 				'presets'               => self::coerce_presets( $block['presets'] ?? $default_block['presets'] ),
 				'min'                   => isset( $block['min'] ) ? (float) $block['min'] : $default_block['min'],
@@ -159,7 +171,7 @@ final class Config_Resolver {
 					? $block['cta_template']
 					: $default_block['cta_template'],
 				'custom_amount_enabled' => isset( $block['custom_amount_enabled'] ) ? (bool) $block['custom_amount_enabled'] : $default_block['custom_amount_enabled'],
-			];
+			);
 
 			// Clamp default_index to the valid range so the UI always has a selectable default.
 			$preset_count                          = count( $merged[ $key ]['presets'] );
@@ -181,11 +193,14 @@ final class Config_Resolver {
 		// Inherit preset amounts from parent's pred-amount field if present.
 		$parent_presets = get_post_meta( $campaign_id, 'pred-amount', true );
 		if ( is_array( $parent_presets ) && ! empty( $parent_presets ) ) {
-			$normalized = [];
+			$normalized = array();
 			foreach ( array_slice( $parent_presets, 0, 6 ) as $amount ) {
 				$amount_f = (float) $amount;
 				if ( $amount_f > 0 ) {
-					$normalized[] = [ 'amount' => $amount_f, 'label' => '' ];
+					$normalized[] = array(
+						'amount' => $amount_f,
+						'label' => '',
+					);
 				}
 			}
 			if ( ! empty( $normalized ) ) {
@@ -212,13 +227,13 @@ final class Config_Resolver {
 
 		// Recurring inference: respect parent's wc-donation-recurring + period meta.
 		$recurring = (string) get_post_meta( $campaign_id, 'wc-donation-recurring', true );
-		if ( in_array( $recurring, [ 'user', 'enabled' ], true ) ) {
+		if ( in_array( $recurring, array( 'user', 'enabled' ), true ) ) {
 			$period = (string) get_post_meta( $campaign_id, '_subscription_period', true );
 			if ( 'month' === $period ) {
 				$config[ self::INTERVAL_MONTHLY ]['enabled'] = true;
 			} elseif ( 'year' === $period ) {
 				$config[ self::INTERVAL_ANNUAL ]['enabled'] = true;
-			} elseif ( in_array( $period, [ 'day', 'week' ], true ) ) {
+			} elseif ( in_array( $period, array( 'day', 'week' ), true ) ) {
 				// Sub-monthly cadences map conservatively to monthly.
 				$config[ self::INTERVAL_MONTHLY ]['enabled'] = true;
 			}
@@ -233,10 +248,10 @@ final class Config_Resolver {
 	 */
 	private static function coerce_presets( $raw ): array {
 		if ( ! is_array( $raw ) ) {
-			return [];
+			return array();
 		}
 
-		$out = [];
+		$out = array();
 		foreach ( $raw as $row ) {
 			if ( ! is_array( $row ) ) {
 				continue;
@@ -246,7 +261,10 @@ final class Config_Resolver {
 				continue;
 			}
 			$label = isset( $row['label'] ) && is_string( $row['label'] ) ? $row['label'] : '';
-			$out[] = [ 'amount' => $amount, 'label' => $label ];
+			$out[] = array(
+				'amount' => $amount,
+				'label' => $label,
+			);
 		}
 
 		return array_values( $out );

@@ -1,0 +1,105 @@
+<?xml version="1.0"?>
+<ruleset name="DFWC Companion">
+    <description>WordPress Coding Standards for Donations for WooCommerce Companion.</description>
+
+    <!-- Files to scan -->
+    <file>donations-for-woocommerce-companion.php</file>
+    <file>includes/</file>
+    <file>templates/</file>
+
+    <!-- Files to exclude -->
+    <exclude-pattern>tests/donation-for-woocommerce/*</exclude-pattern>
+    <exclude-pattern>tests/parent-contract.baseline.json</exclude-pattern>
+    <exclude-pattern>vendor/*</exclude-pattern>
+    <exclude-pattern>node_modules/*</exclude-pattern>
+    <exclude-pattern>dist/*</exclude-pattern>
+    <exclude-pattern>build/*</exclude-pattern>
+    <exclude-pattern>plans/*</exclude-pattern>
+    <exclude-pattern>docs/*</exclude-pattern>
+
+    <!-- Show progress + sniff codes -->
+    <arg value="psn"/>
+    <arg name="basepath" value="."/>
+    <arg name="parallel" value="8"/>
+    <arg name="extensions" value="php"/>
+    <arg name="colors"/>
+
+    <!-- Use WordPress-Extra ruleset, with selective exclusions -->
+    <rule ref="WordPress-Extra">
+        <!-- File comment requirement is excessive for small files; we use class-level docblocks -->
+        <exclude name="Squiz.Commenting.FileComment.Missing"/>
+        <!-- We don't include version tags on every method; @since on classes is enough -->
+        <exclude name="Squiz.Commenting.FunctionComment.Missing"/>
+        <!-- Class comment requirement enforced separately if needed -->
+        <exclude name="Squiz.Commenting.ClassComment.Missing"/>
+        <!-- Variable comment is excessive at WPCS-Extra level -->
+        <exclude name="Squiz.Commenting.VariableComment.Missing"/>
+        <!--
+            File-name sniffs disabled by deliberate deviation: this plugin uses
+            PSR-4-style Title_Case file names (Meta_Box.php, Config_Resolver.php)
+            paired with a namespaced hand-rolled autoloader, by design since
+            v0.1.0. WPCS's class-foo.php convention conflicts with PSR-4 and
+            would force a churn-heavy renaming with no security/correctness
+            benefit. Documented in phpcs.xml.dist + plans/v2/02-phase-1-ci-hardening.md.
+        -->
+        <exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+        <exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+    </rule>
+
+    <!-- Enforce text domain on all i18n calls -->
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value="dfwc-companion"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Enforce prefix on all globally registered things (functions, classes, hooks, options) -->
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+        <properties>
+            <property name="prefixes" type="array">
+                <element value="dfwc_companion"/>
+                <element value="dfwc_"/>
+                <element value="DFWC_COMPANION"/>
+                <element value="DFWC\Companion"/>
+            </property>
+        </properties>
+        <!-- Templates receive variables via include from a calling method's
+             local scope (Meta_Box::render_intervals), not via global scope.
+             WPCS flags these as "non-prefixed globals" because it can't see
+             the include-time scope. False positive in this directory. -->
+        <exclude-pattern>templates/*</exclude-pattern>
+    </rule>
+
+    <!-- PHP version compatibility (matches plugin's declared minimum) -->
+    <rule ref="PHPCompatibilityWP"/>
+    <config name="testVersion" value="7.4-"/>
+
+    <!-- Yoda conditions: enforce; helps catch accidental assignment -->
+    <rule ref="WordPress.PHP.YodaConditions">
+        <severity>5</severity>
+    </rule>
+
+    <!--
+        Line length: warning at 160, hard error at 350. The bump from WPCS's
+        default 200 accommodates two legitimate patterns:
+        1. Translatable __() strings — translators want single literals, not
+           concatenations broken at arbitrary points.
+        2. HTML sprintf format templates — multi-attribute element strings that
+           lose readability when broken (Renderer wrap_with_overlay,
+           Context_Augmenter emit_open).
+        Anything genuinely longer than 350 is a code smell worth refactoring.
+    -->
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="160"/>
+            <property name="absoluteLineLimit" value="350"/>
+        </properties>
+    </rule>
+
+    <!-- WPML filter calls: we use apply_filters( 'wpml_translate_single_string', ... )
+         which WPCS would otherwise flag as a "third-party hook call missing text domain
+         on its translatable string". We pass through original strings; WPML handles
+         translation internally. Annotated per-call where used. -->
+</ruleset>

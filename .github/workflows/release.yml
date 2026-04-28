@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, validate, and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "7.4"
+          tools: composer:v2
+          coverage: none
+
+      - name: Verify version consistency
+        run: node scripts/check-version-consistency.js ${{ github.ref_name }}
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Build distribution zip
+        run: npm run build:zip
+
+      - name: Extract zip for Plugin Check
+        run: |
+          cd dist
+          unzip -q donations-for-woocommerce-companion.zip
+          ls -la donations-for-woocommerce-companion/
+
+      - name: Run Plugin Check on release zip
+        uses: wordpress/plugin-check-action@v1
+        with:
+          build-dir: ./dist/donations-for-woocommerce-companion
+          exclude-directories: tests,docs,plans,.wolf,.claude
+
+      - name: Read release notes
+        id: notes
+        run: |
+          if [ -f .release-notes.md ]; then
+            {
+              echo 'body<<DFWC_EOF'
+              cat .release-notes.md
+              echo 'DFWC_EOF'
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "body=Release ${{ github.ref_name }}." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create or update GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.body }}
+          files: dist/donations-for-woocommerce-companion.zip
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}

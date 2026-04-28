@@ -11,9 +11,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Composer (if ever added)
+# Composer dev deps (Phase 1+ — runtime ships without vendor/)
 vendor/
 composer.lock
+.phpunit.result.cache
+.phpunit.cache/
+.phpcs.cache
+.phpstan.cache
 
 # Build output
 build/
