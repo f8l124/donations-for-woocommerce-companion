@@ -25,6 +25,7 @@ namespace DFWC\Companion\Frontend;
 defined( 'ABSPATH' ) || exit;
 
 use DFWC\Companion\Config\Config_Resolver;
+use DFWC\Companion\Config\Currency_Preset_Resolver;
 use DFWC\Companion\Config\Defaults;
 use DFWC\Companion\Engine_Detector;
 
@@ -52,9 +53,17 @@ final class Preview_Renderer {
 			? $enabled_intervals[0]
 			: Config_Resolver::INTERVAL_ONE_TIME;
 
+		// Phase 6 — preview honors the toolbar's currency selector. Empty /
+		// "auto" passes through to active_currency() (WCML / WC base). The
+		// preview pane lets admins eyeball what donors in each currency see.
+		$preview_currency = isset( $args['currency'] ) ? (string) $args['currency'] : '';
+		if ( '' === $preview_currency || 'auto' === $preview_currency ) {
+			$preview_currency = Currency_Preset_Resolver::active_currency();
+		}
+
 		// Build the same shape `Renderer::build_form_config` produces so the
 		// overlay JS doesn't know it's looking at preview vs production.
-		$form_config = $this->build_form_config( $config, $enabled_intervals );
+		$form_config = $this->build_form_config( $config, $enabled_intervals, $preview_currency );
 
 		$display = isset( $config['display'] ) && is_array( $config['display'] )
 			? $config['display']
@@ -174,15 +183,16 @@ final class Preview_Renderer {
 	 * @param array<int,string>   $enabled_intervals
 	 * @return array<string,array<string,mixed>>
 	 */
-	private function build_form_config( array $config, array $enabled_intervals ): array {
+	private function build_form_config( array $config, array $enabled_intervals, string $currency = '' ): array {
 		$out             = array();
 		$interval_labels = array(
 			Config_Resolver::INTERVAL_ONE_TIME => __( 'One-time', 'dfwc-companion' ),
 			Config_Resolver::INTERVAL_MONTHLY  => __( 'Monthly', 'dfwc-companion' ),
 			Config_Resolver::INTERVAL_ANNUAL   => __( 'Annually', 'dfwc-companion' ),
 		);
+		$resolved_currency = '' !== $currency ? $currency : Currency_Preset_Resolver::active_currency();
 		foreach ( $enabled_intervals as $key ) {
-			$block       = $config[ $key ];
+			$block       = Currency_Preset_Resolver::resolve( $config[ $key ], $resolved_currency );
 			$out[ $key ] = array(
 				'min'                        => (float) $block['min'],
 				'max'                        => (float) $block['max'],
@@ -194,6 +204,7 @@ final class Preview_Renderer {
 				'annual_equivalency'         => (string) ( $block['annual_equivalency'] ?? '' ),
 				'impact_display_mode'        => (string) ( $block['impact_display_mode'] ?? 'below_button' ),
 				'custom_amount_impact_label' => (string) ( $block['custom_amount_impact_label'] ?? '' ),
+				'currency'                   => (string) ( $block['_resolved_currency'] ?? $resolved_currency ),
 				'presets'                    => array_map(
 					static function ( $p ) {
 						return array(

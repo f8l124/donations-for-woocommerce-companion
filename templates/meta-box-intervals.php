@@ -27,10 +27,14 @@ defined( 'ABSPATH' ) || exit;
 
 use DFWC\Companion\Admin\Admin_Menu;
 use DFWC\Companion\Config\Config_Resolver;
+use DFWC\Companion\Config\Currency_Preset_Resolver;
 use DFWC\Companion\Engine_Detector;
 use DFWC\Companion\I18n\WPML_Strings;
 
 $engine_supports_recurring = Engine_Detector::ENGINE_NONE !== $engine;
+$dfwc_extra_currencies     = Currency_Preset_Resolver::extra_currencies();
+$dfwc_base_currency        = Currency_Preset_Resolver::base_currency();
+$dfwc_multi_currency       = ! empty( $dfwc_extra_currencies );
 
 // v0.7.0: template selector header. $current_tpl_id, $is_detached,
 // $all_templates come from Meta_Box::render_intervals().
@@ -350,6 +354,95 @@ $current_tpl    = '' !== $current_tpl_id && isset( $all_templates[ $current_tpl_
 					<?php esc_html_e( 'The custom-amount impact label appears alongside the donor\'s free-form amount — useful when per-preset impact labels don\'t apply to arbitrary amounts.', 'dfwc-companion' ); ?>
 				</p>
 			</fieldset>
+
+			<?php if ( $dfwc_multi_currency ) : ?>
+				<fieldset class="dfwc-mb__fieldset dfwc-mb__currencies" <?php disabled( $tab_disabled ); ?>>
+					<legend><?php esc_html_e( 'Per-currency preset amounts', 'dfwc-companion' ); ?></legend>
+					<p class="description">
+						<?php
+						printf(
+							/* translators: %s: base currency code */
+							esc_html__( 'Base currency is %s — base presets above. Define per-currency amounts here so donors in other currencies see psychologically rounded numbers (e.g., £20 instead of an auto-converted £19.78). Empty rows fall back to the base amount.', 'dfwc-companion' ),
+							'<code>' . esc_html( $dfwc_base_currency ) . '</code>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- inner already escaped
+						);
+						?>
+					</p>
+					<?php
+					$dfwc_currency_overrides = isset( $block['currency_overrides'] ) && is_array( $block['currency_overrides'] )
+						? $block['currency_overrides']
+						: array();
+					foreach ( $dfwc_extra_currencies as $dfwc_currency_code ) :
+						$dfwc_override_block = isset( $dfwc_currency_overrides[ $dfwc_currency_code ] ) && is_array( $dfwc_currency_overrides[ $dfwc_currency_code ] )
+							? $dfwc_currency_overrides[ $dfwc_currency_code ]
+							: array();
+						$dfwc_override_presets = isset( $dfwc_override_block['presets'] ) && is_array( $dfwc_override_block['presets'] )
+							? $dfwc_override_block['presets']
+							: array();
+						$dfwc_has_override = ! empty( $dfwc_override_block );
+						?>
+						<details class="dfwc-mb__currency" <?php echo $dfwc_has_override ? 'open' : ''; ?>>
+							<summary><?php echo esc_html( Currency_Preset_Resolver::currency_label( $dfwc_currency_code ) ); ?></summary>
+							<table class="dfwc-mb__currency-presets widefat">
+								<thead>
+									<tr>
+										<th class="dfwc-mb__col-baseref"><?php esc_html_e( 'Base amount', 'dfwc-companion' ); ?></th>
+										<th class="dfwc-mb__col-baseref"><?php esc_html_e( 'Base label', 'dfwc-companion' ); ?></th>
+										<th class="dfwc-mb__col-amount"><?php echo esc_html( $dfwc_currency_code ); ?> <?php esc_html_e( 'amount', 'dfwc-companion' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php
+									foreach ( $block['presets'] as $idx => $preset ) :
+										$dfwc_existing = isset( $dfwc_override_presets[ $idx ] ) && is_array( $dfwc_override_presets[ $idx ] ) && isset( $dfwc_override_presets[ $idx ]['amount'] )
+											? (string) $dfwc_override_presets[ $idx ]['amount']
+											: '';
+										?>
+										<tr>
+											<td class="dfwc-mb__col-baseref"><code><?php echo esc_html( (string) $preset['amount'] ); ?></code></td>
+											<td class="dfwc-mb__col-baseref"><?php echo esc_html( (string) ( $preset['label'] ?? '' ) ); ?></td>
+											<td class="dfwc-mb__col-amount">
+												<input
+													type="number"
+													name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][currency_overrides][<?php echo esc_attr( $dfwc_currency_code ); ?>][presets][<?php echo (int) $idx; ?>][amount]"
+													value="<?php echo esc_attr( $dfwc_existing ); ?>"
+													step="0.01"
+													min="0"
+													placeholder="<?php esc_attr_e( '— uses base —', 'dfwc-companion' ); ?>"
+												>
+											</td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+							<p>
+								<label>
+									<?php esc_html_e( 'Minimum (optional)', 'dfwc-companion' ); ?>
+									<input
+										type="number"
+										name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][currency_overrides][<?php echo esc_attr( $dfwc_currency_code ); ?>][min]"
+										value="<?php echo esc_attr( isset( $dfwc_override_block['min'] ) ? (string) $dfwc_override_block['min'] : '' ); ?>"
+										step="0.01"
+										min="0"
+										placeholder="<?php esc_attr_e( '— uses base —', 'dfwc-companion' ); ?>"
+									>
+								</label>
+								&nbsp;
+								<label>
+									<?php esc_html_e( 'Maximum (optional)', 'dfwc-companion' ); ?>
+									<input
+										type="number"
+										name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][currency_overrides][<?php echo esc_attr( $dfwc_currency_code ); ?>][max]"
+										value="<?php echo esc_attr( isset( $dfwc_override_block['max'] ) ? (string) $dfwc_override_block['max'] : '' ); ?>"
+										step="0.01"
+										min="0"
+										placeholder="<?php esc_attr_e( '— uses base —', 'dfwc-companion' ); ?>"
+									>
+								</label>
+							</p>
+						</details>
+					<?php endforeach; ?>
+				</fieldset>
+			<?php endif; ?>
 
 			<fieldset class="dfwc-mb__fieldset" <?php disabled( $tab_disabled ); ?>>
 				<legend><?php esc_html_e( 'Advanced impact messaging', 'dfwc-companion' ); ?></legend>

@@ -30,6 +30,7 @@ namespace DFWC\Companion\Validation;
 defined( 'ABSPATH' ) || exit;
 
 use DFWC\Companion\Config\Config_Resolver;
+use DFWC\Companion\Config\Currency_Preset_Resolver;
 use DFWC\Companion\Config\Defaults;
 
 final class Template_Validator {
@@ -103,6 +104,11 @@ final class Template_Validator {
 			$impact_mode = 'below_button';
 		}
 
+		$currency_overrides = Currency_Preset_Resolver::sanitize_currency_overrides(
+			$raw['currency_overrides'] ?? null,
+			count( $presets )
+		);
+
 		return array(
 			'enabled'                    => $enabled,
 			'presets'                    => $presets,
@@ -115,6 +121,7 @@ final class Template_Validator {
 			'annual_equivalency'         => $annual_equivalency,
 			'impact_display_mode'        => $impact_mode,
 			'custom_amount_impact_label' => $custom_amount_impact_label,
+			'currency_overrides'         => $currency_overrides,
 		);
 	}
 

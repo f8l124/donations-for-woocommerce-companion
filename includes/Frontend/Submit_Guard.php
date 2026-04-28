@@ -21,6 +21,7 @@ namespace DFWC\Companion\Frontend;
 defined( 'ABSPATH' ) || exit;
 
 use DFWC\Companion\Config\Config_Resolver;
+use DFWC\Companion\Config\Currency_Preset_Resolver;
 
 final class Submit_Guard {
 
@@ -82,6 +83,12 @@ final class Submit_Guard {
 				__( 'This donation interval is not available for this campaign.', 'dfwc-companion' )
 			);
 		}
+
+		// Phase 6 — overlay per-currency min/max so donors in non-base
+		// currencies aren't rejected against base-currency thresholds. The
+		// resolver no-ops when active currency matches base or no override
+		// exists for that currency.
+		$block = Currency_Preset_Resolver::resolve( $block );
 
 		$min = (float) ( $block['min'] ?? 0 );
 		$max = (float) ( $block['max'] ?? PHP_INT_MAX );

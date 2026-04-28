@@ -112,6 +112,13 @@ final class Defaults {
 			// admin can use it for "Every gift makes a difference" or
 			// "Each $1 provides one meal" style messaging.
 			'custom_amount_impact_label' => '',
+			// Phase 6 — per-currency overrides. Sparse map keyed by ISO code.
+			// Empty by default; populated when admin defines per-currency
+			// preset amounts (e.g., 'GBP' => ['presets' => [...], 'min' => x]).
+			// Override blocks only carry fields that differ from the base
+			// block; missing fields fall through at render time via
+			// Currency_Preset_Resolver::resolve().
+			'currency_overrides'         => array(),
 		);
 	}
 

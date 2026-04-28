@@ -249,6 +249,65 @@
 	font-style: italic;
 }
 
+/* ---------- Phase 6 — per-currency overrides ---------- */
+
+.dfwc-mb__currencies legend,
+.dfwc-tpl-currency {
+	font-weight: 600;
+}
+
+.dfwc-mb__currency,
+.dfwc-tpl-currency {
+	margin: 8px 0;
+	padding: 8px 12px;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 3px;
+}
+
+.dfwc-mb__currency > summary,
+.dfwc-tpl-currency > summary {
+	cursor: pointer;
+	font-weight: 600;
+	padding: 4px 0;
+	user-select: none;
+}
+
+.dfwc-mb__currency[open],
+.dfwc-tpl-currency[open] {
+	background: #fff;
+}
+
+.dfwc-mb__currency-presets,
+.dfwc-tpl-currency__presets {
+	margin: 8px 0;
+	background: #fff;
+}
+
+.dfwc-mb__currency-presets th,
+.dfwc-mb__currency-presets td,
+.dfwc-tpl-currency__presets th,
+.dfwc-tpl-currency__presets td {
+	padding: 6px 10px;
+	font-size: 13px;
+}
+
+.dfwc-mb__col-baseref {
+	color: #646970;
+	font-weight: 400;
+}
+
+.dfwc-mb__col-baseref code {
+	background: #f0f0f1;
+	padding: 2px 6px;
+	border-radius: 3px;
+}
+
+.dfwc-mb__currency-presets input[type="number"],
+.dfwc-tpl-currency__presets input[type="number"] {
+	width: 110px;
+}
+
 /* ---------- Responsive ---------- */
 
 @media ( max-width: 600px ) {
@@ -256,4 +315,6 @@
 	.dfwc-mb__col-default,
 	.dfwc-mb__col-remove { width: 60px; }
 	.dfwc-mb__tab { padding: 6px 10px; font-size: 13px; }
+	.dfwc-mb__currency-presets input[type="number"],
+	.dfwc-tpl-currency__presets input[type="number"] { width: 80px; }
 }

@@ -19,6 +19,7 @@ namespace DFWC\Companion\Frontend;
 defined( 'ABSPATH' ) || exit;
 
 use DFWC\Companion\Config\Config_Resolver;
+use DFWC\Companion\Config\Currency_Preset_Resolver;
 use DFWC\Companion\Engine_Detector;
 
 final class Renderer {
@@ -202,8 +203,11 @@ final class Renderer {
 	private static function build_form_config( array $config, array $enabled_intervals ): array {
 		$out             = array();
 		$interval_labels = self::interval_labels();
+		// Phase 6 — overlay block by donor's active currency. WCML primary;
+		// WC base fallback. No-op when active currency matches base.
+		$active_currency = Currency_Preset_Resolver::active_currency();
 		foreach ( $enabled_intervals as $key ) {
-			$block       = $config[ $key ];
+			$block       = Currency_Preset_Resolver::resolve( $config[ $key ], $active_currency );
 			$out[ $key ] = array(
 				'min'                        => (float) $block['min'],
 				'max'                        => (float) $block['max'],
@@ -216,6 +220,10 @@ final class Renderer {
 				'annual_equivalency'         => (string) ( $block['annual_equivalency'] ?? '' ),
 				'impact_display_mode'        => (string) ( $block['impact_display_mode'] ?? 'below_button' ),
 				'custom_amount_impact_label' => (string) ( $block['custom_amount_impact_label'] ?? '' ),
+				// Phase 6 — currency context the overlay JS / Submit_Guard uses
+				// when validating donor amounts and when re-fetching on
+				// runtime currency switch.
+				'currency'                   => (string) ( $block['_resolved_currency'] ?? $active_currency ),
 				'presets'                    => array_map(
 					static function ( $p ) {
 						return array(

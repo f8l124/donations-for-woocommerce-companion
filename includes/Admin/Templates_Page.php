@@ -21,6 +21,7 @@ namespace DFWC\Companion\Admin;
 defined( 'ABSPATH' ) || exit;
 
 use DFWC\Companion\Config\Config_Resolver;
+use DFWC\Companion\Config\Currency_Preset_Resolver;
 use DFWC\Companion\Config\Defaults;
 use DFWC\Companion\Config\Template_Config;
 use DFWC\Companion\Config\Template_Repository;
@@ -279,6 +280,11 @@ final class Templates_Page {
 			$impact_mode = 'below_button';
 		}
 
+		$currency_overrides = Currency_Preset_Resolver::sanitize_currency_overrides(
+			$raw['currency_overrides'] ?? null,
+			count( $presets )
+		);
+
 		return array(
 			'enabled'                    => $enabled,
 			'presets'                    => $presets,
@@ -291,6 +297,7 @@ final class Templates_Page {
 			'annual_equivalency'         => $annual_equivalency,
 			'impact_display_mode'        => $impact_mode,
 			'custom_amount_impact_label' => $custom_amount_impact_label,
+			'currency_overrides'         => $currency_overrides,
 		);
 	}
 

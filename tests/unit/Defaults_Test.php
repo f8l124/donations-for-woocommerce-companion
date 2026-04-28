@@ -91,4 +91,11 @@ final class Defaults_Test extends TestCase {
 	public function test_intervals_returns_canonical_list(): void {
 		$this->assertSame( array( 'one_time', 'monthly', 'annual' ), Defaults::intervals() );
 	}
+
+	public function test_interval_block_includes_currency_overrides_empty_default(): void {
+		$b = Defaults::interval_block();
+
+		$this->assertArrayHasKey( 'currency_overrides', $b );
+		$this->assertSame( array(), $b['currency_overrides'] );
+	}
 }
