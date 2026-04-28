@@ -25,12 +25,79 @@
 
 defined( 'ABSPATH' ) || exit;
 
-use DFWC\Companion\Config_Resolver;
+use DFWC\Companion\Admin\Admin_Menu;
+use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Engine_Detector;
+use DFWC\Companion\I18n\WPML_Strings;
 
 $engine_supports_recurring = Engine_Detector::ENGINE_NONE !== $engine;
+
+// v0.7.0: template selector header. $current_tpl_id, $is_detached,
+// $all_templates come from Meta_Box::render_intervals().
+$has_templates  = ! empty( $all_templates );
+$current_tpl    = '' !== $current_tpl_id && isset( $all_templates[ $current_tpl_id ] )
+	? $all_templates[ $current_tpl_id ]
+	: null;
 ?>
 <div class="dfwc-mb" data-dfwc-meta-box>
+
+	<?php if ( $has_templates ) : ?>
+		<div class="dfwc-mb__template-header">
+			<label for="dfwc-template-id" class="dfwc-mb__template-label">
+				<?php esc_html_e( 'Template:', 'dfwc-companion' ); ?>
+			</label>
+			<select id="dfwc-template-id" name="dfwc_template_id">
+				<option value="" <?php selected( '', $current_tpl_id ); ?>>
+					<?php esc_html_e( '— No template —', 'dfwc-companion' ); ?>
+				</option>
+				<?php foreach ( $all_templates as $tpl_option ) : ?>
+					<option value="<?php echo esc_attr( $tpl_option->id ); ?>" <?php selected( $tpl_option->id, $current_tpl_id ); ?>>
+						<?php echo esc_html( WPML_Strings::translate( $tpl_option->name, $tpl_option->id . '.name' ) ); ?>
+					</option>
+				<?php endforeach; ?>
+			</select>
+
+			<input type="hidden" id="dfwc-template-action" name="dfwc_template_action" value="">
+
+			<button type="submit" class="button" data-dfwc-tpl-action="apply">
+				<?php esc_html_e( 'Apply', 'dfwc-companion' ); ?>
+			</button>
+			<?php if ( null !== $current_tpl && ! $is_detached ) : ?>
+				<button type="submit" class="button" data-dfwc-tpl-action="detach" title="<?php esc_attr_e( 'Snapshot resolved values into campaign overrides; future template changes will not affect this campaign.', 'dfwc-companion' ); ?>">
+					<?php esc_html_e( 'Detach', 'dfwc-companion' ); ?>
+				</button>
+				<button type="submit" class="button button-link-delete" data-dfwc-tpl-action="reset" title="<?php esc_attr_e( 'Clear all campaign overrides and inherit cleanly from the template.', 'dfwc-companion' ); ?>">
+					<?php esc_html_e( 'Reset to template', 'dfwc-companion' ); ?>
+				</button>
+			<?php endif; ?>
+
+			<?php if ( null !== $current_tpl ) : ?>
+				<p class="description">
+					<?php
+					if ( $is_detached ) {
+						esc_html_e( 'This campaign is detached. Future changes to the template will not affect it.', 'dfwc-companion' );
+					} else {
+						printf(
+							/* translators: %s: template name */
+							esc_html__( 'Inheriting from "%s". Changes you make below become campaign overrides.', 'dfwc-companion' ),
+							'<strong>' . esc_html( WPML_Strings::translate( $current_tpl->name, $current_tpl->id . '.name' ) ) . '</strong>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- inner already escaped
+						);
+					}
+					?>
+				</p>
+			<?php endif; ?>
+		</div>
+	<?php else : ?>
+		<p class="description dfwc-mb__no-templates-hint">
+			<?php
+			printf(
+				/* translators: %s: link to the Templates page */
+				esc_html__( 'Tip: %s to apply the same configuration to many campaigns at once.', 'dfwc-companion' ),
+				'<a href="' . esc_url( admin_url( 'admin.php?page=' . Admin_Menu::TEMPLATES_SLUG . '&action=new' ) ) . '">' . esc_html__( 'create a template', 'dfwc-companion' ) . '</a>' // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- composed of already-escaped fragments
+			);
+			?>
+		</p>
+	<?php endif; ?>
 	<?php if ( ! $engine_supports_recurring ) : ?>
 		<div class="notice notice-warning inline dfwc-mb__notice">
 			<p>

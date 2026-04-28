@@ -20,7 +20,7 @@ namespace DFWC\Companion\Frontend;
 
 defined( 'ABSPATH' ) || exit;
 
-use DFWC\Companion\Config_Resolver;
+use DFWC\Companion\Config\Config_Resolver;
 
 final class Submit_Guard {
 

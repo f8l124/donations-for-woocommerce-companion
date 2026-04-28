@@ -5,9 +5,6 @@
     See plans/v2/AA-wpml-integration.md for the full integration spec.
 
     This file is read by WPML on plugin activation and on WPML's cache rebuilds.
-    It is the single declarative source of truth for "what content surface
-    does this plugin have, and how should WPML handle each piece."
-
     The companion does NOT register the wc-donation post type — the parent
     plugin owns it. WPML's WooCommerce Multilingual already handles
     wc-donation translation natively.
@@ -17,23 +14,48 @@
     <!-- action="copy" means: WPML copies the value verbatim from source to -->
     <!-- translation. Our config blobs (intervals, presets, amounts) are -->
     <!-- structurally identical across translations; the strings INSIDE the -->
-    <!-- blobs are translated separately via WPML String Translation. -->
+    <!-- blobs are translated separately via WPML String Translation under -->
+    <!-- the "Donations Companion" domain. -->
     <custom-fields>
-        <!-- v0.6.x meta keys -->
+        <!-- v0.6.x meta keys (legacy; resolver still reads as fallback). -->
         <custom-field action="copy">_dfwc_companion_intervals</custom-field>
         <custom-field action="copy">_dfwc_companion_display</custom-field>
+
+        <!-- v0.7.0 meta keys — Phase 3 layered config model. -->
+        <custom-field action="copy">_dfwc_companion_template_id</custom-field>
+        <custom-field action="copy">_dfwc_companion_overrides</custom-field>
+        <custom-field action="copy">_dfwc_companion_detached</custom-field>
     </custom-fields>
 
     <!-- Admin texts: option-stored strings that should appear in WPML's -->
     <!-- String Translation UI for translators to handle. The dotted nesting -->
     <!-- mirrors the option's array structure. -->
     <admin-texts>
-        <!-- Reserved for v0.7.0+ global settings; populated as Phase 3 ships. -->
+        <key name="dfwc_companion_global_settings">
+            <key name="display">
+                <key name="cause_heading"/>
+            </key>
+            <key name="one_time">
+                <key name="cta_template"/>
+                <key name="subtitle"/>
+                <key name="annual_equivalency"/>
+            </key>
+            <key name="monthly">
+                <key name="cta_template"/>
+                <key name="subtitle"/>
+                <key name="annual_equivalency"/>
+            </key>
+            <key name="annual">
+                <key name="cta_template"/>
+                <key name="subtitle"/>
+                <key name="annual_equivalency"/>
+            </key>
+        </key>
     </admin-texts>
 
     <!-- Custom taxonomies (Phase 4 — v0.8.0). -->
     <!-- translate="1" means each taxonomy term is itself translatable. -->
-    <!-- Reserved for Phase 4; entries added when taxonomies are registered. -->
+    <!-- Reserved for Phase 4; entries will be uncommented when taxonomies register. -->
     <taxonomies>
         <!-- <taxonomy translate="1">dfwc_cause</taxonomy> -->
         <!-- <taxonomy translate="1">dfwc_region</taxonomy> -->

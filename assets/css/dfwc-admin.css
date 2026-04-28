@@ -166,6 +166,51 @@
 	background: #fff5f5;
 }
 
+/* ---------- Templates header on meta box (Phase 3) ---------- */
+
+.dfwc-mb__template-header {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 12px 16px;
+	margin: 0 0 16px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.dfwc-mb__template-header .description {
+	flex-basis: 100%;
+	margin: 6px 0 0;
+}
+
+.dfwc-mb__template-label {
+	font-weight: 600;
+}
+
+.dfwc-mb__no-templates-hint {
+	margin: 0 0 12px;
+	color: #646970;
+}
+
+/* ---------- Templates list + edit (Phase 3) ---------- */
+
+.dfwc-tpl-section-h {
+	margin-top: 24px;
+	padding-top: 16px;
+	border-top: 1px solid #dcdcde;
+}
+
+.dfwc-tpl-presets {
+	margin: 8px 0;
+}
+
+.dfwc-tpl-presets th,
+.dfwc-tpl-presets td {
+	padding: 8px;
+}
+
 /* ---------- Diagnostics page (Phase 2) ---------- */
 
 .dfwc-diagnostics__overall {

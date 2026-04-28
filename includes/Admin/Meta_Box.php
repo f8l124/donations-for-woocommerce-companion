@@ -17,8 +17,11 @@ namespace DFWC\Companion\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
-use DFWC\Companion\Config_Resolver;
+use DFWC\Companion\Config\Campaign_Config_Repository;
+use DFWC\Companion\Config\Config_Resolver;
+use DFWC\Companion\Config\Template_Repository;
 use DFWC\Companion\Engine_Detector;
+use DFWC\Companion\I18n\WPML_Strings;
 
 final class Meta_Box {
 
@@ -67,6 +70,13 @@ final class Meta_Box {
 		$intervals      = Config_Resolver::intervals();
 		$interval_label = self::interval_labels();
 
+		// v0.7.0: template selector data for the meta-box header.
+		$campaign_repo  = new Campaign_Config_Repository();
+		$template_repo  = new Template_Repository();
+		$current_tpl_id = $campaign_repo->get_template_id( $post->ID );
+		$is_detached    = $campaign_repo->is_detached( $post->ID );
+		$all_templates  = $template_repo->all();
+
 		wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD );
 
 		include DFWC_COMPANION_PATH . 'templates/meta-box-intervals.php';
@@ -109,22 +119,30 @@ final class Meta_Box {
 
 		self::$saved_in_request[ $post_id ] = true;
 
-		$raw = isset( $_POST['dfwc_intervals'] ) && is_array( $_POST['dfwc_intervals'] )
+		// v0.7.0: handle template selector first. Admin may have applied,
+		// detached, reset, or simply re-saved the existing template choice.
+		$campaign_repo = new Campaign_Config_Repository();
+		$this->handle_template_actions( $post_id, $campaign_repo );
+
+		// Migrate legacy v0.6.x meta to overrides on first v0.7.0 save.
+		// Idempotent — no-op when overrides already populated.
+		$campaign_repo->migrate_legacy_to_overrides_if_needed( $post_id );
+
+		// Sanitize the form-submitted intervals + display.
+		$raw_intervals = isset( $_POST['dfwc_intervals'] ) && is_array( $_POST['dfwc_intervals'] )
 			? wp_unslash( $_POST['dfwc_intervals'] )
 			: array();
 
-		$config = array();
+		$submitted_config = array();
 		foreach ( Config_Resolver::intervals() as $key ) {
-			$config[ $key ] = $this->sanitize_interval_block(
-				is_array( $raw[ $key ] ?? null ) ? $raw[ $key ] : array()
+			$submitted_config[ $key ] = $this->sanitize_interval_block(
+				is_array( $raw_intervals[ $key ] ?? null ) ? $raw_intervals[ $key ] : array()
 			);
 		}
 
-		// Reject a config where a recurring tab is enabled with no usable presets
-		// AND a min that's so high it can't yield a custom amount either —
-		// almost always misconfiguration. Surface as admin notice; do NOT save.
+		// Reject misconfigured recurring tabs (enabled with no presets and high min).
 		foreach ( array( Config_Resolver::INTERVAL_MONTHLY, Config_Resolver::INTERVAL_ANNUAL ) as $rk ) {
-			if ( $config[ $rk ]['enabled'] && empty( $config[ $rk ]['presets'] ) && $config[ $rk ]['min'] > 1000 ) {
+			if ( $submitted_config[ $rk ]['enabled'] && empty( $submitted_config[ $rk ]['presets'] ) && $submitted_config[ $rk ]['min'] > 1000 ) {
 				add_settings_error(
 					'dfwc_companion',
 					'dfwc_invalid_recurring',
@@ -139,19 +157,31 @@ final class Meta_Box {
 			}
 		}
 
-		update_post_meta( $post_id, Config_Resolver::META_KEY_INTERVALS, $config );
+		// Display sub-tree.
+		$display_raw = isset( $_POST['dfwc_display'] ) && is_array( $_POST['dfwc_display'] )
+			? wp_unslash( $_POST['dfwc_display'] )
+			: array();
+		$submitted_config['display'] = $this->sanitize_display( $display_raw );
+
+		// v0.7.0 layered model: compute the override delta against the campaign's
+		// baseline (defaults → global → template, no campaign overrides). Only
+		// fields that differ from baseline land in the overrides meta — keeps
+		// inheritance honest so future template/global changes propagate.
+		$baseline = $campaign_repo->compute_baseline( $post_id );
+		$delta    = $campaign_repo->compute_override_delta( $baseline, $submitted_config );
+		$campaign_repo->set_overrides( $post_id, $delta );
+
+		// Resolve fresh — this is the config the rest of the save logic operates on.
+		$resolved = Config_Resolver::resolve( $post_id );
 
 		// D1: parent only processes recurring POST data when wc-donation-recurring='user'.
-		// Force it whenever monthly or annual is on; otherwise leave parent's value alone.
-		$recurring_enabled = $config[ Config_Resolver::INTERVAL_MONTHLY ]['enabled']
-			|| $config[ Config_Resolver::INTERVAL_ANNUAL ]['enabled'];
+		$recurring_enabled = ! empty( $resolved[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] )
+			|| ! empty( $resolved[ Config_Resolver::INTERVAL_ANNUAL ]['enabled'] );
 
 		if ( $recurring_enabled ) {
 			update_post_meta( $post_id, 'wc-donation-recurring', 'user' );
 
-			// Also seed the parent's subscription-period defaults so its renewal/end-date
-			// helpers (WcdonationSubscription) compute the right cadence at cart time.
-			$primary_interval = $config[ Config_Resolver::INTERVAL_MONTHLY ]['enabled']
+			$primary_interval = ! empty( $resolved[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] )
 				? Config_Resolver::INTERVAL_MONTHLY
 				: Config_Resolver::INTERVAL_ANNUAL;
 			$primary_period   = Config_Resolver::INTERVAL_MONTHLY === $primary_interval ? 'month' : 'year';
@@ -160,33 +190,104 @@ final class Meta_Box {
 			update_post_meta( $post_id, '_subscription_period_interval', '1' );
 			update_post_meta( $post_id, '_subscription_length', '0' );
 
-			// 0.6.1: also auto-configure the linked WC product as a subscription
-			// product. Without this, subscription engines (WPS SFW / WCS) treat
-			// the product as one-time and the donation never enrolls as a
-			// subscription, even though our POST data + the campaign's
-			// wc-donation-recurring='user' meta tell parent to process it as
-			// recurring. The recurring controls that v0.2.0 hid in the parent's
-			// "Recurring Donations" tab were the admin's previous path to
-			// configure this; now the companion does it automatically.
 			$this->auto_configure_product_subscription( $post_id, $primary_period );
 		}
 
-		// 0.3.0: form-mode meta is no longer collected from the form. The
-		// _dfwc_companion_form_mode key remains in the DB on legacy campaigns
-		// but is now unused. We do not delete it (preserves user state in case
-		// a future minor reintroduces the opt-out as something more granular).
+		// Register translatable strings with WPML for this campaign's overrides.
+		// No-op when WPML inactive or delta is empty.
+		if ( WPML_Strings::wpml_active() && ! empty( $delta ) ) {
+			$this->register_campaign_strings_with_wpml( $post_id, $delta );
+		}
+	}
 
-		// 0.6.0: display options. Save the show_title/show_image/cause_heading
-		// triplet under a separate meta key so it's clearly distinct from the
-		// per-interval config and easy for power users to override via filter.
-		$display_raw = isset( $_POST['dfwc_display'] ) && is_array( $_POST['dfwc_display'] )
-			? wp_unslash( $_POST['dfwc_display'] )
-			: array();
-		update_post_meta(
-			$post_id,
-			Config_Resolver::META_KEY_DISPLAY,
-			$this->sanitize_display( $display_raw )
-		);
+	/**
+	 * Handle template-related actions on the meta-box save: applying a new
+	 * template, detaching, or resetting. Action comes from a hidden field
+	 * `dfwc_template_action` populated by the meta-box JS.
+	 */
+	private function handle_template_actions( int $post_id, Campaign_Config_Repository $repo ): void {
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce already verified by parent save method
+		$selected_id = isset( $_POST['dfwc_template_id'] )
+			? sanitize_key( (string) wp_unslash( $_POST['dfwc_template_id'] ) )
+			: null;
+		$action      = isset( $_POST['dfwc_template_action'] )
+			? sanitize_key( (string) wp_unslash( $_POST['dfwc_template_action'] ) )
+			: '';
+		// phpcs:enable
+
+		switch ( $action ) {
+			case 'apply':
+				if ( null !== $selected_id ) {
+					if ( '' === $selected_id ) {
+						$repo->set_template_id( $post_id, '' );
+						$repo->set_overrides( $post_id, array() );
+					} else {
+						$repo->apply_template( $post_id, $selected_id );
+					}
+				}
+				return;
+			case 'detach':
+				$repo->detach_from_template( $post_id );
+				return;
+			case 'reset':
+				$repo->reset_to_template( $post_id );
+				return;
+			default:
+				// No template action — keep existing assignment. Still allow the
+				// admin to change selection without applying (selector value
+				// drives `set_template_id` only on explicit apply).
+				if ( null !== $selected_id && '' === $selected_id ) {
+					// Empty value with no action = clear template if it was set.
+					$current = $repo->get_template_id( $post_id );
+					if ( '' !== $current ) {
+						$repo->set_template_id( $post_id, '' );
+					}
+				}
+		}
+	}
+
+	/**
+	 * Register a campaign's override strings with WPML String Translation
+	 * under the `_campaign:<id>` namespace. Mirrors Template_Repository's
+	 * registration pattern.
+	 *
+	 * @param array<string,mixed> $delta
+	 */
+	private function register_campaign_strings_with_wpml( int $campaign_id, array $delta ): void {
+		$namespace = '_campaign:' . $campaign_id;
+		foreach ( Config_Resolver::intervals() as $interval ) {
+			$block = $delta[ $interval ] ?? null;
+			if ( ! is_array( $block ) ) {
+				continue;
+			}
+			foreach ( array( 'cta_template', 'subtitle', 'annual_equivalency' ) as $field ) {
+				if ( ! empty( $block[ $field ] ) ) {
+					WPML_Strings::register(
+						$namespace . '.' . $interval . '.' . $field,
+						(string) $block[ $field ]
+					);
+				}
+			}
+			foreach ( (array) ( $block['presets'] ?? array() ) as $idx => $preset ) {
+				if ( ! is_array( $preset ) ) {
+					continue;
+				}
+				foreach ( array( 'label', 'impact_label' ) as $preset_field ) {
+					if ( ! empty( $preset[ $preset_field ] ) ) {
+						WPML_Strings::register(
+							$namespace . '.' . $interval . '.presets.' . (int) $idx . '.' . $preset_field,
+							(string) $preset[ $preset_field ]
+						);
+					}
+				}
+			}
+		}
+		if ( ! empty( $delta['display']['cause_heading'] ) ) {
+			WPML_Strings::register(
+				$namespace . '.display.cause_heading',
+				(string) $delta['display']['cause_heading']
+			);
+		}
 	}
 
 	/**

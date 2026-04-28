@@ -22,7 +22,28 @@
 
 		initTabs( root );
 		initRepeaters( root );
+		initTemplateActions( root );
 	} );
+
+	/**
+	 * Phase 3: when the admin clicks Apply/Detach/Reset in the template
+	 * header, set the hidden `dfwc_template_action` field BEFORE the form
+	 * submits so the server-side save handler routes correctly. Without
+	 * this, the button's default-submit behavior would land in
+	 * Meta_Box::save() with no action set, resulting in a no-op.
+	 */
+	function initTemplateActions( root ) {
+		var actionInput = root.querySelector( '#dfwc-template-action' );
+		if ( ! actionInput ) { return; }
+
+		var buttons = root.querySelectorAll( '[data-dfwc-tpl-action]' );
+		buttons.forEach( function ( btn ) {
+			btn.addEventListener( 'click', function () {
+				actionInput.value = btn.getAttribute( 'data-dfwc-tpl-action' ) || '';
+				// Native form submit follows because the button has no preventDefault.
+			} );
+		} );
+	}
 
 	function initTabs( root ) {
 		var tabs = root.querySelectorAll( '[data-dfwc-tab]' );

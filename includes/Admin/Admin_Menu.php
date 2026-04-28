@@ -20,8 +20,10 @@ defined( 'ABSPATH' ) || exit;
 
 final class Admin_Menu {
 
-	public const PARENT_SLUG     = 'dfwc-companion';
-	public const CAPABILITY      = 'manage_woocommerce';
+	public const PARENT_SLUG      = 'dfwc-companion';
+	public const CAPABILITY       = 'manage_woocommerce';
+	public const SETTINGS_SLUG    = 'dfwc-companion';
+	public const TEMPLATES_SLUG   = 'dfwc-companion-templates';
 	public const DIAGNOSTICS_SLUG = 'dfwc-companion-diagnostics';
 
 	public function __construct() {
@@ -29,14 +31,37 @@ final class Admin_Menu {
 	}
 
 	public function register(): void {
-		// Parent submenu under WooCommerce. Title shows up in left nav.
+		// Parent submenu under WooCommerce. The page-slug here matches
+		// SETTINGS_SLUG so clicking the parent menu item lands on Settings.
 		add_submenu_page(
 			'woocommerce',
 			__( 'Donations Companion', 'dfwc-companion' ),
 			__( 'Donations Companion', 'dfwc-companion' ),
 			self::CAPABILITY,
+			self::SETTINGS_SLUG,
+			array( Settings_Page::class, 'render' )
+		);
+
+		// Settings explicit submenu — title differs from the parent group label.
+		// WP automatically adds a submenu mirroring the parent slug; we override
+		// its label to "Settings" by re-registering with the same slug.
+		add_submenu_page(
 			self::PARENT_SLUG,
-			array( $this, 'render_parent_redirect' )
+			__( 'Settings', 'dfwc-companion' ),
+			__( 'Settings', 'dfwc-companion' ),
+			self::CAPABILITY,
+			self::SETTINGS_SLUG,
+			array( Settings_Page::class, 'render' )
+		);
+
+		// Templates list + edit (single page; edit mode via ?action=edit&id=...).
+		add_submenu_page(
+			self::PARENT_SLUG,
+			__( 'Templates', 'dfwc-companion' ),
+			__( 'Templates', 'dfwc-companion' ),
+			self::CAPABILITY,
+			self::TEMPLATES_SLUG,
+			array( Templates_Page::class, 'render' )
 		);
 
 		// Diagnostics sub-page.
@@ -48,20 +73,5 @@ final class Admin_Menu {
 			self::DIAGNOSTICS_SLUG,
 			array( Diagnostics_Page::class, 'render' )
 		);
-
-		// Phase 3 will add: Settings, Templates here.
-	}
-
-	/**
-	 * Parent slug renderer — redirects to the diagnostics page until Phase 3
-	 * ships the Settings page (which becomes the new default landing).
-	 */
-	public function render_parent_redirect(): void {
-		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'dfwc-companion' ) );
-		}
-		$url = admin_url( 'admin.php?page=' . self::DIAGNOSTICS_SLUG );
-		wp_safe_redirect( $url );
-		exit;
 	}
 }

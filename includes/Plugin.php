@@ -52,9 +52,16 @@ final class Plugin {
 
 		$this->engine = Engine_Detector::detect();
 
+		// Schema migrations first — they run on plugins_loaded:5-ish, before
+		// any save handler that might consume the new schema. Idempotent.
+		( new Config\Migration_Service() )->maybe_migrate();
+
 		new Admin\Meta_Box();
 		new Admin\Assets();
 		new Admin\Admin_Menu();
+		new Admin\Settings_Page();
+		new Admin\Templates_Page();
+		new Admin\Bulk_Actions();
 		new Admin\Diagnostics_Page();
 		new Admin\Self_Check();
 		new Frontend\Shortcode();

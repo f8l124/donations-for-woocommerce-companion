@@ -20,7 +20,7 @@ foreach ( [
 	'\DFWC\Companion\Autoloader',
 	'\DFWC\Companion\Plugin',
 	'\DFWC\Companion\Engine_Detector',
-	'\DFWC\Companion\Config_Resolver',
+	'\DFWC\Companion\Config\Config_Resolver',
 	'\DFWC\Companion\Admin\Meta_Box',
 	'\DFWC\Companion\Admin\Assets',
 	'\DFWC\Companion\Admin\Self_Check',
@@ -50,7 +50,7 @@ echo "campaign id: $cid\n";
 if ( ! $cid || is_wp_error( $cid ) ) { echo "FAIL: could not create\n"; exit( 1 ); }
 
 // 4. Resolve config (exercises Config_Resolver default + inference paths).
-$cfg = \DFWC\Companion\Config_Resolver::resolve( (int) $cid );
+$cfg = \DFWC\Companion\Config\Config_Resolver::resolve( (int) $cid );
 echo "config keys: " . implode( ',', array_keys( $cfg ) ) . "\n";
 echo "one_time enabled: " . ( ! empty( $cfg['one_time']['enabled'] ) ? 'yes' : 'no' ) . "\n";
 

@@ -18,7 +18,7 @@ namespace DFWC\Companion\Frontend;
 
 defined( 'ABSPATH' ) || exit;
 
-use DFWC\Companion\Config_Resolver;
+use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Engine_Detector;
 
 final class Renderer {
