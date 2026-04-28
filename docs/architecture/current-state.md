@@ -1,7 +1,9 @@
-# Architecture — Current State (v0.6.6 baseline)
+# Architecture — Current State (v1.1.0)
 
 > **Audience:** new contributors, the WCDonation team if they review for upstream integration, and future-self after a long break from the code.
-> **Updated:** 2026-04-27, locking the v0.6.6 baseline before v0.7.0 work begins.
+> **Updated:** 2026-04-28, post-v1.1.0 release.
+
+This document describes the current architectural surface. Sections 1–10 cover the v0.6.6 baseline (the core augmentation pattern that hasn't changed). Section 11 summarizes what the v0.7.0 → v1.1.0 work added on top.
 
 ---
 
@@ -293,16 +295,166 @@ Multi-currency is Phase 6 territory — `Currency_Preset_Resolver` consults WCML
 
 See `plans/v2/AA-wpml-integration.md` for the full integration spec and per-phase touchpoints.
 
-## 10. Known limitations
+## 10. Known limitations (as of v1.1.0)
 
 - **PHP 7.4 minimum.** Some hosts on 7.0–7.3 cannot install. Documented in readme; clean activation notice on lower versions.
 - **Single subscription engine at a time.** WCS preferred over WPS SFW when both active.
-- **No WP-CLI commands yet.** Phase 11 deliverable.
-- **No live admin preview.** Phase 8 deliverable.
 - **Parent v4.x untested.** Self-check warns on major bump.
-- **WPML untested in CI.** Optional fixture gated on `DFWC_WPML_ZIP_URL` repo secret. Manual QA only at v0.6.6.
+- **WPML untested in CI.** Optional fixture gated on `DFWC_WPML_ZIP_URL` repo secret. Manual QA only.
+- **Plugin Check skipped in CI** when `DFWC_PARENT_ZIP_URL` secret is unset (the parent plugin is paid; not on wp.org).
+- **No automated screenshots for wp.org submission** — manual capture required.
 
-## 11. Where to look for things
+## 11. v0.7.0 → v1.1.0 surface (the v2 plan)
+
+The architecture sections above describe the v0.6.6 baseline — the core augment-don't-replace pattern that hasn't changed. The v0.7.0 → v1.1.0 work added on top:
+
+### 11.1 Layered config model (Phase 3, v0.7.0)
+
+`Config_Resolver` moved from a single-meta-key reader to a four-layer resolver:
+
+```
+Defaults  →  Global settings  →  Named template  →  Campaign overrides
+```
+
+Sequential arrays (presets) replace wholesale; associative arrays deep-merge. **Detached** campaigns get a frozen snapshot and ignore future template changes. Backward compat: legacy `_dfwc_companion_intervals` meta is read as a fallback when no template + no overrides exist; first save in v0.7+ migrates to `_dfwc_companion_overrides` automatically.
+
+New modules:
+
+- `Config\Defaults` — canonical default factory.
+- `Config\Template_Config` — value object for one named template.
+- `Config\Template_Repository` — read/write the templates option, register WPML strings.
+- `Config\Campaign_Config_Repository` — per-campaign meta read/write, override-delta computation, template apply/detach/reset.
+- `Config\Migration_Service` — idempotent schema migrations tracked via `dfwc_companion_schema_version`.
+
+New admin surface: **Donations Companion** parent menu under `WooCommerce` with three submenus — Settings, Templates (list + edit), Diagnostics.
+
+### 11.2 Parent-contract diagnostics (Phase 2, v0.7.0)
+
+`Parent_Form_Contract_Checker` runs ~13 health checks (WC + parent + engine + WPML + asset registration) and produces a `Parent_Form_Contract_Report` with per-check results. Cached 12h via transient. Surfaced via:
+
+- `Admin\Diagnostics_Page` — full result grid + copy-paste-ready Markdown support report.
+- `Admin\Self_Check` — refactored to a thin admin-notice surface that delegates to the checker.
+- `Frontend\Context_Augmenter` — skips augmentation when the contract is broken (donor sees parent's vanilla form rather than a half-broken UI). Override via `dfwc_companion_contract_skip_augment` filter.
+
+### 11.3 Campaign taxonomies + directory grid (Phase 4, v0.8.0)
+
+Six taxonomies on `wc-donation`: `dfwc_cause`, `dfwc_region`, `dfwc_country`, `dfwc_program`, `dfwc_sponsorship_type`, `dfwc_urgency`. Default starter terms seeded once via `Taxonomy\Campaign_Taxonomies::SEEDED_OPTION` flag.
+
+Donor-facing directory grid via `[dfwc_campaign_grid]` shortcode + `dfwc-companion/campaign-grid` Gutenberg block + Elementor "Donation Campaign Grid" widget. REST live search at `GET /wp-json/dfwc-companion/v1/grid` with 60-req/min/IP rate limit.
+
+### 11.4 Donor impact messaging (Phase 5, v0.9.0)
+
+Per-preset `impact_label` (free-form text translatable via WPML) with four display modes (inline / below_button / tooltip / card). Single `is_featured` preset per interval enforced server-side. Per-interval `subtitle`, `annual_equivalency` (with `{amount}` / `{annual_amount}` token substitution), and `custom_amount_impact_label`.
+
+### 11.5 Per-currency presets (Phase 6, v1.0.0)
+
+`Config\Currency_Preset_Resolver` — render-time second pass on top of `Config_Resolver`. Sparse `currency_overrides` map per interval block. WCML primary, WC base fallback, filter-based extension for WCPay / Aelia. `Frontend\Submit_Guard` re-resolves under active currency before validating min/max.
+
+### 11.6 Advanced intervals (Phase 7, v1.0.0)
+
+Four extra interval keys gated by global toggle: `weekly`, `quarterly`, `semiannual`, `custom`. `Config\Engine_Interval_Map` is the single source of truth for the interval → engine cadence translation. Custom interval admin-defines `custom_period` + `custom_interval` + translatable `custom_label`. Donor-side overflow menu ("More options ▾") when ≥5 intervals enabled.
+
+### 11.7 Live admin preview pane (Phase 8, v0.9.0)
+
+`REST\Preview_REST_Controller` — admin-only POST endpoint, rate-limited to 10 req/sec/user. `Frontend\Preview_Renderer` produces a self-contained HTML snippet with a mock-parent scope so the same overlay JS runs in the iframe as on donor pages. Defense in depth on submit: server-side `Submit_Guard` rejects `dfwc_preview` POST flag; overlay JS sees `data-preview="1"` and disables submit; iframe's mock submit ships with `disabled` attribute.
+
+`Validation\Template_Validator` — centralized config sanitizer used by the preview REST endpoint (and reusable for v0.10+ Templates_Page / Meta_Box deduplication).
+
+### 11.8 Event hooks (Phase 9, v1.1.0)
+
+Six WordPress action hooks at key points in the donor flow:
+
+- `dfwc_companion_form_viewed`, `dfwc_companion_interval_selected`, `dfwc_companion_preset_selected`, `dfwc_companion_custom_amount_entered` — donor-side JS events that batch to a public, rate-limited `track` REST endpoint.
+- `dfwc_companion_donation_submitted`, `dfwc_companion_donation_failed` — server-side at the form-submit boundary via parent's `wc_donation_alter_donate_response` filter.
+
+`Analytics\Privacy_Guard` — allow-list sanitizer enforcing aggregate-only data + PII-strip. `REST\Track_REST_Controller` — public, rate-limited to 100 events/IP/min via hashed-IP transients. `Analytics\Submission_Tracker` — hooks parent's response filter for the success/fail events.
+
+### 11.9 Release readiness (Phase 11, v1.0.0)
+
+`uninstall.php` — opt-in cleanup respecting `preserve_data_on_uninstall`. `CLI\CLI_Commands::register` — `wp dfwc-companion health` command. Comprehensive docs suite under `docs/`. GitHub repo polish (issue templates, PR template, SECURITY.md, CODE_OF_CONDUCT.md, README.md).
+
+### 11.10 Updated bootstrap
+
+`Plugin::boot()` now instantiates ~22 submodules vs. the v0.6.6's ~11. Order of instantiation:
+
+1. `Config\Migration_Service::maybe_migrate()` — runs first, idempotent.
+2. Admin: `Meta_Box`, `Assets`, `Admin_Menu`, `Settings_Page`, `Templates_Page`, `Bulk_Actions`, `Diagnostics_Page`, `Self_Check`, `Preview_Controller`.
+3. Frontend: `Shortcode`, `Block`, `Assets`, `Submit_Guard`, `Context_Augmenter`, `Elementor_Adapter`.
+4. Taxonomy: `Campaign_Taxonomies`, `Campaign_Grid_Shortcode`, `Campaign_Grid_Block`, `Directory_Assets`.
+5. REST: `Grid_REST_Controller`, `Preview_REST_Controller`, `Track_REST_Controller`.
+6. Analytics: `Submission_Tracker`.
+7. CLI: `CLI_Commands::register()` (no-op outside WP-CLI).
+
+### 11.11 Updated structure tree (v1.1.0)
+
+```
+includes/
+├── Autoloader.php
+├── Plugin.php
+├── Engine_Detector.php
+├── Admin/
+│   ├── Admin_Menu.php           Parent submenu
+│   ├── Assets.php
+│   ├── Bulk_Actions.php         Phase 3 — campaign-list bulk apply / detach / reset
+│   ├── Diagnostics_Page.php     Phase 2 — health-check report grid
+│   ├── Meta_Box.php
+│   ├── Preview_Controller.php   Phase 8
+│   ├── Self_Check.php           thin admin-notice surface
+│   ├── Settings_Page.php        Phase 3 — global settings UI
+│   └── Templates_Page.php       Phase 3 — list + edit named templates
+├── Analytics/
+│   ├── Privacy_Guard.php        Phase 9
+│   └── Submission_Tracker.php   Phase 9
+├── CLI/
+│   └── CLI_Commands.php         Phase 11
+├── Config/
+│   ├── Campaign_Config_Repository.php   Phase 3
+│   ├── Config_Resolver.php
+│   ├── Currency_Preset_Resolver.php     Phase 6
+│   ├── Defaults.php             Phase 3 — canonical default factory
+│   ├── Engine_Interval_Map.php  Phase 7
+│   ├── Migration_Service.php    Phase 3 — idempotent migrations
+│   ├── Template_Config.php      Phase 3
+│   └── Template_Repository.php  Phase 3
+├── Contracts/                   Phase 2 — diagnostic checker
+│   ├── Parent_Form_Contract.php
+│   ├── Parent_Form_Contract_Checker.php
+│   ├── Parent_Form_Contract_Report.php
+│   └── Parent_Form_Contract_Result.php
+├── Frontend/
+│   ├── Assets.php
+│   ├── Block.php
+│   ├── Campaign_Card_Renderer.php           Phase 4
+│   ├── Campaign_Directory_Renderer.php      Phase 4
+│   ├── Campaign_Grid_Block.php              Phase 4
+│   ├── Campaign_Grid_Shortcode.php          Phase 4
+│   ├── Context_Augmenter.php
+│   ├── Directory_Assets.php                 Phase 4
+│   ├── Elementor_Adapter.php
+│   ├── Elementor_Campaign_Grid_Widget.php   Phase 4
+│   ├── Elementor_Widget.php
+│   ├── Preview_Renderer.php                 Phase 8
+│   ├── Renderer.php
+│   ├── Shortcode.php
+│   └── Submit_Guard.php
+├── I18n/
+│   └── WPML_Strings.php         Phase 3 — WPML String Translation wrapper
+├── REST/
+│   ├── Grid_REST_Controller.php       Phase 4
+│   ├── Preview_REST_Controller.php    Phase 8
+│   └── Track_REST_Controller.php      Phase 9
+├── Taxonomy/
+│   ├── Campaign_Query_Builder.php     Phase 4
+│   └── Campaign_Taxonomies.php        Phase 4
+└── Validation/
+    └── Template_Validator.php         Phase 8
+```
+
+**Total production code (zip contents at v1.1.0):** ~10,000 LOC PHP/JS/CSS, ~196 KB zipped.
+
+---
+
+## 12. Where to look for things
 
 | Question | File |
 |---|---|

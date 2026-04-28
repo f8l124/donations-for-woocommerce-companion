@@ -173,14 +173,15 @@ Full details in [`multi-currency.md`](multi-currency.md), including how to wire 
 
 ## Where to go next
 
-- [`templates.md`](templates.md) — multi-campaign workflows
-- [`campaign-directory.md`](campaign-directory.md) — building the donor-facing grid
-- [`impact-messaging.md`](impact-messaging.md) — converting donors via per-preset impact labels
+- [`templates.md`](templates.md) — multi-campaign workflows + the layered config model
 - [`multi-currency.md`](multi-currency.md) — WCML / WCPay / Aelia
 - [`advanced-intervals.md`](advanced-intervals.md) — weekly / quarterly / semiannual / custom cadences
+- [`event-hooks.md`](event-hooks.md) — analytics / CRM / webhook integration (GA4, FluentCRM, Zapier recipes)
 - [`troubleshooting.md`](troubleshooting.md) — diagnostics walkthrough; common issues
 - [`privacy.md`](privacy.md) — what the plugin stores / doesn't
 - [`developer-hooks.md`](developer-hooks.md) — filters + actions reference
+
+Coverage for **campaign directory** (taxonomies, the `[dfwc_campaign_grid]` shortcode, REST live search) and **donor impact messaging** (per-preset impact labels, four display modes, featured presets, equivalency text) lives in the v0.8.0 + v0.9.0 changelog entries in [`readme.txt`](../readme.txt). Dedicated docs may land in a future release.
 
 For ops:
 
