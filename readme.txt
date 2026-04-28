@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.7.0
+Stable tag: 0.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -84,6 +84,20 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * The optional template-replacement mode uses an output-buffering pattern around the parent's documented action hooks (because the parent doesn't expose a "skip default form" filter). The CI watcher monitors this for breakage.
 
 == Changelog ==
+
+= 0.8.0 =
+Adds the missing nonprofit campaign-management layer for WooCommerce. Donors can now browse a filterable directory of campaigns; admins classify campaigns by cause, region, country, and more.
+
+* **New: six campaign taxonomies** registered against `wc-donation`: Cause Category, Region, Country, Program, Sponsorship Type, Urgency. Default starter terms (Education / Discipleship / Medical / Food / Construction / Missions / Leadership Training; School / Classroom / Student / Pastor / Teacher / Church / Missionary; Normal / Priority / Urgent) seeded once on first activation. Admins can edit, delete, or extend freely.
+* **New: donor-facing directory grid.** `[dfwc_campaign_grid]` shortcode renders a filterable grid of campaigns with search + per-taxonomy filters + sort + pagination. Three layout modes: grid, list. Cards link to the single-campaign permalink; donor flow continues through the existing overlay.
+* **New: Gutenberg block** `dfwc-companion/campaign-grid` with full InspectorControls; server-rendered so the editor preview shows exactly what donors see.
+* **New: Elementor widget** "Donation Campaign Grid" registered alongside the recurring-donation widget. Same configuration surface as the shortcode and block.
+* **New: Featured campaigns.** Side meta box on the campaign edit screen toggles featured status. The directory's "Featured first" sort puts featured campaigns at the top with menu_order as tie-breaker.
+* **New: REST live search.** `GET /wp-json/dfwc-companion/v1/grid?...` returns rendered grid HTML so the directory's filter UI swaps in place without full reloads. Browser URL updates via history.replaceState; deep links continue to work. Public read endpoint with 60-req/min/IP rate limit.
+* **New: progressive-enhancement JS** (`assets/js/dfwc-directory.js`) — debounced search-as-you-type, immediate fetch on filter changes, falls back to full submit if REST fails. Without JS, the form submits normally.
+* **New: WPML support.** All six taxonomies declared `translate="1"` in `wpml-config.xml` — WPML's Translation Management handles per-term translation natively. The new `_dfwc_companion_featured` meta key declared `action="copy"`. The `lang="all"` shortcode attribute overrides WPML's default language scoping for cross-language directories.
+* **Internal:** new `Taxonomy\Campaign_Taxonomies` (registration + seeding), `Taxonomy\Campaign_Query_Builder` (filter → WP_Query args), `Frontend\Campaign_Card_Renderer`, `Frontend\Campaign_Directory_Renderer`, `Frontend\Campaign_Grid_Shortcode`, `Frontend\Campaign_Grid_Block`, `Frontend\Elementor_Campaign_Grid_Widget`, `Frontend\Directory_Assets`, `REST\Grid_REST_Controller`.
+* **Test coverage:** 98 → 115 unit tests, 245 → 287 assertions. New `Campaign_Query_Builder_Test` covers filter handling, per-page/page clamping, orderby/order allow-listing, featured-first sort, IN-operator for array terms, search passthrough, and filter hooks.
 
 = 0.7.0 =
 Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns can now configure once and apply to many at a time.
@@ -200,6 +214,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.8.0 =
+Adds the donor-facing campaign directory with six taxonomies (cause / region / country / program / sponsorship type / urgency), a filterable grid via shortcode + Gutenberg block + Elementor widget, featured campaigns, and progressive-enhancement live search. Default starter terms seeded on first activation; existing campaigns gain the taxonomy editing UI but no behavior changes until classified. Backward-compatible.
 
 = 0.7.0 =
 Headline release: named templates + bulk apply for nonprofits running many campaigns. New Diagnostics page surfaces parent-plugin compatibility status with a copy-paste support report. Comprehensive WPML integration via wpml-config.xml + String Translation registration. Existing v0.6.x campaigns continue to work unchanged; legacy meta migrates to the new schema on next admin save. CI now runs PHPCS + PHPStan + Plugin Check on every PR; release zip auto-publishes on tag.
