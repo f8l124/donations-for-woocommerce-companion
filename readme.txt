@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.6.6
+Stable tag: 0.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -84,6 +84,26 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * The optional template-replacement mode uses an output-buffering pattern around the parent's documented action hooks (because the parent doesn't expose a "skip default form" filter). The CI watcher monitors this for breakage.
 
 == Changelog ==
+
+= 0.7.0 =
+Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns can now configure once and apply to many at a time.
+
+* **New: layered config model.** Campaigns now resolve config through four layers: plugin defaults → global settings → named template → campaign overrides. Sequential arrays (presets) replace wholesale; associative arrays deep-merge. Detached campaigns get a frozen snapshot and ignore future template changes.
+* **New: named templates.** Create reusable configuration packages ("School Sponsorship", "Emergency Relief", "General Fund") at *WooCommerce → Donations Companion → Templates*. Each template defines preset amounts, min/max, CTA template, custom-amount toggle, and display options for all three intervals.
+* **New: bulk apply.** Three new bulk actions on the wc-donation campaign list: "Apply template: <name>" (one entry per template), "Reset Companion settings", "Detach from template". Per-campaign capability check; surfaces applied/skipped counts via dismissible admin notice.
+* **New: global settings.** *WooCommerce → Donations Companion → Settings* lets admins set a default template applied to new campaigns and toggle data preservation on plugin uninstall.
+* **New: override-aware save.** When you save a campaign with a template assigned, only the fields you actually changed land in the override meta. If you don't change anything, future template edits propagate normally — honest inheritance.
+* **New: parent-contract diagnostics page.** *WooCommerce → Donations Companion → Diagnostics* surfaces 12 health checks (WC + parent + engine + WPML + asset registration) with status pills, suggested remediations, and a copy-paste-ready Markdown support report (path-stripped, pipe-escaped, allow-listed context).
+* **New: frontend gating.** When the contract is broken (parent inactive, AJAX action missing, etc.), the donor-side overlay falls back to parent's vanilla form rather than producing a half-broken UI. Override via `dfwc_companion_contract_skip_augment` filter for edge cases.
+* **New: WPML integration.** Comprehensive coverage per `plans/v2/AA-wpml-integration.md`. `wpml-config.xml` declares all custom fields and admin-text strings. Templates and campaign overrides register translatable strings with WPML String Translation under stable keys (`<template_id>.<interval>.<field>`). Strings translate at render time. Monolingual sites pay zero overhead.
+* **New: maintenance branch.** v0.6.x lives on its own branch for hotfix backports without v0.7.x contamination.
+* **New: CI hardening.** Composer + WPCS + PHPStan (level 5) + PHPUnit + Plugin Check + parent-contract watcher + Playwright + zip-install-validation, all gated on PRs and main pushes. Release workflow auto-publishes the zip on tag push, with version-consistency check across the four canonical sources.
+* **New: CONTRIBUTING.md** documenting local setup, running checks, code style, commit messages, PR flow, security reporting.
+* **New: comprehensive architecture docs** at `docs/architecture/` covering current state, parent contract reference, and compatibility matrix.
+* **Refactor:** `Self_Check` is now a thin admin-notice surface that delegates to `Parent_Form_Contract_Checker`. One source of truth, one cache, no drift between notice copy and Diagnostics page copy.
+* **Refactor:** `Config_Resolver` moved from `DFWC\Companion\Config_Resolver` to `DFWC\Companion\Config\Config_Resolver` (sub-namespace). Public surface preserved.
+* **Test coverage:** 37 → 98 unit tests, 100 → 245 assertions. New test bootstrap with real-but-minimal filter/action/transient implementation.
+* **Backward compat:** existing v0.6.x campaigns continue to render exactly as before. Legacy `_dfwc_companion_intervals` and `_dfwc_companion_display` meta is read by the resolver as a fallback layer; on the next admin save in v0.7.0+, the legacy keys migrate to `_dfwc_companion_overrides` automatically.
 
 = 0.6.6 =
 * Fix: per-interval "Allow donors to enter a custom amount" toggle was re-enabling itself on every save when unchecked. The save-side sanitizer used `isset()`-with-default-`true` to derive the boolean, but HTML form-checkbox semantics send nothing in `$_POST` for an unchecked checkbox — so `isset()` was false and the default-`true` branch fired. Switched to `! empty()` (missing = false), matching the pattern used for the main "Offer X donations" enable checkbox in the same method.
@@ -180,6 +200,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.7.0 =
+Headline release: named templates + bulk apply for nonprofits running many campaigns. New Diagnostics page surfaces parent-plugin compatibility status with a copy-paste support report. Comprehensive WPML integration via wpml-config.xml + String Translation registration. Existing v0.6.x campaigns continue to work unchanged; legacy meta migrates to the new schema on next admin save. CI now runs PHPCS + PHPStan + Plugin Check on every PR; release zip auto-publishes on tag.
 
 = 0.6.6 =
 Fixes the per-interval "Allow custom amount" checkbox silently re-enabling itself every save. Unchecking and saving now correctly persists as off.
