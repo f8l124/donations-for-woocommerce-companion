@@ -75,6 +75,66 @@
 	outline-offset: 2px;
 }
 
+/* ---------- Phase 7 — overflow menu ("More options ▾") ----------
+   Activated when ≥5 intervals are enabled. The first 3 tabs stay inline;
+   the rest sit behind a toggle in a dropdown menu. */
+
+[data-dfwc-overlay-target] .dfwc-overlay__tabs {
+	flex-wrap: wrap;
+	position: relative;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__overflow-toggle {
+	flex: 0 1 auto;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__overflow-toggle--open::after {
+	content: '';
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__overflow-menu {
+	position: absolute;
+	top: 100%;
+	right: 4px;
+	margin-top: 4px;
+	min-width: 180px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 6px;
+	padding: 4px;
+	box-shadow: 0 4px 16px rgba( 0, 0, 0, 0.08 );
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	z-index: 20;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__overflow-menu[hidden] {
+	display: none;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__overflow-item {
+	flex: 1 0 auto;
+	text-align: left;
+	width: 100%;
+	box-shadow: none;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__overflow-item.dfwc-overlay__tab--active {
+	background: #f0f0f1;
+}
+
+@media ( max-width: 480px ) {
+	/* On narrow screens drop the absolute-positioned menu and let it stack
+	   inline so it's reachable without horizontal jumps. */
+	[data-dfwc-overlay-target] .dfwc-overlay__overflow-menu {
+		position: static;
+		width: 100%;
+		margin-top: 4px;
+		box-shadow: none;
+	}
+}
+
 /* ---------- Panels ---------- */
 
 [data-dfwc-overlay-target] .dfwc-overlay__panel {

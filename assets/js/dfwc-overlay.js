@@ -274,10 +274,17 @@
 	}
 
 	function buildOverlayUi( config, enabledIntervals, initialKey, campaignId ) {
+		// Phase 7 — labels for all 7 intervals. The overlay JS receives the
+		// admin's translated labels via config[key].label; this map is just
+		// the fallback when config doesn't carry a label.
 		var labelMap = {
-			one_time: 'One-time',
-			monthly:  'Monthly',
-			annual:   'Annually',
+			one_time:    'One-time',
+			monthly:     'Monthly',
+			annual:      'Annually',
+			weekly:      'Weekly',
+			quarterly:   'Quarterly',
+			semiannual:  'Semi-annually',
+			custom:      'Custom',
 		};
 
 		var root = document.createElement( 'div' );
@@ -289,25 +296,104 @@
 		tabs.className = 'dfwc-overlay__tabs';
 		tabs.setAttribute( 'role', 'tablist' );
 
-		var allKeys = [ 'one_time', 'monthly', 'annual' ];
+		// Render only the intervals the campaign actually enabled. Order
+		// follows enabledIntervals as supplied by the renderer, which itself
+		// follows Config_Resolver::intervals() display order.
 		var tabEls = [];
-		allKeys.forEach( function ( key ) {
-			var enabled = enabledIntervals.indexOf( key ) >= 0;
-			var btn     = document.createElement( 'button' );
-			btn.type    = 'button';
+		enabledIntervals.forEach( function ( key ) {
+			var btn       = document.createElement( 'button' );
+			btn.type      = 'button';
 			btn.className = 'dfwc-overlay__tab' + ( key === initialKey ? ' dfwc-overlay__tab--active' : '' );
 			btn.setAttribute( 'data-dfwc-tab', key );
 			btn.setAttribute( 'role', 'tab' );
 			btn.setAttribute( 'aria-selected', key === initialKey ? 'true' : 'false' );
 			btn.setAttribute( 'tabindex', key === initialKey ? '0' : '-1' );
-			if ( ! enabled ) {
-				btn.disabled = true;
-				btn.setAttribute( 'aria-disabled', 'true' );
-			}
 			btn.textContent = ( config[ key ] && config[ key ].label ) || labelMap[ key ] || key;
 			tabs.appendChild( btn );
 			tabEls.push( btn );
 		} );
+
+		// Phase 7 — overflow menu when ≥5 tabs enabled. The first 4 stay
+		// inline; the rest go behind a "More options ▾" toggle. Threshold
+		// matches the v2 plan: ≤4 = inline mode A, ≥5 = overflow mode B.
+		var overflowMenu = null;
+		var overflowToggle = null;
+		if ( tabEls.length > 4 ) {
+			overflowToggle = document.createElement( 'button' );
+			overflowToggle.type = 'button';
+			overflowToggle.className = 'dfwc-overlay__tab dfwc-overlay__overflow-toggle';
+			overflowToggle.setAttribute( 'aria-haspopup', 'true' );
+			overflowToggle.setAttribute( 'aria-expanded', 'false' );
+			overflowToggle.setAttribute( 'data-dfwc-overflow-toggle', '' );
+			overflowToggle.textContent = 'More options ▾';
+
+			overflowMenu = document.createElement( 'div' );
+			overflowMenu.className = 'dfwc-overlay__overflow-menu';
+			overflowMenu.setAttribute( 'role', 'menu' );
+			overflowMenu.setAttribute( 'data-dfwc-overflow-menu', '' );
+			overflowMenu.hidden = true;
+
+			// Move tabs at index ≥3 into the overflow menu. (Keep the first
+			// 3 inline so donors still see the "common" cadences without
+			// having to click a dropdown.)
+			tabEls.slice( 3 ).forEach( function ( btn ) {
+				btn.classList.add( 'dfwc-overlay__overflow-item' );
+				btn.setAttribute( 'role', 'menuitem' );
+				overflowMenu.appendChild( btn );
+			} );
+
+			tabs.appendChild( overflowToggle );
+
+			// If the active tab is in the overflow group, mark the toggle
+			// "active" so donors can see the active state without expanding.
+			var activeInOverflow = tabEls.slice( 3 ).some( function ( b ) {
+				return b.getAttribute( 'data-dfwc-tab' ) === initialKey;
+			} );
+			if ( activeInOverflow ) {
+				overflowToggle.classList.add( 'dfwc-overlay__tab--active' );
+			}
+
+			// Attach the menu after the tablist so its absolute positioning
+			// is anchored to the tablist parent.
+			tabs.appendChild( overflowMenu );
+
+			// Toggle open/close on click.
+			overflowToggle.addEventListener( 'click', function () {
+				var isOpen = ! overflowMenu.hidden;
+				overflowMenu.hidden = isOpen;
+				overflowToggle.setAttribute( 'aria-expanded', isOpen ? 'false' : 'true' );
+				overflowToggle.classList.toggle( 'dfwc-overlay__overflow-toggle--open', ! isOpen );
+			} );
+
+			// Close the menu when any tab inside it is clicked (the tab's
+			// own click handler runs first to switch the panel).
+			overflowMenu.addEventListener( 'click', function ( e ) {
+				if ( e.target && e.target.getAttribute && e.target.getAttribute( 'data-dfwc-tab' ) ) {
+					overflowMenu.hidden = true;
+					overflowToggle.setAttribute( 'aria-expanded', 'false' );
+					overflowToggle.classList.remove( 'dfwc-overlay__overflow-toggle--open' );
+				}
+			} );
+
+			// Click outside closes the menu.
+			document.addEventListener( 'click', function ( e ) {
+				if ( overflowMenu.hidden ) { return; }
+				if ( tabs.contains( e.target ) ) { return; }
+				overflowMenu.hidden = true;
+				overflowToggle.setAttribute( 'aria-expanded', 'false' );
+				overflowToggle.classList.remove( 'dfwc-overlay__overflow-toggle--open' );
+			} );
+
+			// Escape closes the menu.
+			tabs.addEventListener( 'keydown', function ( e ) {
+				if ( e.key === 'Escape' && ! overflowMenu.hidden ) {
+					overflowMenu.hidden = true;
+					overflowToggle.setAttribute( 'aria-expanded', 'false' );
+					overflowToggle.classList.remove( 'dfwc-overlay__overflow-toggle--open' );
+					overflowToggle.focus();
+				}
+			} );
+		}
 
 		root.appendChild( tabs );
 
@@ -486,19 +572,36 @@
 		error.setAttribute( 'hidden', '' );
 		root.appendChild( error );
 
-		return { root: root, tabs: tabEls, panels: panels };
+		return {
+			root: root,
+			tabs: tabEls,
+			panels: panels,
+			overflowToggle: overflowToggle,
+			overflowMenu: overflowMenu,
+		};
 	}
 
 	function switchTo( key, state, parentEls, config, ui ) {
 		if ( ! config[ key ] ) { return; }
 		state.interval = key;
 
+		var activeTabIsOverflow = false;
 		Array.prototype.forEach.call( ui.tabs, function ( t ) {
 			var isActive = t.getAttribute( 'data-dfwc-tab' ) === key;
 			t.setAttribute( 'aria-selected', isActive ? 'true' : 'false' );
 			t.setAttribute( 'tabindex', isActive ? '0' : '-1' );
 			t.classList.toggle( 'dfwc-overlay__tab--active', isActive );
+			if ( isActive && t.classList.contains( 'dfwc-overlay__overflow-item' ) ) {
+				activeTabIsOverflow = true;
+			}
 		} );
+
+		// Phase 7 — keep the overflow toggle's active styling synced when
+		// the donor selects (or programmatically lands on) a tab inside the
+		// overflow menu.
+		if ( ui.overflowToggle ) {
+			ui.overflowToggle.classList.toggle( 'dfwc-overlay__tab--active', activeTabIsOverflow );
+		}
 
 		Object.keys( ui.panels ).forEach( function ( k ) {
 			if ( k === key ) { ui.panels[ k ].removeAttribute( 'hidden' ); }

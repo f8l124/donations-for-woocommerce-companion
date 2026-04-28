@@ -24,6 +24,7 @@ namespace DFWC\Companion\Contracts;
 
 defined( 'ABSPATH' ) || exit;
 
+use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Engine_Detector;
 
 final class Parent_Form_Contract_Checker {
@@ -236,6 +237,16 @@ final class Parent_Form_Contract_Checker {
 				__( 'WCML enables per-currency preset amounts (Phase 6, v1.0.0+). Optional.', 'dfwc-companion' ),
 				Parent_Form_Contract::SEVERITY_INFO,
 				array( $this, 'check_wcml_present' )
+			),
+			// Phase 7 — diagnostic when advanced intervals are enabled but no
+			// subscription engine is available to serve them. Surfaces silently
+			// only when both conditions hold; otherwise passes.
+			new Parent_Form_Contract(
+				'advanced_intervals_engine',
+				__( 'Advanced intervals supported by engine', 'dfwc-companion' ),
+				__( 'Weekly / quarterly / semi-annual / custom cadences require a subscription engine.', 'dfwc-companion' ),
+				Parent_Form_Contract::SEVERITY_WARNING,
+				array( $this, 'check_advanced_intervals_engine' )
 			),
 		);
 
@@ -464,6 +475,32 @@ final class Parent_Form_Contract_Checker {
 		return Parent_Form_Contract_Result::pass(
 			'wpml_present',
 			__( 'WPML not detected. Single-language site assumed; that is fine.', 'dfwc-companion' )
+		);
+	}
+
+	public function check_advanced_intervals_engine(): Parent_Form_Contract_Result {
+		if ( ! Config_Resolver::advanced_enabled() ) {
+			return Parent_Form_Contract_Result::pass(
+				'advanced_intervals_engine',
+				__( 'Advanced intervals toggle is off. Standard intervals only.', 'dfwc-companion' )
+			);
+		}
+
+		$engine = Engine_Detector::detect();
+		if ( Engine_Detector::ENGINE_NONE === $engine ) {
+			return Parent_Form_Contract_Result::warn(
+				'advanced_intervals_engine',
+				__( 'Advanced intervals are enabled, but no subscription engine is active. Donors will not see weekly / quarterly / semi-annual / custom tabs even when an admin enables them per campaign.', 'dfwc-companion' ),
+				__( 'Install Subscriptions For WooCommerce (free) or WooCommerce Subscriptions (paid), or turn off the global "Enable advanced giving intervals" setting to suppress this warning.', 'dfwc-companion' ),
+				array( 'engine' => 'none' )
+			);
+		}
+
+		return Parent_Form_Contract_Result::pass(
+			'advanced_intervals_engine',
+			/* translators: %s: engine slug (wcs / wps_sfw) */
+			sprintf( __( 'Advanced intervals supported by active engine (%s).', 'dfwc-companion' ), $engine ),
+			array( 'engine' => $engine )
 		);
 	}
 
