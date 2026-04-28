@@ -200,6 +200,39 @@
 			} );
 		} );
 
+		// Phase 8: preview-mode short-circuit.
+		// When the wrapper carries data-preview="1" (admin preview iframe),
+		// the submit button is disabled in HTML — but if some custom theme
+		// re-enables it, we still refuse to submit. Show a "preview only"
+		// hint instead.
+		var isPreview = '1' === wrapper.getAttribute( 'data-preview' );
+		if ( isPreview ) {
+			if ( parentEls.submitBtn ) {
+				parentEls.submitBtn.setAttribute( 'disabled', 'disabled' );
+				parentEls.submitBtn.addEventListener( 'click', function ( e ) {
+					e.stopImmediatePropagation();
+					e.preventDefault();
+					showError(
+						ui.root,
+						( window.dfwcCompanion && window.dfwcCompanion.i18n && window.dfwcCompanion.i18n.previewOnly )
+							|| 'Preview only — donations cannot be submitted from this view.'
+					);
+				}, true );
+			}
+
+			// Inject a hidden dfwc_preview field so even if a malicious actor
+			// scrapes the preview HTML and tries to submit it via curl, the
+			// server-side Submit_Guard rejects on this flag.
+			var previewFlag = document.createElement( 'input' );
+			previewFlag.type  = 'hidden';
+			previewFlag.name  = 'dfwc_preview';
+			previewFlag.value = '1';
+			previewFlag.setAttribute( 'data-dfwc-injected', '' );
+			scope.appendChild( previewFlag );
+
+			return; // skip the normal submit guard binding
+		}
+
 		// Capture-phase guard on parent's submit button: if amount is invalid,
 		// halt before parent's delegated handler runs.
 		if ( parentEls.submitBtn ) {

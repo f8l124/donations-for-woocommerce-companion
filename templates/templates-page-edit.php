@@ -418,4 +418,12 @@ $wpml_active = WPML_Strings::wpml_active();
 			</p>
 		<?php endif; ?>
 	</form>
+
+	<?php
+	/**
+	 * Fires below the templates edit form. Phase 8 Preview_Controller hooks
+	 * here to render the live preview pane.
+	 */
+	do_action( 'dfwc_companion_after_templates_edit_form' );
+	?>
 </div>

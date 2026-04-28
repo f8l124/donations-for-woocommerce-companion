@@ -1,0 +1,124 @@
+/**
+ * Donations for WooCommerce Companion — admin preview pane styles.
+ *
+ * Pane appears below the meta box / templates form / settings form.
+ * Tight integration: uses WP admin's existing card-style background,
+ * form-table-friendly margins.
+ *
+ * @package   DFWC\Companion
+ * @copyright Copyright (c) 2026 David Stells
+ * @license   GPL-2.0-or-later https://www.gnu.org/licenses/gpl-2.0.html
+ */
+
+.dfwc-preview-pane {
+	margin: 24px 0;
+	padding: 16px 20px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	box-shadow: 0 1px 1px rgba( 0, 0, 0, 0.04 );
+}
+
+.dfwc-preview-pane__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+
+.dfwc-preview-pane__title {
+	margin: 0;
+	font-size: 1.2em;
+	font-weight: 600;
+}
+
+.dfwc-preview-pane__status {
+	color: #646970;
+	font-size: 0.9em;
+	font-style: italic;
+}
+
+.dfwc-preview-pane__toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px 16px;
+	margin-bottom: 12px;
+	padding: 12px;
+	background: #f6f7f7;
+	border-radius: 4px;
+}
+
+.dfwc-preview-pane__field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 140px;
+}
+
+.dfwc-preview-pane__field span {
+	font-size: 0.8em;
+	font-weight: 600;
+	color: #2c3338;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.dfwc-preview-pane__field select,
+.dfwc-preview-pane__field input {
+	padding: 4px 8px;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	font-size: 0.95em;
+}
+
+.dfwc-preview-pane__viewport-wrap {
+	background: #f0f0f1;
+	border-radius: 4px;
+	padding: 12px;
+	display: flex;
+	justify-content: center;
+}
+
+.dfwc-preview-pane__iframe {
+	width: 100%;
+	height: 600px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #fff;
+	transition: max-width 200ms ease-out;
+	max-width: 100%;
+}
+
+/* Viewport simulation: clamp the iframe width via the toolbar select. */
+.dfwc-preview-pane[data-dfwc-preview-pane] .dfwc-preview-pane__iframe {
+	/* Default desktop = full width of the viewport wrap. */
+	max-width: 100%;
+}
+
+/* Tablet / mobile widths via JS-set attribute. We use CSS with attribute
+   selectors so the JS just sets data-viewport. */
+.dfwc-preview-pane[data-current-viewport="tablet"] .dfwc-preview-pane__iframe {
+	max-width: 768px;
+}
+
+.dfwc-preview-pane[data-current-viewport="mobile"] .dfwc-preview-pane__iframe {
+	max-width: 414px;
+}
+
+.dfwc-preview-pane__note {
+	margin: 8px 0 0;
+	color: #646970;
+	font-size: 0.85em;
+	font-style: italic;
+}
+
+@media ( max-width: 782px ) {
+	.dfwc-preview-pane__iframe {
+		height: 480px;
+	}
+	.dfwc-preview-pane__field {
+		min-width: 120px;
+	}
+}

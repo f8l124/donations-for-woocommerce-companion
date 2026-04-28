@@ -78,6 +78,10 @@ final class Plugin {
 		new Frontend\Directory_Assets();
 		new REST\Grid_REST_Controller();
 
+		// Phase 8 — live admin preview.
+		new Admin\Preview_Controller();
+		new REST\Preview_REST_Controller();
+
 		$this->booted = true;
 	}
 

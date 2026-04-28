@@ -23,4 +23,13 @@ use DFWC\Companion\Admin\Settings_Page;
 		submit_button();
 		?>
 	</form>
+
+	<?php
+	/**
+	 * Fires below the settings form. Phase 8 Preview_Controller hooks
+	 * here to render the live preview pane showing what new campaigns
+	 * inherit by default.
+	 */
+	do_action( 'dfwc_companion_after_settings_form' );
+	?>
 </div>

@@ -44,6 +44,18 @@ final class Submit_Guard {
 			return;
 		}
 
+		// Phase 8 defense-in-depth: refuse submits carrying the preview flag.
+		// The flag is set by Preview_Renderer in admin-only iframe HTML; it
+		// shouldn't ever reach a frontend AJAX submit. If it does — someone
+		// scraped preview HTML and tried to submit it — refuse cleanly rather
+		// than land a bogus donation in the cart.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		if ( ! empty( $_POST['dfwc_preview'] ) ) {
+			$this->reject(
+				__( 'Preview submissions are not accepted. Reload the donor form and try again.', 'dfwc-companion' )
+			);
+		}
+
 		// Nonce already verified by parent at line 1542 before this hook fires.
 		$campaign_id = isset( $_POST['campaign_id'] ) ? absint( wp_unslash( $_POST['campaign_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		if ( $campaign_id < 1 ) {
