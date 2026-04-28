@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 0.8.0
+Stable tag: 0.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -84,6 +84,21 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * The optional template-replacement mode uses an output-buffering pattern around the parent's documented action hooks (because the parent doesn't expose a "skip default form" filter). The CI watcher monitors this for breakage.
 
 == Changelog ==
+
+= 0.9.0 =
+Conversion UX release. Per-preset impact labels turn abstract amounts into concrete outcomes; admins see a faithful donor-form preview as they configure templates and campaigns.
+
+* **New: per-preset impact labels.** Each preset gets a free-form text field ("Provides school supplies for one student") translatable via WPML. Four display modes per interval: inline (inside the preset button), below preset (default), tooltip on hover/focus, or full card layout. Tooltip mode includes an `aria-describedby` for screen readers.
+* **New: featured presets.** Mark one preset per interval as featured; donors see a "Most popular" badge and a subtle border accent. Single-featured-per-interval enforced server-side; admins clicking multiple boxes don't break the data.
+* **New: per-interval subtitle.** Free-form copy above the preset grid ("Become a monthly sponsor") translatable via WPML.
+* **New: annual equivalency.** Token-substituted text below the form (e.g. "$25/month equals $300/year") with `{amount}` and `{annual_amount}` tokens that update live as the donor changes amounts. Most useful on the Monthly tab; multipliers wired for Phase 7's weekly/quarterly/semi-annual cadences too.
+* **New: custom-amount impact label.** Free-form text shown alongside the donor's custom-amount input — useful when per-preset impact labels don't apply to free-form amounts ("Every gift makes a difference"). Also translatable via WPML.
+* **New: live admin preview pane** at *Donations Companion → Settings*, *Donations Companion → Templates → Edit*, and on the campaign edit screen. Debounced 350ms updates render the donor-facing form into an iframe via a REST endpoint. Same overlay JS that runs on donor pages also runs in the preview iframe — pixel-faithful results.
+* **New: preview toolbar** with viewport simulation (Desktop / Tablet / Mobile), engine simulation (Auto / WC Subscriptions / Subscriptions for WooCommerce / No engine), and language + currency selectors when WPML/WCML are active.
+* **Defense in depth on submit:** preview HTML carries a `data-preview="1"` flag; the donor-side `Submit_Guard` rejects any AJAX submit with the matching POST field, the overlay JS disables the submit button on `data-preview` wrappers, and the iframe's mock submit button ships with the `disabled` attribute already set. Three independent layers prevent preview HTML from ever submitting a real donation.
+* **Internal:** new `Validation\Template_Validator` (centralized config sanitizer), `Frontend\Preview_Renderer` (standalone, no DB lookups), `REST\Preview_REST_Controller` (admin-only POST endpoint, rate-limited to 10 req/sec/user, `Cache-Control: no-store`), `Admin\Preview_Controller` (wires the pane on three admin screens).
+* **Test coverage:** 115 → 145 unit tests, 287 → 362 assertions. New `Template_Validator_Test`, `Preview_Renderer_Test`, `Phase5_Sanitizer_Test`.
+* **Backward compat:** existing v0.8.x campaigns continue to render unchanged. Per-preset impact_label / is_featured / sort_order fields were already in storage from Phase 3; v0.9.0 wires them into the donor-side renderer. New per-interval fields (subtitle, annual_equivalency, impact_display_mode, custom_amount_impact_label) default to safe values and don't alter existing behavior until admins fill them in.
 
 = 0.8.0 =
 Adds the missing nonprofit campaign-management layer for WooCommerce. Donors can now browse a filterable directory of campaigns; admins classify campaigns by cause, region, country, and more.
@@ -214,6 +229,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 0.9.0 =
+Conversion UX release. Per-preset impact labels with four display modes (inline, below button, tooltip, card), featured-preset badges, per-interval subtitles, annual equivalency text with live token substitution, and a custom-amount impact label. Plus a live admin preview pane on the campaign edit screen, Templates page, and Settings page — debounced 350ms updates render the donor form into an iframe so admins can see exactly what donors will see before saving. Backward-compatible.
 
 = 0.8.0 =
 Adds the donor-facing campaign directory with six taxonomies (cause / region / country / program / sponsorship type / urgency), a filterable grid via shortcode + Gutenberg block + Elementor widget, featured campaigns, and progressive-enhancement live search. Default starter terms seeded on first activation; existing campaigns gain the taxonomy editing UI but no behavior changes until classified. Backward-compatible.
