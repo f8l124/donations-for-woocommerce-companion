@@ -83,6 +83,14 @@ final class Context_Augmenter {
 			return;
 		}
 
+		// Phase 2: gate on contract health. Broken contract → fall back to
+		// parent's vanilla form rather than producing a half-broken overlay.
+		// `dfwc_companion_contract_skip_augment` filter lets power users
+		// override (rare; documented in plans/v2/03-phase-2-contract-diagnostics.md §7).
+		if ( $this->contract_blocks_augmentation() ) {
+			return;
+		}
+
 		// Allow third-party opt-out per campaign + context.
 		$should_augment = (bool) apply_filters(
 			'dfwc_should_augment_parent_form',
@@ -123,5 +131,35 @@ final class Context_Augmenter {
 		}
 		echo '</div>';
 		unset( $this->opened[ $key ] );
+	}
+
+	/**
+	 * Should the contract checker block augmentation right now?
+	 *
+	 * Defaults to true when the report is broken. The
+	 * `dfwc_companion_contract_skip_augment` filter lets power users override
+	 * (e.g., they have a custom workaround for a broken parent and want the
+	 * overlay anyway). Filter receives the current value + the report so
+	 * the override can be selective.
+	 */
+	private function contract_blocks_augmentation(): bool {
+		// Defensive: if the contract module is missing for some reason
+		// (e.g., a partial deploy mid-upgrade), don't block. Better to render
+		// the overlay than to silently disable on every page.
+		if ( ! class_exists( '\\DFWC\\Companion\\Contracts\\Parent_Form_Contract_Checker' ) ) {
+			return false;
+		}
+
+		$checker = new \DFWC\Companion\Contracts\Parent_Form_Contract_Checker();
+		$report  = $checker->get_report();
+		$blocks  = $report->is_broken();
+
+		/**
+		 * Filter: should a broken contract block donor-side augmentation?
+		 *
+		 * @param bool                                                                $blocks True = skip overlay; false = augment anyway.
+		 * @param \DFWC\Companion\Contracts\Parent_Form_Contract_Report $report The full contract report.
+		 */
+		return (bool) apply_filters( 'dfwc_companion_contract_skip_augment', $blocks, $report );
 	}
 }

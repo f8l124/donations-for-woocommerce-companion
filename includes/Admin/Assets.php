@@ -22,12 +22,32 @@ final class Assets {
 	}
 
 	public function maybe_enqueue( string $hook ): void {
-		if ( 'post.php' !== $hook && 'post-new.php' !== $hook ) {
-			return;
+		// Always register so other code paths can enqueue without re-declaring.
+		$this->register_assets();
+
+		// Campaign edit screen — full meta-box behavior.
+		if ( 'post.php' === $hook || 'post-new.php' === $hook ) {
+			$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+			if ( $screen && 'wc-donation' === $screen->post_type ) {
+				wp_enqueue_style( self::HANDLE_CSS );
+				wp_enqueue_script( self::HANDLE_JS );
+				wp_enqueue_script( self::HANDLE_TAB_INJECTOR );
+				return;
+			}
 		}
 
-		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
-		if ( ! $screen || 'wc-donation' !== $screen->post_type ) {
+		// Companion sub-pages (Diagnostics in Phase 2; Settings + Templates in Phase 3+).
+		// WP's admin hook for sub-pages is shaped `<parent_slug>_page_<page_slug>`.
+		// Match by prefix to catch all our sub-pages without listing each.
+		if ( 0 === strpos( (string) $hook, 'donations-companion_page_dfwc-companion-' )
+			|| 0 === strpos( (string) $hook, 'woocommerce_page_dfwc-companion' )
+		) {
+			wp_enqueue_style( self::HANDLE_CSS );
+		}
+	}
+
+	private function register_assets(): void {
+		if ( wp_style_is( self::HANDLE_CSS, 'registered' ) ) {
 			return;
 		}
 
@@ -62,9 +82,5 @@ final class Assets {
 				'strategy'  => 'defer',
 			)
 		);
-
-		wp_enqueue_style( self::HANDLE_CSS );
-		wp_enqueue_script( self::HANDLE_JS );
-		wp_enqueue_script( self::HANDLE_TAB_INJECTOR );
 	}
 }

@@ -33,8 +33,9 @@ namespace {
     defined( 'DFWC_COMPANION_MIN_PHP' )            || define( 'DFWC_COMPANION_MIN_PHP', '7.4' );
 
     // === Parent plugin constants ===
+    // Path stub uses a non-empty string so PHPStan doesn't infer "always falsy".
     defined( 'WC_DONATION_VERSION' ) || define( 'WC_DONATION_VERSION', '3.9.8' );
-    defined( 'WC_DONATION_PATH' )    || define( 'WC_DONATION_PATH', '' );
+    defined( 'WC_DONATION_PATH' )    || define( 'WC_DONATION_PATH', '/wp-content/plugins/donation-for-woocommerce/' );
 
     // === Parent plugin: minimal class stubs ===
 

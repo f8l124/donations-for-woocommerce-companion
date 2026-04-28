@@ -1,11 +1,14 @@
 <?php
 /**
- * Admin health probe — runs cached checks on `admin_init` to detect parent
- * plugin contract changes and engine-missing scenarios that would silently
- * break the companion.
+ * Self_Check — admin-notice surface for the Parent_Form_Contract_Checker.
  *
- * Findings are stored in a 12-hour transient and rendered as admin notices.
- * Per `manage_woocommerce` capability gate so only relevant admins see them.
+ * As of Phase 2 (v0.7.0), Self_Check no longer runs its own probes. It
+ * delegates to Parent_Form_Contract_Checker and renders any non-pass
+ * results as dismissible admin notices. The full grid lives at the
+ * Diagnostics page; Self_Check is the "did you notice?" layer.
+ *
+ * Backward-compat: the old `dfwc_self_check` transient is cleared once on
+ * plugin activation (Plugin::on_activation) so legacy data doesn't linger.
  *
  * @package   DFWC\Companion
  * @copyright Copyright (c) 2026 David Stells
@@ -16,160 +19,66 @@ namespace DFWC\Companion\Admin;
 
 defined( 'ABSPATH' ) || exit;
 
-use DFWC\Companion\Config_Resolver;
-use DFWC\Companion\Engine_Detector;
+use DFWC\Companion\Contracts\Parent_Form_Contract_Checker;
+use DFWC\Companion\Contracts\Parent_Form_Contract_Result;
 
 final class Self_Check {
 
-	private const TRANSIENT_KEY = 'dfwc_self_check';
-	private const TTL_SECONDS   = 12 * HOUR_IN_SECONDS;
-
-	private const SEVERITY_ERROR   = 'error';
-	private const SEVERITY_WARNING = 'warning';
-	private const SEVERITY_INFO    = 'info';
-
 	public function __construct() {
-		add_action( 'admin_init', array( $this, 'maybe_run' ) );
+		add_action( 'admin_init', array( $this, 'maybe_warm_cache' ) );
 		add_action( 'admin_notices', array( $this, 'render_notices' ) );
 	}
 
-	public function maybe_run(): void {
+	/**
+	 * Trigger a contract check on first admin page load each cache cycle.
+	 * No-op when the report transient is fresh.
+	 */
+	public function maybe_warm_cache(): void {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			return;
 		}
-
-		// Skip if cache is fresh (false transient = expired/missing).
-		if ( false !== get_transient( self::TRANSIENT_KEY ) ) {
-			return;
-		}
-
-		set_transient( self::TRANSIENT_KEY, $this->run_checks(), self::TTL_SECONDS );
+		( new Parent_Form_Contract_Checker() )->get_report();
 	}
 
+	/**
+	 * Render dismissible admin notices for any non-pass contract result.
+	 * Warnings + failures only; passes don't notify (they're status quo).
+	 *
+	 * Suppressed on certain screens (update, install) where notices would be
+	 * inappropriate. Diagnostics page itself shows the same data inline; we
+	 * suppress notices there too to avoid duplication.
+	 */
 	public function render_notices(): void {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			return;
 		}
-
-		$findings = get_transient( self::TRANSIENT_KEY );
-		if ( ! is_array( $findings ) || empty( $findings ) ) {
-			return;
-		}
-
-		// Suppress on screens where notices would be inappropriate (e.g.
-		// the WP installer or update screens). Use a conservative allow-list.
 		if ( ! $this->should_render_on_current_screen() ) {
 			return;
 		}
 
-		foreach ( $findings as $finding ) {
-			if ( ! is_array( $finding ) ) {
+		$report = ( new Parent_Form_Contract_Checker() )->get_report();
+		if ( $report->is_healthy() ) {
+			return;
+		}
+
+		foreach ( $report->results as $result ) {
+			if ( $result->passed() ) {
 				continue;
 			}
-			$severity = isset( $finding['severity'] ) ? (string) $finding['severity'] : self::SEVERITY_INFO;
-			$message  = isset( $finding['message'] ) ? (string) $finding['message'] : '';
-			if ( '' === $message ) {
-				continue;
-			}
+			$notice_class = Parent_Form_Contract_Result::STATUS_FAIL === $result->status
+				? 'notice-error'
+				: 'notice-warning';
+
 			printf(
-				'<div class="notice notice-%1$s is-dismissible"><p><strong>%2$s</strong> %3$s</p></div>',
-				esc_attr( $severity ),
+				'<div class="notice %1$s is-dismissible"><p><strong>%2$s</strong> %3$s%4$s</p><p><a href="%5$s">%6$s</a></p></div>',
+				esc_attr( $notice_class ),
 				esc_html__( 'Donations for WooCommerce Companion:', 'dfwc-companion' ),
-				esc_html( $message )
+				esc_html( $result->message ),
+				'' !== $result->remediation ? ' &nbsp; ' . esc_html( $result->remediation ) : '',
+				esc_url( admin_url( 'admin.php?page=' . Admin_Menu::DIAGNOSTICS_SLUG ) ),
+				esc_html__( 'Open Diagnostics', 'dfwc-companion' )
 			);
 		}
-	}
-
-	/**
-	 * Run all checks and return a list of finding arrays:
-	 *   [ ['severity' => ..., 'message' => ..., 'code' => ...], ... ]
-	 *
-	 * @return array<int,array<string,string>>
-	 */
-	private function run_checks(): array {
-		$findings = array();
-
-		// Check 1: parent's AJAX endpoint must be registered.
-		if ( false === has_action( 'wp_ajax_donation_to_order' ) ) {
-			$findings[] = array(
-				'severity' => self::SEVERITY_ERROR,
-				'message'  => __( 'The Donation for WooCommerce AJAX endpoint is not registered. Recurring and one-time donations may both fail. Verify the parent plugin is active and not modified.', 'dfwc-companion' ),
-				'code'     => 'ajax_endpoint_missing',
-			);
-		}
-
-		// Check 2: parent plugin must define its version constant.
-		if ( ! defined( 'WC_DONATION_VERSION' ) ) {
-			$findings[] = array(
-				'severity' => self::SEVERITY_ERROR,
-				'message'  => __( 'Donation for WooCommerce is not active. The companion plugin will not function until the parent is enabled.', 'dfwc-companion' ),
-				'code'     => 'parent_inactive',
-			);
-		} elseif ( version_compare( WC_DONATION_VERSION, '4.0.0', '>=' ) ) {
-			// Check 3: warn on untested major-version bump.
-			$findings[] = array(
-				'severity' => self::SEVERITY_WARNING,
-				'message'  => sprintf(
-					/* translators: %s: detected parent plugin version */
-					__( 'Donation for WooCommerce %s has not been tested with this companion. Verify recurring donations still complete to cart with the right line-item meta before relying on this site.', 'dfwc-companion' ),
-					WC_DONATION_VERSION
-				),
-				'code'     => 'parent_major_bump',
-			);
-		}
-
-		// Check 4: campaigns offering recurring intervals while no engine is active.
-		if ( ! Engine_Detector::supports_recurring() ) {
-			$count = $this->count_campaigns_with_recurring_enabled();
-			if ( $count > 0 ) {
-				$findings[] = array(
-					'severity' => self::SEVERITY_WARNING,
-					'message'  => sprintf(
-						/* translators: %d: number of campaigns affected */
-						_n(
-							'%d campaign has Monthly or Annually enabled but no recurring billing engine is active. Donors will only see the One-time tab.',
-							'%d campaigns have Monthly or Annually enabled but no recurring billing engine is active. Donors will only see the One-time tab.',
-							$count,
-							'dfwc-companion'
-						),
-						$count
-					),
-					'code'     => 'recurring_no_engine',
-				);
-			}
-		}
-
-		return $findings;
-	}
-
-	/**
-	 * Count published wc-donation campaigns whose companion config has
-	 * monthly OR annual enabled. Bounded by the number of campaigns with
-	 * companion meta set; typical scale is dozens, not thousands.
-	 */
-	private function count_campaigns_with_recurring_enabled(): int {
-		$ids = get_posts(
-			array(
-				'post_type'      => 'wc-donation',
-				'post_status'    => 'publish',
-				'numberposts'    => -1,
-				'meta_key'       => Config_Resolver::META_KEY_INTERVALS, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
-				'fields'         => 'ids',
-				'no_found_rows'  => true,
-				'suppress_filters' => false,
-			)
-		);
-
-		$count = 0;
-		foreach ( $ids as $id ) {
-			$config = Config_Resolver::resolve( (int) $id );
-			if ( ! empty( $config[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] )
-				|| ! empty( $config[ Config_Resolver::INTERVAL_ANNUAL ]['enabled'] )
-			) {
-				$count++;
-			}
-		}
-		return $count;
 	}
 
 	private function should_render_on_current_screen(): bool {
@@ -183,6 +92,10 @@ final class Self_Check {
 		// Suppress on update / customize / installer screens.
 		$blocked = array( 'update-core', 'update', 'customize', 'install-plugins', 'plugin-install' );
 		if ( in_array( $screen->id, $blocked, true ) ) {
+			return false;
+		}
+		// Suppress on the Diagnostics page itself — it shows the same data inline.
+		if ( false !== strpos( (string) $screen->id, Admin_Menu::DIAGNOSTICS_SLUG ) ) {
 			return false;
 		}
 		return true;
