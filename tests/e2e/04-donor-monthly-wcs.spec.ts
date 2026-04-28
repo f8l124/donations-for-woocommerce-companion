@@ -44,7 +44,7 @@ test.describe( 'donor: monthly (WC Subscriptions)', () => {
 
 	test( 'monthly tab renders + CTA updates', async ( { page: pwPage } ) => {
 		await pwPage.goto( page.url );
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-tab="monthly"]' ).click();
-		await waitForCtaText( pwPage, '[data-dfwc-form]', /25.*month/ );
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-tab="monthly"]' ).click();
+		await waitForCtaText( pwPage, '[data-dfwc-overlay-target]', /25.*month/ );
 	} );
 } );

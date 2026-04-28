@@ -349,7 +349,8 @@ final class Currency_Preset_Resolver {
 					break;
 				}
 				if ( ! empty( $clean_presets ) ) {
-					$clean['presets'] = array_values( $clean_presets );
+					// $clean_presets is built via [] = ... so it's already a list.
+					$clean['presets'] = $clean_presets;
 				}
 			}
 

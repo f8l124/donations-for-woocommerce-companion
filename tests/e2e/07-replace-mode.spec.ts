@@ -32,7 +32,7 @@ test.describe( 'replace mode', () => {
 		await page.goto( url );
 
 		// Our form must be present.
-		await expect( page.locator( '[data-dfwc-form]' ) ).toBeVisible();
+		await expect( page.locator( '[data-dfwc-overlay-target]' ) ).toBeVisible();
 
 		// Parent's form markup landmarks should NOT be present. The parent's
 		// front-end form template uses a `wc-donation-form` class somewhere

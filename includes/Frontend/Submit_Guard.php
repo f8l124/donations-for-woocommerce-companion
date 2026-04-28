@@ -35,9 +35,8 @@ final class Submit_Guard {
 
 	public function enforce(): void {
 		// Defensive: hook only fires inside parent's AJAX handler, but make
-		// sure we never wp_die() outside an AJAX context. Use the constant
-		// directly to avoid any wp_doing_ajax() availability surprises.
-		if ( ! ( defined( 'DOING_AJAX' ) && DOING_AJAX ) ) {
+		// sure we never wp_die() outside an AJAX context.
+		if ( ! function_exists( 'wp_doing_ajax' ) || ! wp_doing_ajax() ) {
 			return;
 		}
 

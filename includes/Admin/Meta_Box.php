@@ -128,7 +128,7 @@ final class Meta_Box {
 		}
 
 		// Reject classic-AJAX (autosave heartbeat etc.) but allow REST (block editor).
-		if ( ( defined( 'DOING_AJAX' ) && DOING_AJAX ) && ! defined( 'REST_REQUEST' ) ) {
+		if ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() && ! defined( 'REST_REQUEST' ) ) {
 			return;
 		}
 

@@ -46,8 +46,8 @@ test.describe( 'cart block compatibility', () => {
 
 	test( 'submit lands on Cart Block with the donation line item', async ( { page } ) => {
 		await page.goto( donationPage.url );
-		await page.locator( '[data-dfwc-form] [data-dfwc-preset][data-amount="25"]' ).click();
-		await page.locator( '[data-dfwc-form] [data-dfwc-cta]' ).click();
+		await page.locator( '[data-dfwc-overlay-target] [data-dfwc-preset][data-amount="25"]' ).click();
+		await page.locator( '[data-dfwc-overlay-target] .wc-donation-f-submit-donation' ).click();
 
 		// Wait for navigation to the cart page (which is now the block-based cart).
 		await page.waitForURL( /\/(\?page_id=\d+|cart-block\/?)/i, { timeout: 15_000 } );

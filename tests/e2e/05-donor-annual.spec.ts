@@ -43,20 +43,20 @@ test.describe( 'donor: annual', () => {
 
 	test( 'annual tab → $300 preset → CTA reads "Donate $300/year"', async ( { page: pwPage } ) => {
 		await pwPage.goto( page.url );
-		const form = pwPage.locator( '[data-dfwc-form]' );
+		const form = pwPage.locator( '[data-dfwc-overlay-target]' );
 		await form.locator( '[data-dfwc-tab="annual"]' ).click();
 		await form.locator( '[data-dfwc-panel="annual"] [data-dfwc-preset][data-amount="300"]' ).click();
-		await waitForCtaText( pwPage, '[data-dfwc-form]', /300.*year/ );
+		await waitForCtaText( pwPage, '[data-dfwc-overlay-target]', /300.*year/ );
 	} );
 
 	test( 'submit posts new_period=year', async ( { page: pwPage } ) => {
 		await pwPage.goto( page.url );
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-tab="annual"]' ).click();
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-panel="annual"] [data-dfwc-preset][data-amount="100"]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-tab="annual"]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-panel="annual"] [data-dfwc-preset][data-amount="100"]' ).click();
 
 		const requestPromise = pwPage.waitForRequest( ( req ) =>
 			req.url().includes( 'admin-ajax.php' ) && req.method() === 'POST' );
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-cta]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] .wc-donation-f-submit-donation' ).click();
 		const req = await requestPromise;
 		const body = req.postData() || '';
 

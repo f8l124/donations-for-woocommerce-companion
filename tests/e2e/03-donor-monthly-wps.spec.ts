@@ -45,7 +45,7 @@ test.describe( 'donor: monthly (WPS SFW)', () => {
 
 	test( 'monthly tab + custom $37 → CTA reads "Donate $37/month"', async ( { page: pwPage } ) => {
 		await pwPage.goto( page.url );
-		const form = pwPage.locator( '[data-dfwc-form]' );
+		const form = pwPage.locator( '[data-dfwc-overlay-target]' );
 		await expect( form ).toBeVisible();
 
 		await form.locator( '[data-dfwc-tab="monthly"]' ).click();
@@ -55,19 +55,19 @@ test.describe( 'donor: monthly (WPS SFW)', () => {
 		await customInput.fill( '37' );
 		await customInput.blur();
 
-		await waitForCtaText( pwPage, '[data-dfwc-form]', /37.*month/ );
+		await waitForCtaText( pwPage, '[data-dfwc-overlay-target]', /37.*month/ );
 	} );
 
 	test( 'submit fires AJAX with both WCS and WPS-SFW key sets', async ( { page: pwPage } ) => {
 		await pwPage.goto( page.url );
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-tab="monthly"]' ).click();
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-panel="monthly"] [data-dfwc-preset][data-amount="25"]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-tab="monthly"]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-panel="monthly"] [data-dfwc-preset][data-amount="25"]' ).click();
 
 		// Capture the AJAX request.
 		const requestPromise = pwPage.waitForRequest( ( req ) =>
 			req.url().includes( 'admin-ajax.php' ) && req.method() === 'POST' );
 
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-cta]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] .wc-donation-f-submit-donation' ).click();
 		const req = await requestPromise;
 		const body = req.postData() || '';
 

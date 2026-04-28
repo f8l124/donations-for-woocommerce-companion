@@ -16,8 +16,8 @@
         "wp-coding-standards/wpcs": "^3.1",
         "phpcompatibility/phpcompatibility-wp": "^2.1",
         "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
-        "phpstan/phpstan": "^1.11",
-        "szepeviktor/phpstan-wordpress": "^1.3",
+        "phpstan/phpstan": "^2.0",
+        "szepeviktor/phpstan-wordpress": "^2.0",
         "php-stubs/woocommerce-stubs": "^9.4",
         "phpunit/phpunit": "^9.6",
         "yoast/phpunit-polyfills": "^2.0"
@@ -48,7 +48,7 @@
         "lint:php": "Run PHP linter on all production PHP files",
         "lint:phpcs": "Run PHP_CodeSniffer with WordPress Coding Standards",
         "fix:phpcbf": "Auto-fix PHPCS violations where possible",
-        "analyze": "Run PHPStan static analysis at level 5",
+        "analyze": "Run PHPStan 2.x static analysis at level 5",
         "test:unit": "Run PHPUnit unit tests",
         "test:contract": "Run parent-plugin contract watcher",
         "check": "Run all CI gates (PHPCS + PHPStan + unit tests)"

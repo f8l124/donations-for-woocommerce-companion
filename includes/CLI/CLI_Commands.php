@@ -31,7 +31,10 @@ final class CLI_Commands {
 	 * isn't loaded (regular HTTP requests). Called from Plugin::boot().
 	 */
 	public static function register(): void {
-		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
+		// WP-CLI defines the WP_CLI class when it's loaded; checking the class
+		// (rather than the dual-purposed constant) plays nicer with static
+		// analysis. The class_exists call is short-circuit-safe outside CLI.
+		if ( ! class_exists( '\WP_CLI' ) ) {
 			return;
 		}
 		\WP_CLI::add_command( 'dfwc-companion', __CLASS__ );

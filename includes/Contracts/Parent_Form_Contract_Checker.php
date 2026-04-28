@@ -261,14 +261,11 @@ final class Parent_Form_Contract_Checker {
 		if ( ! is_array( $filtered ) ) {
 			return $contracts;
 		}
-		return array_values(
-			array_filter(
-				$filtered,
-				static function ( $c ): bool {
-					return $c instanceof Parent_Form_Contract;
-				}
-			)
-		);
+		// The filter's docblock declares Parent_Form_Contract[] as both input
+		// and return type. We trust the contract — third-party filters that
+		// return garbage are violating the documented signature, not something
+		// to defend against silently.
+		return array_values( $filtered );
 	}
 
 	// === Individual check implementations ===
@@ -429,7 +426,10 @@ final class Parent_Form_Contract_Checker {
 	}
 
 	public function check_php_version(): Parent_Form_Contract_Result {
-		if ( PHP_VERSION_ID < 70400 ) {
+		// version_compare keeps PHPStan from constant-folding the check away
+		// (composer's platform.php=7.4 constraint makes PHP_VERSION_ID < 70400
+		// always-false to the analyzer; the runtime guard is the point).
+		if ( version_compare( PHP_VERSION, '7.4', '<' ) ) {
 			return Parent_Form_Contract_Result::fail(
 				'php_version',
 				sprintf( /* translators: %s: PHP version */ __( 'PHP %s is below the required 7.4.', 'dfwc-companion' ), PHP_VERSION ),

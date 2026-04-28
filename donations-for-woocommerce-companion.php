@@ -25,7 +25,9 @@ defined( 'ABSPATH' ) || exit;
 
 // PHP version pre-flight before loading namespaced code so PHP 7.0/7.3 hosts get a
 // clean admin notice instead of a fatal error on parsing typed properties / arrow fns.
-if ( PHP_VERSION_ID < 70400 ) {
+// Use version_compare so PHPStan (which analyzes against composer's platform.php
+// constraint) doesn't constant-fold the check away — it's a real runtime guard.
+if ( version_compare( PHP_VERSION, '7.4', '<' ) ) {
 	add_action(
 		'admin_notices',
 		static function () {

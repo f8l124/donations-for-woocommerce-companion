@@ -132,7 +132,7 @@ test.describe( 'donor: advanced intervals (WPS SFW)', () => {
 
 	test( 'all 7 interval tabs render when toggle is on and campaigns enable them', async ( { page: pwPage } ) => {
 		await pwPage.goto( page.url );
-		const form = pwPage.locator( '[data-dfwc-form]' );
+		const form = pwPage.locator( '[data-dfwc-overlay-target]' );
 		await expect( form ).toBeVisible();
 
 		await expect( form.locator( '[data-dfwc-tab="one_time"]' ) ).toBeVisible();
@@ -149,13 +149,13 @@ test.describe( 'donor: advanced intervals (WPS SFW)', () => {
 
 	test( 'weekly submit ships period=week, interval=1 in both engine key sets', async ( { page: pwPage } ) => {
 		await pwPage.goto( page.url );
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-tab="weekly"]' ).click();
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-panel="weekly"] [data-dfwc-preset][data-amount="10"]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-tab="weekly"]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-panel="weekly"] [data-dfwc-preset][data-amount="10"]' ).click();
 
 		const requestPromise = pwPage.waitForRequest( ( req ) =>
 			req.url().includes( 'admin-ajax.php' ) && req.method() === 'POST'
 		);
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-cta]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] .wc-donation-f-submit-donation' ).click();
 		const body = ( await requestPromise ).postData() || '';
 
 		expect( body ).toContain( 'is_recurring=yes' );
@@ -167,13 +167,13 @@ test.describe( 'donor: advanced intervals (WPS SFW)', () => {
 
 	test( 'quarterly submit ships period=month, interval=3', async ( { page: pwPage } ) => {
 		await pwPage.goto( page.url );
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-tab="quarterly"]' ).click();
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-panel="quarterly"] [data-dfwc-preset][data-amount="50"]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-tab="quarterly"]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-panel="quarterly"] [data-dfwc-preset][data-amount="50"]' ).click();
 
 		const requestPromise = pwPage.waitForRequest( ( req ) =>
 			req.url().includes( 'admin-ajax.php' ) && req.method() === 'POST'
 		);
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-cta]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] .wc-donation-f-submit-donation' ).click();
 		const body = ( await requestPromise ).postData() || '';
 
 		expect( body ).toContain( 'new_period=month' );
@@ -184,13 +184,13 @@ test.describe( 'donor: advanced intervals (WPS SFW)', () => {
 
 	test( 'semiannual submit ships period=month, interval=6', async ( { page: pwPage } ) => {
 		await pwPage.goto( page.url );
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-tab="semiannual"]' ).click();
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-panel="semiannual"] [data-dfwc-preset][data-amount="100"]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-tab="semiannual"]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-panel="semiannual"] [data-dfwc-preset][data-amount="100"]' ).click();
 
 		const requestPromise = pwPage.waitForRequest( ( req ) =>
 			req.url().includes( 'admin-ajax.php' ) && req.method() === 'POST'
 		);
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-cta]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] .wc-donation-f-submit-donation' ).click();
 		const body = ( await requestPromise ).postData() || '';
 
 		expect( body ).toContain( 'new_period=month' );
@@ -200,13 +200,13 @@ test.describe( 'donor: advanced intervals (WPS SFW)', () => {
 
 	test( 'custom interval honors admin cadence (every 6 weeks)', async ( { page: pwPage } ) => {
 		await pwPage.goto( page.url );
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-tab="custom"]' ).click();
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-panel="custom"] [data-dfwc-preset][data-amount="30"]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-tab="custom"]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] [data-dfwc-panel="custom"] [data-dfwc-preset][data-amount="30"]' ).click();
 
 		const requestPromise = pwPage.waitForRequest( ( req ) =>
 			req.url().includes( 'admin-ajax.php' ) && req.method() === 'POST'
 		);
-		await pwPage.locator( '[data-dfwc-form] [data-dfwc-cta]' ).click();
+		await pwPage.locator( '[data-dfwc-overlay-target] .wc-donation-f-submit-donation' ).click();
 		const body = ( await requestPromise ).postData() || '';
 
 		expect( body ).toContain( 'new_period=week' );
@@ -229,7 +229,7 @@ test.describe( 'donor: advanced intervals (WPS SFW)', () => {
 		);
 
 		await pwPage.goto( page.url );
-		const form = pwPage.locator( '[data-dfwc-form]' );
+		const form = pwPage.locator( '[data-dfwc-overlay-target]' );
 		await expect( form ).toBeVisible();
 
 		// Standard tabs visible (one_time only — monthly/annual disabled).

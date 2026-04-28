@@ -43,7 +43,7 @@ test.describe( 'multi-instance', () => {
 	test( 'two forms render independently, no DOM ID collisions', async ( { page } ) => {
 		await page.goto( pg.url );
 
-		const forms = page.locator( '[data-dfwc-form]' );
+		const forms = page.locator( '[data-dfwc-overlay-target]' );
 		await expect( forms ).toHaveCount( 2 );
 
 		// Each form has a unique data-form-uid.
@@ -53,15 +53,15 @@ test.describe( 'multi-instance', () => {
 		// Pick $25 in form A; form B's amount/CTA must NOT change.
 		const formA = forms.nth( 0 );
 		const formB = forms.nth( 1 );
-		const ctaB_before = await formB.locator( '[data-dfwc-cta]' ).innerText();
+		const ctaB_before = await formB.locator( '.wc-donation-f-submit-donation' ).innerText();
 
 		await formA.locator( '[data-dfwc-preset][data-amount="25"]' ).click();
 		await page.waitForTimeout( 250 );
 
-		const ctaB_after = await formB.locator( '[data-dfwc-cta]' ).innerText();
+		const ctaB_after = await formB.locator( '.wc-donation-f-submit-donation' ).innerText();
 		expect( ctaB_after ).toBe( ctaB_before );
 
-		const ctaA = await formA.locator( '[data-dfwc-cta]' ).innerText();
+		const ctaA = await formA.locator( '.wc-donation-f-submit-donation' ).innerText();
 		expect( ctaA ).toMatch( /25/ );
 	} );
 } );

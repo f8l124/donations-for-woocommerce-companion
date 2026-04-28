@@ -43,7 +43,7 @@ test.describe( 'engine missing', () => {
 
 	test( 'donor sees only the One-time tab as enabled', async ( { page: pwPage } ) => {
 		await pwPage.goto( page.url );
-		const form = pwPage.locator( '[data-dfwc-form]' );
+		const form = pwPage.locator( '[data-dfwc-overlay-target]' );
 		await expect( form ).toBeVisible();
 
 		// One-time tab is active and enabled.

@@ -105,7 +105,7 @@ export async function waitForCtaText( page: Page, formSelector: string, pattern:
 		( { sel, src } ) => {
 			const root = document.querySelector( sel );
 			if ( ! root ) { return false; }
-			const cta = root.querySelector( '[data-dfwc-cta]' );
+			const cta = root.querySelector( '.wc-donation-f-submit-donation' );
 			if ( ! cta ) { return false; }
 			return new RegExp( src ).test( cta.textContent || '' );
 		},

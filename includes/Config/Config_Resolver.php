@@ -415,7 +415,8 @@ final class Config_Resolver {
 					return ( (int) ( $a['sort_order'] ?? 0 ) ) <=> ( (int) ( $b['sort_order'] ?? 0 ) );
 				}
 			);
-			$block['presets'] = array_values( $presets );
+			// usort already re-indexes to 0..N-1; no array_values() needed.
+			$block['presets'] = $presets;
 
 			$count = count( $block['presets'] );
 			$block['default_index'] = $count > 0

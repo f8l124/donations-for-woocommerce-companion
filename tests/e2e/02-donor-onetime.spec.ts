@@ -43,17 +43,17 @@ test.describe( 'donor: one-time', () => {
 
 	test( 'renders form, selects $50 preset, CTA reads "Donate $50"', async ( { page: pwPage } ) => {
 		await pwPage.goto( page.url );
-		const form = pwPage.locator( '[data-dfwc-form]' );
+		const form = pwPage.locator( '[data-dfwc-overlay-target]' );
 		await expect( form ).toBeVisible();
 
 		// One-time tab is active by default.
 		await expect( form.locator( '[data-dfwc-tab="one_time"]' ) ).toHaveAttribute( 'aria-selected', 'true' );
 
 		// $50 preset is the default (default_index=1 in fixture).
-		await waitForCtaText( pwPage, '[data-dfwc-form]', /50/ );
+		await waitForCtaText( pwPage, '[data-dfwc-overlay-target]', /50/ );
 
 		// Click $25 preset.
 		await form.locator( '[data-dfwc-preset][data-amount="25"]' ).click();
-		await waitForCtaText( pwPage, '[data-dfwc-form]', /25/ );
+		await waitForCtaText( pwPage, '[data-dfwc-overlay-target]', /25/ );
 	} );
 } );
