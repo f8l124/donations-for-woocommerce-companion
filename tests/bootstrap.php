@@ -90,7 +90,12 @@ if ( ! function_exists( 'esc_attr' ) ) {
 }
 if ( ! function_exists( 'sanitize_text_field' ) ) {
 	function sanitize_text_field( $str ) {
-		return trim( (string) $str );
+		// Mirror WP's behavior: strip tags + collapse whitespace + trim.
+		// Tests rely on tag stripping for privacy-guarantee assertions.
+		$str = (string) $str;
+		$str = strip_tags( $str );
+		$str = preg_replace( '/[\r\n\t ]+/', ' ', $str );
+		return trim( $str );
 	}
 }
 if ( ! function_exists( 'sanitize_textarea_field' ) ) {

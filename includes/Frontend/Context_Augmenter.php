@@ -110,14 +110,15 @@ final class Context_Augmenter {
 
 		// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped
 		printf(
-			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d" data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s" data-intervals="%5$s" data-display="%6$s" data-context="%7$s">',
+			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d" data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s" data-intervals="%5$s" data-display="%6$s" data-context="%7$s" data-language="%8$s">',
 			(int) $campaign_id,
 			esc_attr( $attrs['engine'] ),
 			esc_attr( $attrs['active_interval'] ),
 			esc_attr( (string) wp_json_encode( $attrs['form_config'] ) ),
 			esc_attr( (string) wp_json_encode( $attrs['enabled_intervals'] ) ),
 			esc_attr( (string) wp_json_encode( $attrs['display'] ) ),
-			esc_attr( $context )
+			esc_attr( $context ),
+			esc_attr( (string) ( $attrs['language'] ?? '' ) )
 		);
 		// phpcs:enable
 

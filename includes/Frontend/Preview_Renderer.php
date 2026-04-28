@@ -84,6 +84,8 @@ final class Preview_Renderer {
 			data-config="<?php echo esc_attr( (string) wp_json_encode( $form_config ) ); ?>"
 			data-intervals="<?php echo esc_attr( (string) wp_json_encode( $enabled_intervals ) ); ?>"
 			data-display="<?php echo esc_attr( (string) wp_json_encode( $display ) ); ?>"
+			data-context="preview"
+			data-language="<?php echo esc_attr( isset( $args['language'] ) ? (string) $args['language'] : '' ); ?>"
 			data-preview="1"
 		>
 			<div class="wc-donation-in-action dfwc-preview__scope">

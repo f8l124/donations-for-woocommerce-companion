@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,19 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 1.1.0 =
+Event hooks release. Surface six donor-flow events as WordPress action hooks so admins can pipe to GA4, Mixpanel, FluentCRM, Zapier, Make, n8n, or any custom destination — with a privacy-by-default posture (no PII; no donor data) and three end-to-end integration recipes shipped in the docs.
+
+* **New: six action hooks (Phase 9).** `dfwc_companion_form_viewed`, `dfwc_companion_interval_selected`, `dfwc_companion_preset_selected`, `dfwc_companion_custom_amount_entered`, `dfwc_companion_donation_submitted`, `dfwc_companion_donation_failed`. The first four ship as donor-side JS events that batch to a `track` REST endpoint; the last two fire directly in PHP at the form-submit boundary via the parent's `wc_donation_alter_donate_response` filter. Hook signatures stable through v1.x.
+* **New: `Analytics\Privacy_Guard`.** Allow-list sanitizer for every inbound event field. Rejects unknown event types, unknown intervals, unknown contexts, non-ISO-4217 currency codes, and language codes outside the WPML active set + site locale fallback. Caps amounts at $999,999,999, replaces client-supplied timestamps with server time, caps `$reason` strings at 200 chars. Drops PII fields (donor_email, ip, user_agent, session_id, etc.) silently — even if a malicious client tries to POST them, they never reach `do_action`.
+* **New: `REST\Track_REST_Controller`.** `POST /wp-json/dfwc-companion/v1/track` with public `permission_callback`. Rate-limited to 100 events per IP per minute (hashed-IP keys). Batch size capped at 50 events per request. Each batched event flows through `Privacy_Guard::sanitize_event` then fires the matching hook in PHP.
+* **New: `Analytics\Submission_Tracker`.** Hooks the parent's `wc_donation_alter_donate_response` filter — fires `dfwc_companion_donation_submitted` on success, `dfwc_companion_donation_failed` on parent rejection. Reads `dfwc_context` / `dfwc_currency` / `dfwc_language` hidden inputs the overlay JS injects so the success / failure events carry render-time correlation data.
+* **New: donor-side event buffer.** `dfwc-overlay.js` pushes events into a 1-second-debounced buffer that flushes via `fetch(..., { keepalive: true })`. Survives page navigation; `pagehide` + `beforeunload` listeners flush proactively. Failures are caught silently — analytics never breaks donor flow.
+* **New: `data-context` + `data-language` overlay attributes.** `Renderer::wrap_with_overlay` and `Context_Augmenter` both emit them so the overlay JS can attach context to every event without an extra round-trip. Language reads `WPML_Strings::current_language()` when WPML is active, else `get_locale()`.
+* **New: `docs/event-hooks.md`.** ~400-line reference covering all six hooks, privacy posture, three end-to-end integration recipes (GA4 Measurement Protocol, FluentCRM contact tagging, generic webhook), performance considerations, troubleshooting, and migration guidance from third-party analytics plugins.
+* **Internal:** test coverage 186 → 200+ cases. New `Privacy_Guard_Test` (16 cases) covers the allow-list sanitizers + the PII-strip guarantee. The Track REST endpoint and Submission_Tracker rely on integration testing in CI rather than unit tests (the WP REST infrastructure they touch isn't readily mockable in the bootstrap-stubs test environment).
+* **Backward compat:** existing v1.0.x campaigns continue to render unchanged. The new overlay attributes are additive; sites without listeners see zero behavior change. The track REST endpoint is registered but unused unless an admin has wired a listener.
 
 = 1.0.0 =
 First stable release. Bundles the v0.9.0 → v1.0.0 changes: per-currency preset amounts (WCML primary, WC base fallback, filter-based WCPay/Aelia extension) and advanced giving intervals (weekly / quarterly / semi-annually / admin-defined custom cadence). Plus a clean uninstall path that respects the admin's data-preservation preference, a `wp dfwc-companion health` CLI command, GitHub repo polish, and the v1.0.0 documentation suite.
@@ -249,6 +262,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Adds six donor-flow event hooks (form viewed / interval selected / preset selected / custom amount entered / donation submitted / donation failed) so admins can pipe events to GA4, FluentCRM, Zapier, etc. via small custom snippets. Privacy-by-default: aggregate-only data, no donor PII. Documented integration recipes in docs/event-hooks.md. Backward-compatible — sites without listeners see zero behavior change.
 
 = 1.0.0 =
 First stable release. Adds per-currency preset amounts (WCML primary; WCPay/Aelia via filter), opt-in advanced cadences (weekly / quarterly / semi-annually / custom "every N period"), `wp dfwc-companion health` CLI, and a clean opt-in uninstall path. Backward-compatible — existing campaigns render unchanged until admins opt into the new features.

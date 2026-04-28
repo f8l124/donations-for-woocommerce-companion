@@ -22,6 +22,7 @@ use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Currency_Preset_Resolver;
 use DFWC\Companion\Config\Engine_Interval_Map;
 use DFWC\Companion\Engine_Detector;
+use DFWC\Companion\I18n\WPML_Strings;
 
 final class Renderer {
 
@@ -91,17 +92,19 @@ final class Renderer {
 	 * @param int    $campaign_id
 	 * @param string $inner      Parent's pre-rendered form HTML.
 	 */
-	public static function wrap_with_overlay( int $campaign_id, string $inner ): string {
+	public static function wrap_with_overlay( int $campaign_id, string $inner, string $context = 'shortcode' ): string {
 		$attrs = self::build_overlay_attributes( $campaign_id );
 
 		return sprintf(
-			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d" data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s" data-intervals="%5$s" data-display="%6$s">%7$s</div>',
+			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d" data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s" data-intervals="%5$s" data-display="%6$s" data-context="%7$s" data-language="%8$s">%9$s</div>',
 			(int) $campaign_id,
 			esc_attr( $attrs['engine'] ),
 			esc_attr( $attrs['active_interval'] ),
 			esc_attr( (string) wp_json_encode( $attrs['form_config'] ) ),
 			esc_attr( (string) wp_json_encode( $attrs['enabled_intervals'] ) ),
 			esc_attr( (string) wp_json_encode( $attrs['display'] ) ),
+			esc_attr( $context ),
+			esc_attr( $attrs['language'] ),
 			$inner // already escaped inside parent's shortcode/template
 		);
 	}
@@ -112,7 +115,7 @@ final class Renderer {
 	 * Used by `wrap_with_overlay()` and by Context_Augmenter when emitting
 	 * the wrapper's opening tag separately from its closing tag.
 	 *
-	 * @return array{engine:string,enabled_intervals:array<int,string>,active_interval:string,form_config:array<string,array>,display:array{show_title:bool,show_image:bool,cause_heading:string}}
+	 * @return array{engine:string,enabled_intervals:array<int,string>,active_interval:string,form_config:array<string,array>,display:array{show_title:bool,show_image:bool,cause_heading:string},language:string}
 	 */
 	public static function build_overlay_attributes( int $campaign_id ): array {
 		$config            = Config_Resolver::resolve( $campaign_id );
@@ -122,12 +125,20 @@ final class Renderer {
 		$form_config       = self::build_form_config( $config, $enabled_intervals );
 		$display           = Config_Resolver::resolve_display( $campaign_id );
 
+		// Phase 9 — language code surfaced for analytics events. WPML active
+		// language wins; falls back to site locale.
+		$language = WPML_Strings::wpml_active() ? WPML_Strings::current_language() : '';
+		if ( '' === $language && function_exists( 'get_locale' ) ) {
+			$language = (string) get_locale();
+		}
+
 		return array(
 			'engine'            => $engine,
 			'enabled_intervals' => $enabled_intervals,
 			'active_interval'   => $active_interval,
 			'form_config'       => $form_config,
 			'display'           => $display,
+			'language'          => $language,
 		);
 	}
 

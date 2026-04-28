@@ -82,6 +82,10 @@ final class Plugin {
 		new Admin\Preview_Controller();
 		new REST\Preview_REST_Controller();
 
+		// Phase 9 — event hooks (analytics / CRM / webhook integration).
+		new Analytics\Submission_Tracker();
+		new REST\Track_REST_Controller();
+
 		// Phase 11 — `wp dfwc-companion` CLI commands. No-op outside WP-CLI.
 		CLI\CLI_Commands::register();
 

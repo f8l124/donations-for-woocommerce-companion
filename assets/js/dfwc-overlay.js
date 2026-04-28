@@ -37,6 +37,71 @@
 		};
 	}
 
+	/**
+	 * Phase 9 — donor-side analytics event buffer. Coalesces events for ~1s
+	 * then POSTs the batch to /dfwc-companion/v1/track. Each event the
+	 * server receives flows through Privacy_Guard before any do_action
+	 * fires, so the buffer doesn't need its own sanitization — it can ship
+	 * whatever the donor's overlay generates.
+	 *
+	 * Failures here never break donor flow: the catch swallows the error.
+	 * Worst case, an admin's listener misses an event during a network
+	 * blip — no donor-visible impact.
+	 *
+	 * `keepalive: true` keeps the fetch alive across page unload so events
+	 * the donor triggers in the last second before navigation still ship.
+	 * Modern browser support is good (Chrome 66+, Firefox 71+, Safari 13+);
+	 * older browsers degrade gracefully — events lost in the last second.
+	 */
+	var EventBuffer = ( function () {
+		var buffer = [];
+		var flushTimer = null;
+		var FLUSH_DEBOUNCE_MS = 1000;
+
+		function endpoint() {
+			return ( window.dfwcCompanion && window.dfwcCompanion.trackUrl ) || '';
+		}
+
+		function nonce() {
+			return ( window.dfwcCompanion && window.dfwcCompanion.trackNonce ) || '';
+		}
+
+		function flush() {
+			if ( buffer.length === 0 ) { return; }
+			if ( ! endpoint() ) { buffer = []; return; }
+			var events = buffer.slice();
+			buffer = [];
+			try {
+				fetch( endpoint(), {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'X-WP-Nonce': nonce(),
+					},
+					body: JSON.stringify( { events: events } ),
+					credentials: 'same-origin',
+					keepalive: true,
+				} ).catch( function () { /* analytics failures must not break donor flow */ } );
+			} catch ( e ) { /* same — never throw */ }
+		}
+
+		function push( event ) {
+			if ( ! event || ! event.type ) { return; }
+			buffer.push( event );
+			clearTimeout( flushTimer );
+			flushTimer = setTimeout( flush, FLUSH_DEBOUNCE_MS );
+		}
+
+		// Flush on page-unload paths so the last events the donor triggered
+		// before clicking Donate (or navigating away) still reach the server.
+		// `pagehide` is the canonical "page is leaving" event; `beforeunload`
+		// is the legacy fallback for older Safari.
+		window.addEventListener( 'pagehide', flush );
+		window.addEventListener( 'beforeunload', flush );
+
+		return { push: push, flush: flush };
+	} )();
+
 	ready( function () {
 		var targets = document.querySelectorAll( '[data-dfwc-overlay-target]' );
 		Array.prototype.forEach.call( targets, init );
@@ -83,6 +148,16 @@
 		var engine     = wrapper.getAttribute( 'data-engine' ) || 'none';
 		var initialKey = wrapper.getAttribute( 'data-active-interval' ) || enabledIntervals[ 0 ];
 		if ( enabledIntervals.indexOf( initialKey ) < 0 ) { initialKey = enabledIntervals[ 0 ]; }
+
+		// Phase 9 — render-time context surfaced for analytics events. The
+		// renderer adds `data-context` and `data-language`; default to
+		// 'unknown' / '' if the page predates Phase 9.
+		var renderContext  = wrapper.getAttribute( 'data-context' ) || 'unknown';
+		var renderLanguage = wrapper.getAttribute( 'data-language' ) || '';
+		// Currency is per-interval (set by the Phase 6 currency resolver).
+		// Default to the active interval's currency at form-view time;
+		// individual events update this when the donor switches interval.
+		var renderCurrency = ( config[ initialKey ] && config[ initialKey ].currency ) || '';
 
 		// Locate parent's hidden inputs and controls. Every selector is scoped
 		// to .wc-donation-in-action to keep multi-instance pages isolated.
@@ -245,6 +320,108 @@
 				showError( ui.root, ( window.dfwcCompanion && window.dfwcCompanion.i18n && window.dfwcCompanion.i18n.errorAmountRequired ) || 'Please choose an amount.' );
 			}, true );
 		}
+
+		// Phase 9 — inject hidden inputs carrying render-time context so
+		// parent's AJAX submit POST carries enough metadata for our
+		// Submission_Tracker to fire donation_submitted / donation_failed
+		// with the right context / currency / language. parent never reads
+		// these (unknown POST keys are ignored); we add them passively.
+		injectHiddenInput( scope, 'dfwc_context', renderContext );
+		injectHiddenInput( scope, 'dfwc_currency', renderCurrency );
+		injectHiddenInput( scope, 'dfwc_language', renderLanguage );
+
+		// Phase 9 — fire form_viewed once per init.
+		EventBuffer.push( {
+			type:        'form_viewed',
+			campaign_id: campaignId,
+			interval:    state.interval,
+			context:     renderContext,
+			language:    renderLanguage,
+		} );
+
+		// Bind donor-interaction analytics. These piggyback on the existing
+		// click / change / blur handlers via additional listeners — kept
+		// separate so analytics removal in a future minor wouldn't risk
+		// breaking the core form behavior.
+		bindAnalytics( wrapper, ui, state, config, campaignId, renderContext, renderLanguage );
+	}
+
+	/**
+	 * Phase 9 — analytics event bindings, separated from init() for clarity.
+	 * Listens on the SAME elements init() binds to but with non-capture
+	 * listeners so we never block the core form handlers.
+	 */
+	function bindAnalytics( wrapper, ui, state, config, campaignId, renderContext, renderLanguage ) {
+		// Tab clicks → interval_selected.
+		Array.prototype.forEach.call( ui.tabs, function ( tab ) {
+			tab.addEventListener( 'click', function () {
+				if ( tab.disabled || tab.getAttribute( 'aria-disabled' ) === 'true' ) { return; }
+				var key = tab.getAttribute( 'data-dfwc-tab' );
+				if ( ! key ) { return; }
+				EventBuffer.push( {
+					type:        'interval_selected',
+					campaign_id: campaignId,
+					interval:    key,
+					context:     renderContext,
+					language:    renderLanguage,
+				} );
+			} );
+		} );
+
+		// Preset radios → preset_selected. Listen on the root because the
+		// existing preset handler at init() also catches the change event;
+		// both can run without interfering.
+		ui.root.addEventListener( 'change', function ( e ) {
+			var input = e.target;
+			if ( ! input || input.getAttribute( 'data-dfwc-preset' ) === null ) { return; }
+			var amount = parseFloat( input.getAttribute( 'data-amount' ) ) || 0;
+			if ( amount <= 0 ) { return; }
+			EventBuffer.push( {
+				type:        'preset_selected',
+				campaign_id: campaignId,
+				interval:    input.getAttribute( 'data-interval' ) || state.interval,
+				amount:      amount,
+				context:     renderContext,
+				currency:    ( config[ state.interval ] && config[ state.interval ].currency ) || '',
+				language:    renderLanguage,
+			} );
+		} );
+
+		// Custom-amount input → custom_amount_entered (fires after blur, not
+		// per keystroke — a debounced blur is the right granularity for
+		// analytics; per-keystroke would explode the event volume and offer
+		// no analyst signal anyway).
+		Array.prototype.forEach.call( ui.root.querySelectorAll( '[data-dfwc-custom]' ), function ( inp ) {
+			inp.addEventListener( 'blur', function () {
+				if ( '' === inp.value ) { return; }
+				var amount = parseFloat( inp.value ) || 0;
+				if ( amount <= 0 ) { return; }
+				EventBuffer.push( {
+					type:        'custom_amount_entered',
+					campaign_id: campaignId,
+					interval:    inp.getAttribute( 'data-interval' ) || state.interval,
+					amount:      amount,
+					context:     renderContext,
+					currency:    ( config[ state.interval ] && config[ state.interval ].currency ) || '',
+					language:    renderLanguage,
+				} );
+			} );
+		} );
+	}
+
+	/**
+	 * Phase 9 — append a hidden input only if the same name doesn't exist
+	 * yet. Idempotent in case the overlay re-mounts (preview pane refresh).
+	 */
+	function injectHiddenInput( scope, name, value ) {
+		if ( '' === value ) { return; }
+		if ( scope.querySelector( 'input[name="' + name + '"]' ) ) { return; }
+		var input = document.createElement( 'input' );
+		input.type  = 'hidden';
+		input.name  = name;
+		input.value = value;
+		input.setAttribute( 'data-dfwc-injected', '' );
+		scope.appendChild( input );
 	}
 
 	function locateParent( scope ) {

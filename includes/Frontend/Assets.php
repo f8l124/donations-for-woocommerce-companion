@@ -92,6 +92,11 @@ final class Assets {
 			'currency'       => get_woocommerce_currency(),
 			'currencySymbol' => html_entity_decode( get_woocommerce_currency_symbol() ),
 			'locale'         => str_replace( '_', '-', get_locale() ),
+			// Phase 9 — analytics track endpoint + nonce. Public endpoint
+			// (allows nopriv donors); the nonce protects against stale
+			// browser state replaying old payloads, not against forgery.
+			'trackUrl'       => function_exists( 'rest_url' ) ? rest_url( 'dfwc-companion/v1/track' ) : '',
+			'trackNonce'     => wp_create_nonce( 'wp_rest' ),
 			'i18n'           => array(
 				'errorGeneric'        => __( 'Something went wrong. Please try again.', 'dfwc-companion' ),
 				'errorAmountRequired' => __( 'Please choose a preset amount or enter a custom amount.', 'dfwc-companion' ),
