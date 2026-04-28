@@ -28,6 +28,7 @@ defined( 'ABSPATH' ) || exit;
 use DFWC\Companion\Admin\Admin_Menu;
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Currency_Preset_Resolver;
+use DFWC\Companion\Config\Engine_Interval_Map;
 use DFWC\Companion\Engine_Detector;
 use DFWC\Companion\I18n\WPML_Strings;
 
@@ -506,6 +507,58 @@ $current_tpl    = '' !== $current_tpl_id && isset( $all_templates[ $current_tpl_
 					<?php endforeach; ?>
 				</fieldset>
 			</fieldset>
+
+			<?php if ( Config_Resolver::INTERVAL_CUSTOM === $key ) : ?>
+				<fieldset class="dfwc-mb__fieldset dfwc-mb__custom-cadence" <?php disabled( $tab_disabled ); ?>>
+					<legend><?php esc_html_e( 'Custom cadence', 'dfwc-companion' ); ?></legend>
+					<p>
+						<label>
+							<?php esc_html_e( 'Every', 'dfwc-companion' ); ?>
+							<input
+								type="number"
+								name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][custom_interval]"
+								value="<?php echo esc_attr( (string) ( $block['custom_interval'] ?? 1 ) ); ?>"
+								min="1"
+								max="99"
+								step="1"
+								style="width:5em"
+							>
+							<select name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][custom_period]">
+								<?php
+								$dfwc_period = (string) ( $block['custom_period'] ?? 'month' );
+								$dfwc_period_labels = array(
+									'day'   => __( 'days', 'dfwc-companion' ),
+									'week'  => __( 'weeks', 'dfwc-companion' ),
+									'month' => __( 'months', 'dfwc-companion' ),
+									'year'  => __( 'years', 'dfwc-companion' ),
+								);
+								foreach ( Engine_Interval_Map::periods() as $dfwc_p ) :
+									?>
+									<option value="<?php echo esc_attr( $dfwc_p ); ?>" <?php selected( $dfwc_period, $dfwc_p ); ?>>
+										<?php echo esc_html( $dfwc_period_labels[ $dfwc_p ] ?? $dfwc_p ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+						</label>
+					</p>
+					<p>
+						<label>
+							<?php esc_html_e( 'Donor-facing label (optional)', 'dfwc-companion' ); ?>
+							<input
+								type="text"
+								class="large-text"
+								name="dfwc_intervals[<?php echo esc_attr( $key ); ?>][custom_label]"
+								value="<?php echo esc_attr( (string) ( $block['custom_label'] ?? '' ) ); ?>"
+								maxlength="120"
+								placeholder="<?php esc_attr_e( 'e.g. every 6 weeks', 'dfwc-companion' ); ?>"
+							>
+						</label>
+					</p>
+					<p class="description">
+						<?php esc_html_e( 'The cadence above feeds the subscription engine; the donor-facing label is what donors see. Use the {custom_label} token in the CTA template to surface it.', 'dfwc-companion' ); ?>
+					</p>
+				</fieldset>
+			<?php endif; ?>
 
 			<fieldset class="dfwc-mb__fieldset" <?php disabled( $tab_disabled ); ?>>
 				<legend><?php esc_html_e( 'Call-to-action template', 'dfwc-companion' ); ?></legend>

@@ -32,9 +32,15 @@ final class Defaults {
 	public static function for_campaign(): array {
 		return array(
 			'default_interval' => 'one_time',
-			'one_time'         => self::interval_block( true, __( 'Donate {amount}', 'dfwc-companion' ) ),
-			'monthly'          => self::interval_block( false, __( 'Donate {amount}/month', 'dfwc-companion' ) ),
-			'annual'           => self::interval_block( false, __( 'Donate {amount}/year', 'dfwc-companion' ) ),
+			'one_time'         => self::interval_block( true, __( 'Donate {amount}', 'dfwc-companion' ), 'one_time' ),
+			'monthly'          => self::interval_block( false, __( 'Donate {amount}/month', 'dfwc-companion' ), 'monthly' ),
+			'annual'           => self::interval_block( false, __( 'Donate {amount}/year', 'dfwc-companion' ), 'annual' ),
+			// Phase 7 — advanced intervals shipped with default-disabled blocks
+			// so storage shape stays stable whether or not the global toggle is on.
+			'weekly'           => self::interval_block( false, __( 'Donate {amount}/week', 'dfwc-companion' ), 'weekly' ),
+			'quarterly'        => self::interval_block( false, __( 'Donate {amount} every 3 months', 'dfwc-companion' ), 'quarterly' ),
+			'semiannual'       => self::interval_block( false, __( 'Donate {amount} every 6 months', 'dfwc-companion' ), 'semiannual' ),
+			'custom'           => self::interval_block( false, __( 'Donate {amount} {custom_label}', 'dfwc-companion' ), 'custom' ),
 			'display'          => array(
 				'show_title'    => true,
 				'show_image'    => true,
@@ -72,8 +78,8 @@ final class Defaults {
 	 *
 	 * @return array<string,mixed>
 	 */
-	public static function interval_block( bool $enabled = false, string $cta_template = '' ): array {
-		return array(
+	public static function interval_block( bool $enabled = false, string $cta_template = '', string $interval_key = '' ): array {
+		$block = array(
 			'enabled'               => $enabled,
 			'presets'               => array(
 				array(
@@ -120,6 +126,18 @@ final class Defaults {
 			// Currency_Preset_Resolver::resolve().
 			'currency_overrides'         => array(),
 		);
+
+		// Phase 7 — `custom` interval gets cadence fields so admins can
+		// configure a non-standard "every N <period>" rhythm. Other intervals
+		// (weekly / quarterly / semiannual) have fixed cadence and don't
+		// need these fields in storage.
+		if ( 'custom' === $interval_key ) {
+			$block['custom_period']   = 'month';
+			$block['custom_interval'] = 1;
+			$block['custom_label']    = '';
+		}
+
+		return $block;
 	}
 
 	/**

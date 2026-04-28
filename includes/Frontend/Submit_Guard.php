@@ -22,6 +22,7 @@ defined( 'ABSPATH' ) || exit;
 
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Currency_Preset_Resolver;
+use DFWC\Companion\Config\Engine_Interval_Map;
 
 final class Submit_Guard {
 
@@ -68,14 +69,15 @@ final class Submit_Guard {
 
 		$is_recurring = isset( $_POST['is_recurring'] ) ? sanitize_text_field( wp_unslash( $_POST['is_recurring'] ) ) : 'no'; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$period       = isset( $_POST['new_period'] ) ? sanitize_text_field( wp_unslash( $_POST['new_period'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$multiplier   = isset( $_POST['new_interval'] ) ? absint( wp_unslash( $_POST['new_interval'] ) ) : 1; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 
-		$interval_key = $this->derive_interval_key( $is_recurring, $period );
+		$config       = Config_Resolver::resolve( $campaign_id );
+		$interval_key = $this->derive_interval_key( $is_recurring, $period, $multiplier, $config );
 		if ( null === $interval_key ) {
 			// Unknown pattern (donor came through a non-companion form?). Defer to parent.
 			return;
 		}
 
-		$config = Config_Resolver::resolve( $campaign_id );
 		$block  = $config[ $interval_key ] ?? null;
 
 		if ( ! is_array( $block ) || empty( $block['enabled'] ) ) {
@@ -106,21 +108,53 @@ final class Submit_Guard {
 	}
 
 	/**
-	 * Map (is_recurring, period) → companion interval key. Returns null when
-	 * the combination doesn't fit our model so we defer to parent's logic.
+	 * Map (is_recurring, period, multiplier) → companion interval key. Returns
+	 * null when the combination doesn't fit our model so we defer to parent's
+	 * logic.
+	 *
+	 * Phase 7 — also recognizes weekly / quarterly / semi-annual cadences,
+	 * and matches `custom` when the campaign's custom block declares the
+	 * exact (period, multiplier) the donor posted (so we honor the admin's
+	 * configured cadence rather than guessing).
+	 *
+	 * @param array<string,mixed> $config Resolved campaign config.
 	 */
-	private function derive_interval_key( string $is_recurring, string $period ): ?string {
+	private function derive_interval_key( string $is_recurring, string $period, int $multiplier, array $config ): ?string {
 		if ( 'no' === $is_recurring ) {
 			return Config_Resolver::INTERVAL_ONE_TIME;
 		}
-		if ( 'yes' === $is_recurring ) {
-			if ( 'month' === $period ) {
-				return Config_Resolver::INTERVAL_MONTHLY;
-			}
-			if ( 'year' === $period ) {
-				return Config_Resolver::INTERVAL_ANNUAL;
+		if ( 'yes' !== $is_recurring ) {
+			return null;
+		}
+
+		$multiplier = max( 1, $multiplier );
+
+		// Standard + advanced fixed-cadence intervals — match by (period, multiplier).
+		$fixed = array(
+			Config_Resolver::INTERVAL_MONTHLY    => array( 'month', 1 ),
+			Config_Resolver::INTERVAL_ANNUAL     => array( 'year', 1 ),
+			Config_Resolver::INTERVAL_WEEKLY     => array( 'week', 1 ),
+			Config_Resolver::INTERVAL_QUARTERLY  => array( 'month', 3 ),
+			Config_Resolver::INTERVAL_SEMIANNUAL => array( 'month', 6 ),
+		);
+		foreach ( $fixed as $key => $cadence ) {
+			if ( $cadence[0] === $period && $cadence[1] === $multiplier ) {
+				return $key;
 			}
 		}
+
+		// Custom interval — match the admin's configured cadence.
+		$custom_block = $config[ Config_Resolver::INTERVAL_CUSTOM ] ?? null;
+		if ( is_array( $custom_block ) && ! empty( $custom_block['enabled'] ) ) {
+			$custom_cadence = Engine_Interval_Map::for_interval( Config_Resolver::INTERVAL_CUSTOM, $custom_block );
+			if ( null !== $custom_cadence
+				&& $custom_cadence['period'] === $period
+				&& (int) $custom_cadence['interval'] === $multiplier
+			) {
+				return Config_Resolver::INTERVAL_CUSTOM;
+			}
+		}
+
 		return null;
 	}
 

@@ -73,6 +73,14 @@ final class Settings_Page {
 			'dfwc-companion',
 			'dfwc_section_general'
 		);
+
+		add_settings_field(
+			'enable_advanced_intervals',
+			__( 'Advanced giving intervals', 'dfwc-companion' ),
+			array( $this, 'render_advanced_intervals_field' ),
+			'dfwc-companion',
+			'dfwc_section_general'
+		);
 	}
 
 	public static function render(): void {
@@ -98,6 +106,24 @@ final class Settings_Page {
 		</select>
 		<p class="description">
 			<?php esc_html_e( 'New campaigns inherit from this template by default. Existing campaigns are unaffected by this setting.', 'dfwc-companion' ); ?>
+		</p>
+		<?php
+	}
+
+	public function render_advanced_intervals_field(): void {
+		$current = (bool) ( Config_Resolver::get_global_settings()['enable_advanced_intervals'] ?? false );
+		?>
+		<label>
+			<input
+				type="checkbox"
+				name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[enable_advanced_intervals]"
+				value="1"
+				<?php checked( $current ); ?>
+			>
+			<?php esc_html_e( 'Enable advanced giving intervals (weekly, quarterly, semi-annually, custom cadence).', 'dfwc-companion' ); ?>
+		</label>
+		<p class="description">
+			<?php esc_html_e( 'Off by default — donors see the standard One-time / Monthly / Annually tabs. Turn on to expose extra intervals in the campaign meta box and Templates page; each interval is then per-campaign / per-template opt-in via its own enable checkbox.', 'dfwc-companion' ); ?>
 		</p>
 		<?php
 	}
@@ -147,7 +173,8 @@ final class Settings_Page {
 		}
 
 		// HTML form-checkbox semantics: missing = unchecked = false.
-		$preserve = ! empty( $raw['preserve_data_on_uninstall'] );
+		$preserve          = ! empty( $raw['preserve_data_on_uninstall'] );
+		$advanced_enabled  = ! empty( $raw['enable_advanced_intervals'] );
 
 		return array_merge(
 			$existing,
@@ -155,6 +182,7 @@ final class Settings_Page {
 				'version'                    => 1,
 				'default_template_id'        => $default_template_id,
 				'preserve_data_on_uninstall' => $preserve,
+				'enable_advanced_intervals'  => $advanced_enabled,
 			)
 		);
 	}

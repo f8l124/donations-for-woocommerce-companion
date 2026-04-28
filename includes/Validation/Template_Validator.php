@@ -32,6 +32,7 @@ defined( 'ABSPATH' ) || exit;
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Currency_Preset_Resolver;
 use DFWC\Companion\Config\Defaults;
+use DFWC\Companion\Config\Engine_Interval_Map;
 
 final class Template_Validator {
 
@@ -45,18 +46,20 @@ final class Template_Validator {
 	public function sanitize( array $raw ): array {
 		$config = Defaults::for_campaign();
 
+		$intervals = Config_Resolver::intervals( true );
+
 		// default_interval (allow-listed).
 		if ( isset( $raw['default_interval'] ) ) {
 			$value = sanitize_key( (string) $raw['default_interval'] );
-			if ( in_array( $value, Config_Resolver::intervals(), true ) ) {
+			if ( in_array( $value, $intervals, true ) ) {
 				$config['default_interval'] = $value;
 			}
 		}
 
-		// Per-interval blocks.
-		foreach ( Config_Resolver::intervals() as $interval ) {
+		// Per-interval blocks (standard + advanced).
+		foreach ( $intervals as $interval ) {
 			$block_raw           = is_array( $raw[ $interval ] ?? null ) ? $raw[ $interval ] : array();
-			$config[ $interval ] = $this->sanitize_interval_block( $block_raw, $config[ $interval ] );
+			$config[ $interval ] = $this->sanitize_interval_block( $block_raw, $config[ $interval ], $interval );
 		}
 
 		// Display sub-tree.
@@ -74,7 +77,7 @@ final class Template_Validator {
 	 * @param array<string,mixed> $defaults Per-interval defaults to fill missing fields.
 	 * @return array<string,mixed>
 	 */
-	public function sanitize_interval_block( array $raw, array $defaults ): array {
+	public function sanitize_interval_block( array $raw, array $defaults, string $interval_key = '' ): array {
 		$enabled               = ! empty( $raw['enabled'] );
 		$custom_amount_enabled = ! empty( $raw['custom_amount_enabled'] );
 
@@ -109,7 +112,7 @@ final class Template_Validator {
 			count( $presets )
 		);
 
-		return array(
+		$out = array(
 			'enabled'                    => $enabled,
 			'presets'                    => $presets,
 			'min'                        => $min,
@@ -123,6 +126,21 @@ final class Template_Validator {
 			'custom_amount_impact_label' => $custom_amount_impact_label,
 			'currency_overrides'         => $currency_overrides,
 		);
+
+		// Phase 7 — `custom` interval persists its own cadence fields.
+		if ( Config_Resolver::INTERVAL_CUSTOM === $interval_key ) {
+			$out['custom_period']   = Engine_Interval_Map::sanitize_period(
+				(string) ( $raw['custom_period'] ?? ( $defaults['custom_period'] ?? 'month' ) )
+			);
+			$out['custom_interval'] = Engine_Interval_Map::sanitize_multiplier(
+				(int) ( $raw['custom_interval'] ?? ( $defaults['custom_interval'] ?? 1 ) )
+			);
+			$out['custom_label']    = isset( $raw['custom_label'] )
+				? sanitize_text_field( (string) $raw['custom_label'] )
+				: (string) ( $defaults['custom_label'] ?? '' );
+		}
+
+		return $out;
 	}
 
 	/**

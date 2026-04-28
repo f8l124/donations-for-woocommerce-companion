@@ -20,6 +20,7 @@ defined( 'ABSPATH' ) || exit;
 use DFWC\Companion\Config\Campaign_Config_Repository;
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Currency_Preset_Resolver;
+use DFWC\Companion\Config\Engine_Interval_Map;
 use DFWC\Companion\Config\Template_Repository;
 use DFWC\Companion\Engine_Detector;
 use DFWC\Companion\I18n\WPML_Strings;
@@ -166,9 +167,13 @@ final class Meta_Box {
 			: array();
 
 		$submitted_config = array();
-		foreach ( Config_Resolver::intervals() as $key ) {
+		// Always sanitize all 7 interval slots (standard + advanced) so toggling
+		// the global advanced-intervals setting on or off doesn't lose admin's
+		// already-saved data. The renderer respects the toggle independently.
+		foreach ( Config_Resolver::intervals( true ) as $key ) {
 			$submitted_config[ $key ] = $this->sanitize_interval_block(
-				is_array( $raw_intervals[ $key ] ?? null ) ? $raw_intervals[ $key ] : array()
+				is_array( $raw_intervals[ $key ] ?? null ) ? $raw_intervals[ $key ] : array(),
+				$key
 			);
 		}
 
@@ -207,22 +212,38 @@ final class Meta_Box {
 		$resolved = Config_Resolver::resolve( $post_id );
 
 		// D1: parent only processes recurring POST data when wc-donation-recurring='user'.
-		$recurring_enabled = ! empty( $resolved[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] )
-			|| ! empty( $resolved[ Config_Resolver::INTERVAL_ANNUAL ]['enabled'] );
+		// Any non-one_time interval implies recurring. Phase 7 added weekly /
+		// quarterly / semiannual / custom — all recurring.
+		$recurring_keys    = array_diff(
+			Config_Resolver::intervals( true ),
+			array( Config_Resolver::INTERVAL_ONE_TIME )
+		);
+		$recurring_enabled = false;
+		$primary_interval  = '';
+		foreach ( $recurring_keys as $rkey ) {
+			if ( ! empty( $resolved[ $rkey ]['enabled'] ) ) {
+				$recurring_enabled = true;
+				if ( '' === $primary_interval ) {
+					$primary_interval = $rkey;
+				}
+			}
+		}
 
 		if ( $recurring_enabled ) {
 			update_post_meta( $post_id, 'wc-donation-recurring', 'user' );
 
-			$primary_interval = ! empty( $resolved[ Config_Resolver::INTERVAL_MONTHLY ]['enabled'] )
-				? Config_Resolver::INTERVAL_MONTHLY
-				: Config_Resolver::INTERVAL_ANNUAL;
-			$primary_period   = Config_Resolver::INTERVAL_MONTHLY === $primary_interval ? 'month' : 'year';
+			$primary_cadence    = Engine_Interval_Map::for_interval(
+				$primary_interval,
+				is_array( $resolved[ $primary_interval ] ?? null ) ? $resolved[ $primary_interval ] : array()
+			);
+			$primary_period     = is_array( $primary_cadence ) ? (string) $primary_cadence['period'] : 'month';
+			$primary_multiplier = is_array( $primary_cadence ) ? (int) $primary_cadence['interval'] : 1;
 
 			update_post_meta( $post_id, '_subscription_period', $primary_period );
-			update_post_meta( $post_id, '_subscription_period_interval', '1' );
+			update_post_meta( $post_id, '_subscription_period_interval', (string) $primary_multiplier );
 			update_post_meta( $post_id, '_subscription_length', '0' );
 
-			$this->auto_configure_product_subscription( $post_id, $primary_period );
+			$this->auto_configure_product_subscription( $post_id, $primary_period, $primary_multiplier );
 		}
 
 		// Register translatable strings with WPML for this campaign's overrides.
@@ -298,12 +319,16 @@ final class Meta_Box {
 	 */
 	private function register_campaign_strings_with_wpml( int $campaign_id, array $delta ): void {
 		$namespace = '_campaign:' . $campaign_id;
-		foreach ( Config_Resolver::intervals() as $interval ) {
+		foreach ( Config_Resolver::intervals( true ) as $interval ) {
 			$block = $delta[ $interval ] ?? null;
 			if ( ! is_array( $block ) ) {
 				continue;
 			}
-			foreach ( array( 'cta_template', 'subtitle', 'annual_equivalency', 'custom_amount_impact_label' ) as $field ) {
+			$translatable_fields = array( 'cta_template', 'subtitle', 'annual_equivalency', 'custom_amount_impact_label' );
+			if ( Config_Resolver::INTERVAL_CUSTOM === $interval ) {
+				$translatable_fields[] = 'custom_label';
+			}
+			foreach ( $translatable_fields as $field ) {
 				if ( ! empty( $block[ $field ] ) ) {
 					WPML_Strings::register(
 						$namespace . '.' . $interval . '.' . $field,
@@ -338,7 +363,7 @@ final class Meta_Box {
 	 * Config_Resolver does, but starting from un-sanitized POST instead of
 	 * already-stored array.
 	 */
-	private function sanitize_interval_block( array $raw ): array {
+	private function sanitize_interval_block( array $raw, string $interval_key = '' ): array {
 		$enabled               = ! empty( $raw['enabled'] );
 		// HTML form-checkbox semantics: an UNCHECKED checkbox sends nothing in
 		// $_POST. Use !empty() (missing = false) — the previous isset()-with-
@@ -411,7 +436,7 @@ final class Meta_Box {
 			count( $presets )
 		);
 
-		return array(
+		$out = array(
 			'enabled'                    => $enabled,
 			'presets'                    => $presets,
 			'min'                        => $min,
@@ -425,6 +450,21 @@ final class Meta_Box {
 			'custom_amount_impact_label' => $custom_amount_impact_label,
 			'currency_overrides'         => $currency_overrides,
 		);
+
+		// Phase 7 — `custom` interval persists its own cadence fields.
+		if ( Config_Resolver::INTERVAL_CUSTOM === $interval_key ) {
+			$out['custom_period']   = Engine_Interval_Map::sanitize_period(
+				(string) ( $raw['custom_period'] ?? 'month' )
+			);
+			$out['custom_interval'] = Engine_Interval_Map::sanitize_multiplier(
+				(int) ( $raw['custom_interval'] ?? 1 )
+			);
+			$out['custom_label']    = isset( $raw['custom_label'] )
+				? sanitize_text_field( (string) $raw['custom_label'] )
+				: '';
+		}
+
+		return $out;
 	}
 
 	/**
@@ -467,7 +507,7 @@ final class Meta_Box {
 	 * No-op when engine='none'. Defensive against missing/non-subscription-
 	 * compatible products.
 	 */
-	private function auto_configure_product_subscription( int $campaign_id, string $primary_period ): void {
+	private function auto_configure_product_subscription( int $campaign_id, string $primary_period, int $primary_multiplier = 1 ): void {
 		if ( ! class_exists( '\WcdonationCampaignSetting' ) ) {
 			return;
 		}
@@ -484,7 +524,7 @@ final class Meta_Box {
 			// WCS: switch product type to subscription via the product_type taxonomy.
 			wp_set_object_terms( $product_id, 'subscription', 'product_type' );
 			update_post_meta( $product_id, '_subscription_period', $primary_period );
-			update_post_meta( $product_id, '_subscription_period_interval', '1' );
+			update_post_meta( $product_id, '_subscription_period_interval', (string) $primary_multiplier );
 			update_post_meta( $product_id, '_subscription_length', '0' );
 			// _subscription_price intentionally not set — donor's amount is the price.
 		} elseif ( Engine_Detector::ENGINE_WPS === $engine ) {
@@ -504,7 +544,7 @@ final class Meta_Box {
 			$writes = array(
 				'_wps_sfw_product'                     => 'yes',
 				'_wps_sfw_users'                       => 'user',
-				'wps_sfw_subscription_number'          => '1',
+				'wps_sfw_subscription_number'          => (string) $primary_multiplier,
 				'wps_sfw_subscription_interval'        => $primary_period,
 				'wps_sfw_subscription_expiry_number'   => '',
 				'wps_sfw_subscription_expiry_interval' => '',
@@ -587,9 +627,13 @@ final class Meta_Box {
 	 */
 	public static function interval_labels(): array {
 		return array(
-			Config_Resolver::INTERVAL_ONE_TIME => __( 'One-time', 'dfwc-companion' ),
-			Config_Resolver::INTERVAL_MONTHLY  => __( 'Monthly', 'dfwc-companion' ),
-			Config_Resolver::INTERVAL_ANNUAL   => __( 'Annually', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_ONE_TIME   => __( 'One-time', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_MONTHLY    => __( 'Monthly', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_ANNUAL     => __( 'Annually', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_WEEKLY     => __( 'Weekly', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_QUARTERLY  => __( 'Quarterly', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_SEMIANNUAL => __( 'Semi-annually', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_CUSTOM     => __( 'Custom cadence', 'dfwc-companion' ),
 		);
 	}
 }

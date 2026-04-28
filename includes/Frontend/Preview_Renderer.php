@@ -27,6 +27,7 @@ defined( 'ABSPATH' ) || exit;
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Currency_Preset_Resolver;
 use DFWC\Companion\Config\Defaults;
+use DFWC\Companion\Config\Engine_Interval_Map;
 use DFWC\Companion\Engine_Detector;
 
 final class Preview_Renderer {
@@ -154,7 +155,11 @@ final class Preview_Renderer {
 	private function resolve_enabled_intervals( array $config, string $engine ): array {
 		$out            = array();
 		$recurring_ok   = Engine_Detector::ENGINE_NONE !== $engine;
-		$recurring_keys = array( Config_Resolver::INTERVAL_MONTHLY, Config_Resolver::INTERVAL_ANNUAL );
+		// Phase 7 — all non-one_time intervals are recurring.
+		$recurring_keys = array_diff(
+			Config_Resolver::intervals( true ),
+			array( Config_Resolver::INTERVAL_ONE_TIME )
+		);
 
 		foreach ( Config_Resolver::intervals() as $key ) {
 			if ( ! ( $config[ $key ]['enabled'] ?? false ) ) {
@@ -186,14 +191,19 @@ final class Preview_Renderer {
 	private function build_form_config( array $config, array $enabled_intervals, string $currency = '' ): array {
 		$out             = array();
 		$interval_labels = array(
-			Config_Resolver::INTERVAL_ONE_TIME => __( 'One-time', 'dfwc-companion' ),
-			Config_Resolver::INTERVAL_MONTHLY  => __( 'Monthly', 'dfwc-companion' ),
-			Config_Resolver::INTERVAL_ANNUAL   => __( 'Annually', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_ONE_TIME   => __( 'One-time', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_MONTHLY    => __( 'Monthly', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_ANNUAL     => __( 'Annually', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_WEEKLY     => __( 'Weekly', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_QUARTERLY  => __( 'Quarterly', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_SEMIANNUAL => __( 'Semi-annually', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_CUSTOM     => __( 'Custom', 'dfwc-companion' ),
 		);
 		$resolved_currency = '' !== $currency ? $currency : Currency_Preset_Resolver::active_currency();
 		foreach ( $enabled_intervals as $key ) {
-			$block       = Currency_Preset_Resolver::resolve( $config[ $key ], $resolved_currency );
-			$out[ $key ] = array(
+			$block   = Currency_Preset_Resolver::resolve( $config[ $key ], $resolved_currency );
+			$cadence = Engine_Interval_Map::for_interval( $key, $block );
+			$entry   = array(
 				'min'                        => (float) $block['min'],
 				'max'                        => (float) $block['max'],
 				'default_index'              => (int) $block['default_index'],
@@ -205,6 +215,12 @@ final class Preview_Renderer {
 				'impact_display_mode'        => (string) ( $block['impact_display_mode'] ?? 'below_button' ),
 				'custom_amount_impact_label' => (string) ( $block['custom_amount_impact_label'] ?? '' ),
 				'currency'                   => (string) ( $block['_resolved_currency'] ?? $resolved_currency ),
+				'cadence'                    => null !== $cadence
+					? array(
+						'period'   => (string) $cadence['period'],
+						'interval' => (int) $cadence['interval'],
+					)
+					: null,
 				'presets'                    => array_map(
 					static function ( $p ) {
 						return array(
@@ -217,6 +233,10 @@ final class Preview_Renderer {
 					(array) ( $block['presets'] ?? array() )
 				),
 			);
+			if ( Config_Resolver::INTERVAL_CUSTOM === $key ) {
+				$entry['custom_label'] = (string) ( $block['custom_label'] ?? '' );
+			}
+			$out[ $key ] = $entry;
 		}
 		return $out;
 	}

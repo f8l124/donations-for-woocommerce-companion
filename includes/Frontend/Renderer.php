@@ -20,6 +20,7 @@ defined( 'ABSPATH' ) || exit;
 
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Currency_Preset_Resolver;
+use DFWC\Companion\Config\Engine_Interval_Map;
 use DFWC\Companion\Engine_Detector;
 
 final class Renderer {
@@ -137,11 +138,17 @@ final class Renderer {
 	 * `button.innerHTML` from PHP. The overlay JS does its own substitution
 	 * client-side via textContent for runtime updates.
 	 */
-	public static function format_cta( string $template, float $amount, string $interval_key ): string {
+	public static function format_cta( string $template, float $amount, string $interval_key, array $block = array() ): string {
 		$intervals = array(
-			Config_Resolver::INTERVAL_ONE_TIME => '',
-			Config_Resolver::INTERVAL_MONTHLY  => '/' . __( 'month', 'dfwc-companion' ),
-			Config_Resolver::INTERVAL_ANNUAL   => '/' . __( 'year', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_ONE_TIME   => '',
+			Config_Resolver::INTERVAL_MONTHLY    => '/' . __( 'month', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_ANNUAL     => '/' . __( 'year', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_WEEKLY     => '/' . __( 'week', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_QUARTERLY  => ' ' . __( 'every 3 months', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_SEMIANNUAL => ' ' . __( 'every 6 months', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_CUSTOM     => isset( $block['custom_label'] ) && '' !== (string) $block['custom_label']
+				? ' ' . (string) $block['custom_label']
+				: '',
 		);
 		$interval_suffix = $intervals[ $interval_key ] ?? '';
 
@@ -150,6 +157,11 @@ final class Renderer {
 		$out = $template;
 		$out = str_replace( '{amount}', $price_html, $out );
 		$out = str_replace( '{interval}', esc_html( $interval_suffix ), $out );
+
+		// Phase 7 — `{custom_label}` token for the custom interval. Empty
+		// otherwise; the unknown-tokens stripper below cleans up.
+		$custom_label = isset( $block['custom_label'] ) ? (string) $block['custom_label'] : '';
+		$out          = str_replace( '{custom_label}', esc_html( $custom_label ), $out );
 
 		// Strip any unknown tokens so admin-supplied templates can't smuggle markup.
 		$out = (string) preg_replace( '/\{[a-z_]+\}/', '', $out );
@@ -163,17 +175,27 @@ final class Renderer {
 
 	public static function interval_labels(): array {
 		return array(
-			Config_Resolver::INTERVAL_ONE_TIME => __( 'One-time', 'dfwc-companion' ),
-			Config_Resolver::INTERVAL_MONTHLY  => __( 'Monthly', 'dfwc-companion' ),
-			Config_Resolver::INTERVAL_ANNUAL   => __( 'Annually', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_ONE_TIME   => __( 'One-time', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_MONTHLY    => __( 'Monthly', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_ANNUAL     => __( 'Annually', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_WEEKLY     => __( 'Weekly', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_QUARTERLY  => __( 'Quarterly', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_SEMIANNUAL => __( 'Semi-annually', 'dfwc-companion' ),
+			Config_Resolver::INTERVAL_CUSTOM     => __( 'Custom', 'dfwc-companion' ),
 		);
 	}
 
 	private static function resolve_enabled_intervals( array $config, string $engine ): array {
 		$out             = array();
 		$recurring_ok    = Engine_Detector::ENGINE_NONE !== $engine;
-		$recurring_keys  = array( Config_Resolver::INTERVAL_MONTHLY, Config_Resolver::INTERVAL_ANNUAL );
+		// All non-one_time intervals are recurring; engine must be present.
+		$all_intervals   = Config_Resolver::intervals( true );
+		$recurring_keys  = array_diff( $all_intervals, array( Config_Resolver::INTERVAL_ONE_TIME ) );
 
+		// Render-time gating: only iterate intervals the global toggle exposes.
+		// Storage may carry advanced-interval config from a previous toggle-on
+		// session; we honor the current toggle here so a toggle-off cleanly
+		// hides the extras from donors without losing their saved data.
 		foreach ( Config_Resolver::intervals() as $key ) {
 			if ( ! ( $config[ $key ]['enabled'] ?? false ) ) {
 				continue;
@@ -207,8 +229,9 @@ final class Renderer {
 		// WC base fallback. No-op when active currency matches base.
 		$active_currency = Currency_Preset_Resolver::active_currency();
 		foreach ( $enabled_intervals as $key ) {
-			$block       = Currency_Preset_Resolver::resolve( $config[ $key ], $active_currency );
-			$out[ $key ] = array(
+			$block   = Currency_Preset_Resolver::resolve( $config[ $key ], $active_currency );
+			$cadence = Engine_Interval_Map::for_interval( $key, $block );
+			$entry   = array(
 				'min'                        => (float) $block['min'],
 				'max'                        => (float) $block['max'],
 				'default_index'              => (int) $block['default_index'],
@@ -224,6 +247,15 @@ final class Renderer {
 				// when validating donor amounts and when re-fetching on
 				// runtime currency switch.
 				'currency'                   => (string) ( $block['_resolved_currency'] ?? $active_currency ),
+				// Phase 7 — engine cadence so overlay JS knows which AJAX keys
+				// to ship per interval. null for one_time. Custom interval
+				// pulls cadence from the block's custom_period/custom_interval.
+				'cadence'                    => null !== $cadence
+					? array(
+						'period'   => (string) $cadence['period'],
+						'interval' => (int) $cadence['interval'],
+					)
+					: null,
 				'presets'                    => array_map(
 					static function ( $p ) {
 						return array(
@@ -236,6 +268,10 @@ final class Renderer {
 					(array) ( $block['presets'] ?? array() )
 				),
 			);
+			if ( Config_Resolver::INTERVAL_CUSTOM === $key ) {
+				$entry['custom_label'] = (string) ( $block['custom_label'] ?? '' );
+			}
+			$out[ $key ] = $entry;
 		}
 		return $out;
 	}

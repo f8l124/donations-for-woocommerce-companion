@@ -17,14 +17,19 @@ use DFWC\Companion\Admin\Admin_Menu;
 use DFWC\Companion\Admin\Templates_Page;
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Currency_Preset_Resolver;
+use DFWC\Companion\Config\Engine_Interval_Map;
 use DFWC\Companion\I18n\WPML_Strings;
 
 $intervals = Config_Resolver::intervals();
 
 $interval_labels = array(
-	Config_Resolver::INTERVAL_ONE_TIME => __( 'One-time', 'dfwc-companion' ),
-	Config_Resolver::INTERVAL_MONTHLY  => __( 'Monthly', 'dfwc-companion' ),
-	Config_Resolver::INTERVAL_ANNUAL   => __( 'Annually', 'dfwc-companion' ),
+	Config_Resolver::INTERVAL_ONE_TIME   => __( 'One-time', 'dfwc-companion' ),
+	Config_Resolver::INTERVAL_MONTHLY    => __( 'Monthly', 'dfwc-companion' ),
+	Config_Resolver::INTERVAL_ANNUAL     => __( 'Annually', 'dfwc-companion' ),
+	Config_Resolver::INTERVAL_WEEKLY     => __( 'Weekly', 'dfwc-companion' ),
+	Config_Resolver::INTERVAL_QUARTERLY  => __( 'Quarterly', 'dfwc-companion' ),
+	Config_Resolver::INTERVAL_SEMIANNUAL => __( 'Semi-annually', 'dfwc-companion' ),
+	Config_Resolver::INTERVAL_CUSTOM     => __( 'Custom cadence', 'dfwc-companion' ),
 );
 
 $page_title = $is_new
@@ -358,6 +363,57 @@ $dfwc_multi_currency   = ! empty( $dfwc_extra_currencies );
 								</p>
 							</details>
 						<?php endforeach; ?>
+					</td>
+				</tr>
+				<?php endif; ?>
+				<?php if ( Config_Resolver::INTERVAL_CUSTOM === $interval_key ) : ?>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Custom cadence', 'dfwc-companion' ); ?></th>
+					<td>
+						<label>
+							<?php esc_html_e( 'Every', 'dfwc-companion' ); ?>
+							<input
+								type="number"
+								name="template[config][<?php echo esc_attr( $interval_key ); ?>][custom_interval]"
+								value="<?php echo esc_attr( (string) ( $block['custom_interval'] ?? 1 ) ); ?>"
+								min="1"
+								max="99"
+								step="1"
+								style="width:5em"
+							>
+							<select name="template[config][<?php echo esc_attr( $interval_key ); ?>][custom_period]">
+								<?php
+								$dfwc_period        = (string) ( $block['custom_period'] ?? 'month' );
+								$dfwc_period_labels = array(
+									'day'   => __( 'days', 'dfwc-companion' ),
+									'week'  => __( 'weeks', 'dfwc-companion' ),
+									'month' => __( 'months', 'dfwc-companion' ),
+									'year'  => __( 'years', 'dfwc-companion' ),
+								);
+								foreach ( Engine_Interval_Map::periods() as $dfwc_p ) :
+									?>
+									<option value="<?php echo esc_attr( $dfwc_p ); ?>" <?php selected( $dfwc_period, $dfwc_p ); ?>>
+										<?php echo esc_html( $dfwc_period_labels[ $dfwc_p ] ?? $dfwc_p ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+						</label>
+						<p style="margin-top:8px">
+							<label>
+								<?php esc_html_e( 'Donor-facing label (optional)', 'dfwc-companion' ); ?>
+								<input
+									type="text"
+									class="regular-text"
+									name="template[config][<?php echo esc_attr( $interval_key ); ?>][custom_label]"
+									value="<?php echo esc_attr( (string) ( $block['custom_label'] ?? '' ) ); ?>"
+									maxlength="120"
+									placeholder="<?php esc_attr_e( 'e.g. every 6 weeks', 'dfwc-companion' ); ?>"
+								>
+							</label>
+						</p>
+						<p class="description">
+							<?php esc_html_e( 'Cadence drives the subscription engine. The label is what donors see — surface it in the CTA template via {custom_label}.', 'dfwc-companion' ); ?>
+						</p>
 					</td>
 				</tr>
 				<?php endif; ?>

@@ -215,13 +215,20 @@ final class Template_Repository {
 		WPML_Strings::register( $template->id . '.name', $template->name );
 		WPML_Strings::register( $template->id . '.description', $template->description );
 
-		$intervals = array( 'one_time', 'monthly', 'annual' );
+		// Walk all 7 intervals — advanced ones may have admin-defined strings
+		// that need translation regardless of whether the global toggle is on
+		// at the moment of save.
+		$intervals = Config_Resolver::intervals( true );
 		foreach ( $intervals as $interval ) {
 			$block = $template->config[ $interval ] ?? null;
 			if ( ! is_array( $block ) ) {
 				continue;
 			}
-			foreach ( array( 'cta_template', 'subtitle', 'annual_equivalency', 'custom_amount_impact_label' ) as $field ) {
+			$translatable_fields = array( 'cta_template', 'subtitle', 'annual_equivalency', 'custom_amount_impact_label' );
+			if ( Config_Resolver::INTERVAL_CUSTOM === $interval ) {
+				$translatable_fields[] = 'custom_label';
+			}
+			foreach ( $translatable_fields as $field ) {
 				if ( ! empty( $block[ $field ] ) ) {
 					WPML_Strings::register(
 						$template->id . '.' . $interval . '.' . $field,

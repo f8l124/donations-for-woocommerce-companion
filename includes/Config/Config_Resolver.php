@@ -48,21 +48,65 @@ final class Config_Resolver {
 	public const OPTION_KEY_GLOBAL = 'dfwc_companion_global_settings';
 
 	// === Interval keys ===
-	public const INTERVAL_ONE_TIME = 'one_time';
-	public const INTERVAL_MONTHLY  = 'monthly';
-	public const INTERVAL_ANNUAL   = 'annual';
+	public const INTERVAL_ONE_TIME   = 'one_time';
+	public const INTERVAL_MONTHLY    = 'monthly';
+	public const INTERVAL_ANNUAL     = 'annual';
+	// Phase 7 — advanced intervals (opt-in via global setting).
+	public const INTERVAL_WEEKLY     = 'weekly';
+	public const INTERVAL_QUARTERLY  = 'quarterly';
+	public const INTERVAL_SEMIANNUAL = 'semiannual';
+	public const INTERVAL_CUSTOM     = 'custom';
 
 	/** @var Template_Repository|null */
 	private static ?Template_Repository $template_repo = null;
 
 	/**
-	 * Allow-listed interval keys, in display order. v0.7+ may grow this when
-	 * advanced intervals (Phase 7) ship — gated by global settings.
+	 * Allow-listed interval keys, in display order. The standard three
+	 * (one_time / monthly / annual) are always included; advanced intervals
+	 * (weekly / quarterly / semiannual / custom) only when the caller asks
+	 * for them OR the global toggle is on.
+	 *
+	 * @param bool $include_advanced When true, returns all 7 keys regardless
+	 *                               of the global toggle. Sanitizers pass true
+	 *                               so storage round-trips advanced data even
+	 *                               when the toggle is currently off (lets
+	 *                               admins flip the toggle without losing
+	 *                               saved config). The renderer respects the
+	 *                               toggle independently.
+	 * @return array<int,string>
+	 */
+	public static function intervals( bool $include_advanced = false ): array {
+		$base = array( self::INTERVAL_ONE_TIME, self::INTERVAL_MONTHLY, self::INTERVAL_ANNUAL );
+		if ( $include_advanced || self::advanced_enabled() ) {
+			return array_merge( $base, self::advanced_intervals() );
+		}
+		return $base;
+	}
+
+	/**
+	 * The advanced-interval keys, in display order. Shipped under the
+	 * `enable_advanced_intervals` global toggle (Phase 7).
 	 *
 	 * @return array<int,string>
 	 */
-	public static function intervals(): array {
-		return array( self::INTERVAL_ONE_TIME, self::INTERVAL_MONTHLY, self::INTERVAL_ANNUAL );
+	public static function advanced_intervals(): array {
+		return array(
+			self::INTERVAL_WEEKLY,
+			self::INTERVAL_QUARTERLY,
+			self::INTERVAL_SEMIANNUAL,
+			self::INTERVAL_CUSTOM,
+		);
+	}
+
+	/**
+	 * True iff the global setting `enable_advanced_intervals` is on.
+	 * Filterable so site-specific snippets / programmatic activation can
+	 * enable advanced intervals without flipping the UI toggle.
+	 */
+	public static function advanced_enabled(): bool {
+		$enabled = (bool) ( self::get_global_settings()['enable_advanced_intervals'] ?? false );
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- prefixed hook
+		return (bool) apply_filters( 'dfwc_companion_advanced_intervals_enabled', $enabled );
 	}
 
 	/**
@@ -280,7 +324,10 @@ final class Config_Resolver {
 	 * @return array<string,mixed>
 	 */
 	private static function extract_layer( array $data ): array {
-		$allowed = array( 'default_interval', 'one_time', 'monthly', 'annual', 'display' );
+		$allowed = array_merge(
+			array( 'default_interval', 'display' ),
+			self::intervals( true )
+		);
 		return array_intersect_key( $data, array_flip( $allowed ) );
 	}
 
@@ -349,9 +396,12 @@ final class Config_Resolver {
 	 * @return array<string,mixed>
 	 */
 	private static function validate_and_clamp( array $config ): array {
-		foreach ( self::intervals() as $key ) {
+		// Walk all known intervals (standard + advanced). Always include
+		// advanced so resolved config carries them even when the global
+		// toggle is off — gating happens at render time, not storage time.
+		foreach ( self::intervals( true ) as $key ) {
 			if ( ! isset( $config[ $key ] ) || ! is_array( $config[ $key ] ) ) {
-				$config[ $key ] = Defaults::interval_block();
+				$config[ $key ] = Defaults::interval_block( false, '', $key );
 			}
 			$block = $config[ $key ];
 
@@ -371,6 +421,15 @@ final class Config_Resolver {
 			$block['default_index'] = $count > 0
 				? max( 0, min( (int) ( $block['default_index'] ?? 0 ), $count - 1 ) )
 				: 0;
+
+			// Phase 7 — clamp custom-interval cadence fields when present.
+			if ( self::INTERVAL_CUSTOM === $key ) {
+				$block['custom_period']   = Engine_Interval_Map::sanitize_period( (string) ( $block['custom_period'] ?? 'month' ) );
+				$block['custom_interval'] = Engine_Interval_Map::sanitize_multiplier( (int) ( $block['custom_interval'] ?? 1 ) );
+				$block['custom_label']    = isset( $block['custom_label'] )
+					? (string) $block['custom_label']
+					: '';
+			}
 
 			$config[ $key ] = $block;
 		}
@@ -398,12 +457,16 @@ final class Config_Resolver {
 	 */
 	private static function translate_strings( array $config, int $campaign_id, string $template_id ): array {
 		$namespace = '' !== $template_id ? $template_id : '_global';
-		foreach ( self::intervals() as $interval ) {
+		foreach ( self::intervals( true ) as $interval ) {
 			if ( ! isset( $config[ $interval ] ) || ! is_array( $config[ $interval ] ) ) {
 				continue;
 			}
 			$block = $config[ $interval ];
-			foreach ( array( 'cta_template', 'subtitle', 'annual_equivalency', 'custom_amount_impact_label' ) as $field ) {
+			$translatable_fields = array( 'cta_template', 'subtitle', 'annual_equivalency', 'custom_amount_impact_label' );
+			if ( self::INTERVAL_CUSTOM === $interval ) {
+				$translatable_fields[] = 'custom_label';
+			}
+			foreach ( $translatable_fields as $field ) {
 				if ( ! empty( $block[ $field ] ) ) {
 					$block[ $field ] = WPML_Strings::translate(
 						(string) $block[ $field ],
