@@ -37,13 +37,35 @@ jobs:
       - name: Build distribution zip
         run: npm run build:zip
 
+      - name: Check parent zip secret
+        id: check_parent
+        env:
+          PARENT_URL: ${{ secrets.DFWC_PARENT_ZIP_URL }}
+        run: |
+          if [ -z "$PARENT_URL" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Plugin Check skipped — DFWC_PARENT_ZIP_URL not configured. Set the secret before tagging v1.0.0 / wp.org submission."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Extract zip for Plugin Check
+        if: steps.check_parent.outputs.skip == 'false'
         run: |
           cd dist
           unzip -q donations-for-woocommerce-companion.zip
           ls -la donations-for-woocommerce-companion/
 
+      - name: Make parent zip available to Plugin Check
+        if: steps.check_parent.outputs.skip == 'false'
+        env:
+          PARENT_URL: ${{ secrets.DFWC_PARENT_ZIP_URL }}
+        run: |
+          mkdir -p tests
+          curl -sSLf -o tests/donation-for-woocommerce.zip "$PARENT_URL"
+
       - name: Run Plugin Check on release zip
+        if: steps.check_parent.outputs.skip == 'false'
         uses: wordpress/plugin-check-action@v1
         with:
           build-dir: ./dist/donations-for-woocommerce-companion

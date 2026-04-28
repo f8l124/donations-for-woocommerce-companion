@@ -138,36 +138,60 @@ jobs:
         run: php tests/parent-contract.test.php
 
   # === Plugin Check ===
+  # Gated on parent zip: Plugin Check honors our `Requires Plugins:` header
+  # which lists the paid parent plugin, and can't bootstrap without it.
   plugin-check:
     name: Plugin Check
     runs-on: ubuntu-latest
     steps:
+      - name: Check parent zip secret
+        id: check
+        env:
+          PARENT_URL: ${{ secrets.DFWC_PARENT_ZIP_URL }}
+        run: |
+          if [ -z "$PARENT_URL" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Plugin Check skipped::DFWC_PARENT_ZIP_URL secret is unset. Plugin Check requires the paid parent plugin to bootstrap (Requires Plugins: header). Set the secret to enable."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
+        if: steps.check.outputs.skip == 'false'
       - uses: actions/setup-node@v4
+        if: steps.check.outputs.skip == 'false'
         with:
           node-version: "20"
           cache: npm
       - uses: shivammathur/setup-php@v2
+        if: steps.check.outputs.skip == 'false'
         with:
           php-version: "8.1"
           coverage: none
       - name: Install npm deps
+        if: steps.check.outputs.skip == 'false'
         run: npm ci
       - name: Build distribution zip
+        if: steps.check.outputs.skip == 'false'
         run: npm run build:zip
       - name: Extract zip for Plugin Check
+        if: steps.check.outputs.skip == 'false'
         run: |
           cd dist
           unzip -q donations-for-woocommerce-companion.zip
           ls -la donations-for-woocommerce-companion/
+      - name: Make parent zip available to Plugin Check
+        if: steps.check.outputs.skip == 'false'
+        env:
+          PARENT_URL: ${{ secrets.DFWC_PARENT_ZIP_URL }}
+        run: |
+          mkdir -p tests
+          curl -sSLf -o tests/donation-for-woocommerce.zip "$PARENT_URL"
       - name: Run Plugin Check
+        if: steps.check.outputs.skip == 'false'
         uses: wordpress/plugin-check-action@v1
         with:
           build-dir: ./dist/donations-for-woocommerce-companion
           exclude-directories: tests,docs,plans,.wolf,.claude
-          # Only fail on errors; warnings reported but non-blocking during transition
-          # (Phase 11 tightens this when WordPress.org submission is imminent).
-          # Categories follow Plugin Check's documented set.
 
   # === Playwright E2E (gated on parent secret; matrix on engine fixture) ===
   playwright:

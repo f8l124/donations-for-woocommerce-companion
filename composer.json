@@ -35,7 +35,7 @@
         "lint:php": "find includes templates donations-for-woocommerce-companion.php -name '*.php' -print0 | xargs -0 -n1 php -l",
         "lint:phpcs": "phpcs",
         "fix:phpcbf": "phpcbf",
-        "analyze": "phpstan analyse --memory-limit=512M",
+        "analyze": "phpstan analyse --memory-limit=2G",
         "test:unit": "phpunit",
         "test:contract": "php tests/parent-contract.test.php",
         "check": [
