@@ -81,6 +81,43 @@ final class Settings_Page {
 			'dfwc-companion',
 			'dfwc_section_general'
 		);
+
+		// Phase 13 (v1.2.0) — goal-aware giving fields.
+		add_settings_section(
+			'dfwc_section_goal_aware',
+			__( 'Goal-aware giving', 'dfwc-companion' ),
+			static function () {
+				echo '<p class="description">' . esc_html__(
+					'When the parent plugin\'s campaign goal is configured (Goal Type = Fixed Amount), let the companion clamp donor amounts to remaining-goal and offer a general-fund alternative once the campaign is fully funded.',
+					'dfwc-companion'
+				) . '</p>';
+			},
+			'dfwc-companion'
+		);
+
+		add_settings_field(
+			'enable_goal_based_max',
+			__( 'Clamp max to remaining goal', 'dfwc-companion' ),
+			array( $this, 'render_goal_based_max_field' ),
+			'dfwc-companion',
+			'dfwc_section_goal_aware'
+		);
+
+		add_settings_field(
+			'enable_fully_funded_redirect',
+			__( 'Block donations to fully-funded campaigns', 'dfwc-companion' ),
+			array( $this, 'render_fully_funded_redirect_field' ),
+			'dfwc-companion',
+			'dfwc_section_goal_aware'
+		);
+
+		add_settings_field(
+			'general_fund_campaign_id',
+			__( 'General fund campaign', 'dfwc-companion' ),
+			array( $this, 'render_general_fund_field' ),
+			'dfwc-companion',
+			'dfwc_section_goal_aware'
+		);
 	}
 
 	public static function render(): void {
@@ -146,6 +183,72 @@ final class Settings_Page {
 		<?php
 	}
 
+	public function render_goal_based_max_field(): void {
+		$current = (bool) ( Config_Resolver::get_global_settings()['enable_goal_based_max'] ?? false );
+		?>
+		<label>
+			<input
+				type="checkbox"
+				name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[enable_goal_based_max]"
+				value="1"
+				<?php checked( $current ); ?>
+			>
+			<?php esc_html_e( 'Cap the donor\'s max custom amount at the campaign\'s remaining goal.', 'dfwc-companion' ); ?>
+		</label>
+		<p class="description">
+			<?php esc_html_e( 'When the parent plugin\'s goal type is "Fixed Amount", a donor on the One-time tab cannot exceed (goal − raised). Recurring intervals are not clamped (the first charge fits, but renewals would exceed). Per-currency presets resolve in base currency.', 'dfwc-companion' ); ?>
+		</p>
+		<?php
+	}
+
+	public function render_fully_funded_redirect_field(): void {
+		$current = (bool) ( Config_Resolver::get_global_settings()['enable_fully_funded_redirect'] ?? false );
+		?>
+		<label>
+			<input
+				type="checkbox"
+				name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[enable_fully_funded_redirect]"
+				value="1"
+				<?php checked( $current ); ?>
+			>
+			<?php esc_html_e( 'Reject donor submissions when the campaign is fully funded.', 'dfwc-companion' ); ?>
+		</label>
+		<p class="description">
+			<?php esc_html_e( 'Off (default): the donor sees a "Goal met! Support the General Fund instead?" card above the form, but can still donate to the funded campaign. On: the companion blocks the submit and redirects donors to the General Fund campaign (configured below).', 'dfwc-companion' ); ?>
+		</p>
+		<?php
+	}
+
+	public function render_general_fund_field(): void {
+		$current      = (int) ( Config_Resolver::get_global_settings()['general_fund_campaign_id'] ?? 0 );
+		$campaigns    = function_exists( 'get_posts' )
+			? get_posts(
+				array(
+					'post_type'      => 'wc-donation',
+					'post_status'    => 'publish',
+					'posts_per_page' => 200,
+					'orderby'        => 'title',
+					'order'          => 'ASC',
+				)
+			)
+			: array();
+		?>
+		<select name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[general_fund_campaign_id]" id="dfwc-general-fund-campaign-id">
+			<option value="0" <?php selected( 0, $current ); ?>>
+				<?php esc_html_e( '— None (no general-fund affordance) —', 'dfwc-companion' ); ?>
+			</option>
+			<?php foreach ( $campaigns as $campaign_post ) : ?>
+				<option value="<?php echo (int) $campaign_post->ID; ?>" <?php selected( (int) $campaign_post->ID, $current ); ?>>
+					<?php echo esc_html( get_the_title( $campaign_post ) ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description">
+			<?php esc_html_e( 'The campaign donors are offered when another campaign reaches its goal. Typically named "General Fund", "Where Most Needed", or similar — a never-ending campaign that absorbs overflow giving.', 'dfwc-companion' ); ?>
+		</p>
+		<?php
+	}
+
 	/**
 	 * Sanitize callback for the global-settings option. Receives the raw
 	 * POSTed array and returns a sanitized array suitable for storage.
@@ -176,13 +279,33 @@ final class Settings_Page {
 		$preserve          = ! empty( $raw['preserve_data_on_uninstall'] );
 		$advanced_enabled  = ! empty( $raw['enable_advanced_intervals'] );
 
+		// Phase 13 — goal-aware giving fields.
+		$goal_based_max          = ! empty( $raw['enable_goal_based_max'] );
+		$fully_funded_redirect   = ! empty( $raw['enable_fully_funded_redirect'] );
+		$general_fund_campaign_id = isset( $raw['general_fund_campaign_id'] )
+			? absint( $raw['general_fund_campaign_id'] )
+			: 0;
+
+		// Validate the general-fund campaign actually exists + is the right
+		// post type. Stale ids reset to 0 so the donor-facing affordance
+		// silently disappears rather than linking to a 404.
+		if ( $general_fund_campaign_id > 0 ) {
+			$post = function_exists( 'get_post' ) ? get_post( $general_fund_campaign_id ) : null;
+			if ( ! $post || 'wc-donation' !== $post->post_type ) {
+				$general_fund_campaign_id = 0;
+			}
+		}
+
 		return array_merge(
 			$existing,
 			array(
-				'version'                    => 1,
-				'default_template_id'        => $default_template_id,
-				'preserve_data_on_uninstall' => $preserve,
-				'enable_advanced_intervals'  => $advanced_enabled,
+				'version'                      => 1,
+				'default_template_id'          => $default_template_id,
+				'preserve_data_on_uninstall'   => $preserve,
+				'enable_advanced_intervals'    => $advanced_enabled,
+				'enable_goal_based_max'        => $goal_based_max,
+				'enable_fully_funded_redirect' => $fully_funded_redirect,
+				'general_fund_campaign_id'     => $general_fund_campaign_id,
 			)
 		);
 	}

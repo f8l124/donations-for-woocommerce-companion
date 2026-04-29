@@ -3,7 +3,7 @@
  * Plugin Name:          Donations for WooCommerce Companion
  * Plugin URI:           https://github.com/f8l124/donations-for-woocommerce-companion
  * Description:          Adds an interval-first donation form (one-time / monthly / annually + advanced cadences) on top of the Donation for WooCommerce plugin, without modifying it.
- * Version:              1.1.0
+ * Version:              1.2.0
  * Requires at least:    6.2
  * Requires PHP:         7.4
  * WC requires at least: 5.0
@@ -43,7 +43,7 @@ if ( version_compare( PHP_VERSION, '7.4', '<' ) ) {
 	return;
 }
 
-define( 'DFWC_COMPANION_VERSION', '1.1.0' );
+define( 'DFWC_COMPANION_VERSION', '1.2.0' );
 define( 'DFWC_COMPANION_FILE', __FILE__ );
 define( 'DFWC_COMPANION_PATH', plugin_dir_path( __FILE__ ) );
 define( 'DFWC_COMPANION_URL', plugin_dir_url( __FILE__ ) );

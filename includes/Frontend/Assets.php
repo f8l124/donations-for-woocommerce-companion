@@ -103,6 +103,10 @@ final class Assets {
 				'errorNetwork'        => __( 'Network error. Please check your connection and try again.', 'dfwc-companion' ),
 				'monthly'             => '/' . __( 'month', 'dfwc-companion' ),
 				'annual'              => '/' . __( 'year', 'dfwc-companion' ),
+				// Phase 13 — goal-aware giving copy.
+				'goalMetHeading'      => __( 'This campaign reached its goal!', 'dfwc-companion' ),
+				'goalMetCopy'         => __( 'Want to keep supporting our work? Make a gift to our general fund instead.', 'dfwc-companion' ),
+				'generalFundCta'      => __( 'Give to the general fund', 'dfwc-companion' ),
 			),
 		);
 	}

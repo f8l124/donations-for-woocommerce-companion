@@ -29,6 +29,54 @@
 	max-width: 480px;
 }
 
+/* ---------- Phase 13 — goal-met card ---------- */
+
+[data-dfwc-overlay-target] .dfwc-overlay__goal-met {
+	margin: 0 0 16px;
+	padding: 14px 16px;
+	background: #ecfdf5;
+	border: 1px solid #6ee7b7;
+	border-left: 4px solid #10b981;
+	border-radius: 6px;
+	color: #065f46;
+	max-width: 480px;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__goal-met-heading {
+	display: block;
+	font-size: 15px;
+	margin: 0 0 4px;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__goal-met-copy {
+	margin: 0 0 10px;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__general-fund-cta {
+	display: inline-block;
+	padding: 8px 14px;
+	background: #10b981;
+	color: #fff;
+	text-decoration: none;
+	font-weight: 600;
+	font-size: 13px;
+	border-radius: 4px;
+	transition: background-color 150ms ease;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__general-fund-cta:hover,
+[data-dfwc-overlay-target] .dfwc-overlay__general-fund-cta:focus {
+	background: #059669;
+	color: #fff;
+}
+
+[data-dfwc-overlay-target] .dfwc-overlay__general-fund-cta:focus-visible {
+	outline: 2px solid #065f46;
+	outline-offset: 2px;
+}
+
 /* ---------- Tabs ---------- */
 
 [data-dfwc-overlay-target] .dfwc-overlay__tabs {

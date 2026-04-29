@@ -23,6 +23,7 @@ defined( 'ABSPATH' ) || exit;
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Currency_Preset_Resolver;
 use DFWC\Companion\Config\Engine_Interval_Map;
+use DFWC\Companion\Config\Goal_State;
 
 final class Submit_Guard {
 
@@ -93,6 +94,36 @@ final class Submit_Guard {
 
 		$min = (float) ( $block['min'] ?? 0 );
 		$max = (float) ( $block['max'] ?? PHP_INT_MAX );
+
+		// Phase 13 — when admin opts in, clamp the one-time max to the
+		// campaign's remaining goal. Skipped for recurring intervals — the
+		// donor's first charge fits within remaining, but their renewals
+		// would not (and silently capping renewals is worse than letting
+		// the goal be exceeded a little).
+		$global = Config_Resolver::get_global_settings();
+		if ( ! empty( $global['enable_goal_based_max'] ) && Config_Resolver::INTERVAL_ONE_TIME === $interval_key ) {
+			$goal = Goal_State::for_campaign( $campaign_id );
+			if ( $goal->is_amount_goal() ) {
+				if ( $goal->is_fully_funded() && ! empty( $global['enable_fully_funded_redirect'] ) ) {
+					$general_fund_id = (int) ( $global['general_fund_campaign_id'] ?? 0 );
+					$general_fund_url = $general_fund_id > 0 ? (string) get_permalink( $general_fund_id ) : '';
+					$this->reject(
+						'' !== $general_fund_url
+							? sprintf(
+								/* translators: %s: general-fund campaign URL */
+								__( 'This campaign reached its goal. Please continue your support via our general fund: %s', 'dfwc-companion' ),
+								esc_url_raw( $general_fund_url )
+							)
+							: __( 'This campaign reached its goal. Thank you — please consider donating to another active campaign.', 'dfwc-companion' )
+					);
+				}
+				if ( ! $goal->is_fully_funded() ) {
+					// Cap max at the remaining-goal value. Defensive `min`:
+					// admin's configured max still wins if it's lower.
+					$max = min( $max, $goal->remaining_amount() );
+				}
+			}
+		}
 
 		if ( $amount < $min || $amount > $max ) {
 			$this->reject(

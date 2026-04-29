@@ -158,6 +158,11 @@
 		// Default to the active interval's currency at form-view time;
 		// individual events update this when the donor switches interval.
 		var renderCurrency = ( config[ initialKey ] && config[ initialKey ].currency ) || '';
+		// Phase 13 — goal-aware giving. When the campaign reached its goal
+		// AND the admin configured a general-fund campaign, render a
+		// "Goal met!" card above the form linking to the general fund.
+		var fullyFunded   = '1' === wrapper.getAttribute( 'data-fully-funded' );
+		var generalFundUrl = wrapper.getAttribute( 'data-general-fund-url' ) || '';
 
 		// Locate parent's hidden inputs and controls. Every selector is scoped
 		// to .wc-donation-in-action to keep multi-instance pages isolated.
@@ -170,6 +175,16 @@
 		// Build our overlay UI.
 		var ui = buildOverlayUi( config, enabledIntervals, initialKey, campaignId );
 
+		// Phase 13 — goal-met card. Rendered above the form when the campaign
+		// is fully funded AND a general-fund URL is configured. Donor can
+		// still donate to the funded campaign below the card unless the
+		// admin's enable_fully_funded_redirect toggle is on (in which case
+		// Submit_Guard rejects the submit server-side).
+		var goalMetCard = null;
+		if ( fullyFunded && generalFundUrl ) {
+			goalMetCard = renderGoalMetCard( generalFundUrl );
+		}
+
 		// Insert our UI in parent's natural amount-block position so the
 		// admin's "Frontend Ordering" choice (Cause → Amount → Subscription
 		// → Tribute → ...) is preserved. Parent's amount block is always
@@ -177,8 +192,10 @@
 		// back to prepending so the donor still sees the overlay.
 		var amountBlock = scope.querySelector( '.row1' );
 		if ( amountBlock && amountBlock.parentNode ) {
+			if ( goalMetCard ) { amountBlock.parentNode.insertBefore( goalMetCard, amountBlock ); }
 			amountBlock.parentNode.insertBefore( ui.root, amountBlock );
 		} else {
+			if ( goalMetCard ) { scope.insertBefore( goalMetCard, scope.firstChild ); }
 			scope.insertBefore( ui.root, scope.firstChild );
 		}
 
@@ -407,6 +424,40 @@
 				} );
 			} );
 		} );
+	}
+
+	/**
+	 * Phase 13 — render the "Goal met!" card that surfaces when the campaign
+	 * is fully funded and a general-fund campaign is configured. Card uses
+	 * textContent for the dynamic copy so admin-supplied template strings
+	 * can't smuggle markup; localized i18n strings come from the
+	 * window.dfwcCompanion.i18n bag where available.
+	 */
+	function renderGoalMetCard( generalFundUrl ) {
+		var i18n = ( window.dfwcCompanion && window.dfwcCompanion.i18n ) || {};
+
+		var card = document.createElement( 'div' );
+		card.className = 'dfwc-overlay__goal-met';
+		card.setAttribute( 'role', 'status' );
+		card.setAttribute( 'data-dfwc-goal-met', '' );
+
+		var heading = document.createElement( 'strong' );
+		heading.className = 'dfwc-overlay__goal-met-heading';
+		heading.textContent = i18n.goalMetHeading || 'This campaign reached its goal!';
+		card.appendChild( heading );
+
+		var copy = document.createElement( 'p' );
+		copy.className = 'dfwc-overlay__goal-met-copy';
+		copy.textContent = i18n.goalMetCopy || 'Want to keep supporting our work? Make a gift to our general fund instead.';
+		card.appendChild( copy );
+
+		var cta = document.createElement( 'a' );
+		cta.className = 'dfwc-overlay__general-fund-cta';
+		cta.href = generalFundUrl;
+		cta.textContent = i18n.generalFundCta || 'Give to the general fund';
+		card.appendChild( cta );
+
+		return card;
 	}
 
 	/**

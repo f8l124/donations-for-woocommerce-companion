@@ -21,6 +21,7 @@ defined( 'ABSPATH' ) || exit;
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Currency_Preset_Resolver;
 use DFWC\Companion\Config\Engine_Interval_Map;
+use DFWC\Companion\Config\Goal_State;
 use DFWC\Companion\Engine_Detector;
 use DFWC\Companion\I18n\WPML_Strings;
 
@@ -96,7 +97,7 @@ final class Renderer {
 		$attrs = self::build_overlay_attributes( $campaign_id );
 
 		return sprintf(
-			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d" data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s" data-intervals="%5$s" data-display="%6$s" data-context="%7$s" data-language="%8$s">%9$s</div>',
+			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d" data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s" data-intervals="%5$s" data-display="%6$s" data-context="%7$s" data-language="%8$s" data-fully-funded="%9$s" data-general-fund-url="%10$s">%11$s</div>',
 			(int) $campaign_id,
 			esc_attr( $attrs['engine'] ),
 			esc_attr( $attrs['active_interval'] ),
@@ -105,6 +106,8 @@ final class Renderer {
 			esc_attr( (string) wp_json_encode( $attrs['display'] ) ),
 			esc_attr( $context ),
 			esc_attr( $attrs['language'] ),
+			$attrs['fully_funded'] ? '1' : '0',
+			esc_attr( $attrs['general_fund_url'] ),
 			$inner // already escaped inside parent's shortcode/template
 		);
 	}
@@ -115,14 +118,14 @@ final class Renderer {
 	 * Used by `wrap_with_overlay()` and by Context_Augmenter when emitting
 	 * the wrapper's opening tag separately from its closing tag.
 	 *
-	 * @return array{engine:string,enabled_intervals:array<int,string>,active_interval:string,form_config:array<string,array>,display:array{show_title:bool,show_image:bool,cause_heading:string},language:string}
+	 * @return array{engine:string,enabled_intervals:array<int,string>,active_interval:string,form_config:array<string,array>,display:array{show_title:bool,show_image:bool,cause_heading:string},language:string,fully_funded:bool,general_fund_url:string}
 	 */
 	public static function build_overlay_attributes( int $campaign_id ): array {
 		$config            = Config_Resolver::resolve( $campaign_id );
 		$engine            = Engine_Detector::detect();
 		$enabled_intervals = self::resolve_enabled_intervals( $config, $engine );
 		$active_interval   = ! empty( $enabled_intervals ) ? $enabled_intervals[0] : Config_Resolver::INTERVAL_ONE_TIME;
-		$form_config       = self::build_form_config( $config, $enabled_intervals );
+		$form_config       = self::build_form_config( $config, $enabled_intervals, $campaign_id );
 		$display           = Config_Resolver::resolve_display( $campaign_id );
 
 		// Phase 9 — language code surfaced for analytics events. WPML active
@@ -132,6 +135,17 @@ final class Renderer {
 			$language = (string) get_locale();
 		}
 
+		// Phase 13 — goal-aware giving. Fully-funded state + the configured
+		// general-fund campaign URL surface to the donor-side overlay JS so
+		// the "Goal met!" card can render with a working CTA.
+		$global           = Config_Resolver::get_global_settings();
+		$goal             = Goal_State::for_campaign( $campaign_id );
+		$general_fund_id  = (int) ( $global['general_fund_campaign_id'] ?? 0 );
+		$general_fund_url = $general_fund_id > 0 && $general_fund_id !== $campaign_id
+			? (string) get_permalink( $general_fund_id )
+			: '';
+		$fully_funded     = $goal->is_fully_funded() && '' !== $general_fund_url;
+
 		return array(
 			'engine'            => $engine,
 			'enabled_intervals' => $enabled_intervals,
@@ -139,6 +153,8 @@ final class Renderer {
 			'form_config'       => $form_config,
 			'display'           => $display,
 			'language'          => $language,
+			'fully_funded'      => $fully_funded,
+			'general_fund_url'  => $general_fund_url,
 		);
 	}
 
@@ -233,18 +249,29 @@ final class Renderer {
 	 * chips client-side; preset.label is forwarded so it can populate
 	 * parent's `selectedLabel` POST field via JS.
 	 */
-	private static function build_form_config( array $config, array $enabled_intervals ): array {
+	private static function build_form_config( array $config, array $enabled_intervals, int $campaign_id = 0 ): array {
 		$out             = array();
 		$interval_labels = self::interval_labels();
 		// Phase 6 — overlay block by donor's active currency. WCML primary;
 		// WC base fallback. No-op when active currency matches base.
 		$active_currency = Currency_Preset_Resolver::active_currency();
+
+		// Phase 13 — pre-compute the goal clamp once per render. Only applied
+		// to one_time interval (recurring intervals are documented to skip).
+		$global              = Config_Resolver::get_global_settings();
+		$goal_clamp_enabled  = ! empty( $global['enable_goal_based_max'] ) && $campaign_id > 0;
+		$goal                = $goal_clamp_enabled ? Goal_State::for_campaign( $campaign_id ) : null;
+
 		foreach ( $enabled_intervals as $key ) {
 			$block   = Currency_Preset_Resolver::resolve( $config[ $key ], $active_currency );
 			$cadence = Engine_Interval_Map::for_interval( $key, $block );
+			$max     = (float) $block['max'];
+			if ( null !== $goal && Config_Resolver::INTERVAL_ONE_TIME === $key ) {
+				$max = $goal->clamp_max( $max );
+			}
 			$entry   = array(
 				'min'                        => (float) $block['min'],
-				'max'                        => (float) $block['max'],
+				'max'                        => $max,
 				'default_index'              => (int) $block['default_index'],
 				'cta_template'               => (string) $block['cta_template'],
 				'label'                      => (string) ( $interval_labels[ $key ] ?? $key ),

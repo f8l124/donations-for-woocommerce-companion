@@ -63,6 +63,11 @@ final class Defaults {
 				'default_template_id'        => '',
 				'enable_advanced_intervals'  => false,
 				'preserve_data_on_uninstall' => true,
+				// Phase 13 (v1.2.0) — goal-aware giving. All opt-in; existing
+				// installs see no behavior change until admin enables.
+				'enable_goal_based_max'        => false,
+				'enable_fully_funded_redirect' => false,
+				'general_fund_campaign_id'     => 0,
 			)
 		);
 	}

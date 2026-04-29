@@ -86,6 +86,8 @@ final class Preview_Renderer {
 			data-display="<?php echo esc_attr( (string) wp_json_encode( $display ) ); ?>"
 			data-context="preview"
 			data-language="<?php echo esc_attr( isset( $args['language'] ) ? (string) $args['language'] : '' ); ?>"
+			data-fully-funded="0"
+			data-general-fund-url=""
 			data-preview="1"
 		>
 			<div class="wc-donation-in-action dfwc-preview__scope">

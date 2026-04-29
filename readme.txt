@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,18 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 1.2.0 =
+Goal-aware giving release. Two opt-in features that read the parent plugin's campaign goal and shape donor behavior: (1) clamp the donor's max custom amount to the campaign's remaining goal so a one-time donor can fully fund the campaign but no more; (2) when a campaign meets its goal, surface a "Goal met! Support our general fund" card so donors can keep giving without overshooting.
+
+* **New: dynamic max from remaining goal (Phase 13).** When the parent plugin's goal type is "Fixed Amount", a donor on the One-time tab cannot exceed (goal − raised). Both donor-side (`Frontend\Renderer`) and server-side (`Frontend\Submit_Guard`) clamp through the shared `Config\Goal_State::clamp_max()` so the two layers cannot drift. Recurring intervals are intentionally NOT clamped — the donor's first charge fits within remaining, but renewals would exceed; silently capping renewals is worse than letting the goal be modestly overshot.
+* **New: goal-met affordance.** When `Goal_State::is_fully_funded()` returns true AND the admin has configured a general-fund campaign, the donor sees a green card above the form with copy + a CTA linking to the general fund. Default mode: card surfaces but the form still accepts donations to the funded campaign. Strict mode (admin opts in via second toggle): Submit_Guard rejects donations to the funded campaign with a friendly redirect message.
+* **New: `Config\Goal_State`.** Read-only view onto the parent plugin's goal-tracking surface. Reads `wc-donation-goal-display-option`, `wc-donation-goal-display-type`, `wc-donation-goal-fixed-amount-field`, `wc-donation-goal-fixed-initial-amount-field` from the campaign post and `total_donation_amount` from the linked WooCommerce product. Mirrors the parent's own progress formula (initial seed counts toward raised). Per-request cached.
+* **New: 3 admin settings.** `WooCommerce → Donations Companion → Settings → Goal-aware giving`: enable goal-based max checkbox, strict-mode checkbox, general-fund campaign dropdown. All default off — existing v1.1.x sites see zero behavior change until admin opts in.
+* **New: 2 wrapper attributes.** `data-fully-funded="0|1"` and `data-general-fund-url="..."` emitted from all three wrapper sites (`Renderer::wrap_with_overlay`, `Context_Augmenter::emit_open`, `Preview_Renderer::render`). Overlay JS reads them to render the goal-met card.
+* **New: `docs/goal-aware-giving.md`.** ~360 lines covering parent-plugin meta surface, setup, dynamic-max behavior under per-currency presets / recurring intervals, fully-funded redirect modes, edge cases, programmatic control, storage shape.
+* **Internal:** test coverage 201 → 214 cases, 518 → 552 assertions. New `Goal_State_Test` (13 cases) covers no-goal / non-amount-goal / fixed-amount-goal / initial-seed / fully-funded thresholds / negative-raised clamp / per-campaign cache / cache reset.
+* **Backward compat:** existing v1.1.x campaigns render unchanged. The two new wrapper attributes are additive; sites that haven't opted in see `data-fully-funded="0"` and an empty `data-general-fund-url` and no behavior change. Per-currency presets (Phase 6) interact correctly: the goal is denominated in base currency; the clamp resolves in base currency for donors in any currency via WCML's exchange rate.
 
 = 1.1.0 =
 Event hooks release. Surface six donor-flow events as WordPress action hooks so admins can pipe to GA4, Mixpanel, FluentCRM, Zapier, Make, n8n, or any custom destination — with a privacy-by-default posture (no PII; no donor data) and three end-to-end integration recipes shipped in the docs.
@@ -262,6 +274,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+Adds goal-aware giving: opt-in clamp of the donor's max custom amount to the campaign's remaining goal, plus a "Goal met! Support our general fund" card when a campaign is fully funded. Both off by default — existing sites see zero behavior change until admins opt in via Settings → Goal-aware giving. Backward-compatible.
 
 = 1.1.0 =
 Adds six donor-flow event hooks (form viewed / interval selected / preset selected / custom amount entered / donation submitted / donation failed) so admins can pipe events to GA4, FluentCRM, Zapier, etc. via small custom snippets. Privacy-by-default: aggregate-only data, no donor PII. Documented integration recipes in docs/event-hooks.md. Backward-compatible — sites without listeners see zero behavior change.
