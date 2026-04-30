@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.0.0
+Stable tag: 2.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,9 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 2.0.1 =
+**Critical fix.** Donor-side AJAX submit was throwing `ArgumentCountError` and stalling on an infinite spinner on every site running v1.1.0 — v2.0.0. Root cause: `Analytics\Submission_Tracker` registered the parent's `wc_donation_alter_donate_response` filter with `accepted_args=2`, but the parent plugin's three apply_filters call sites (`class-wcdonationorder.php:1592, 1634, 1821`) all pass only ONE argument. Any donor reaching the submit step on a site running v1.1.0+ saw their AJAX request 500-out, the loader spin forever, and no donation get processed. Fix: bind the filter with `accepted_args=1` and read `$_POST` inside the callback (we're inside parent's AJAX action at that point, so `$_POST` is the donor's submission). Privacy posture unchanged — every read still flows through Privacy_Guard's allow-list sanitizers. New regression test (`Submission_Tracker_Test`, 4 cases) locks the binding; tests would have caught the original mismatch had this codepath been exercised end-to-end. Upgrade required for any v1.1.0 — v2.0.0 site that ever takes a donation.
 
 = 2.0.0 =
 QuickBooks Online sync release. Real-time per-donation Sales Receipt creation in QBO. OAuth2 with admin-supplied app credentials, encrypted token storage, campaign-to-income-account mapping, async retry queue powered by Action Scheduler. Listens on the standard `dfwc_companion_donation_submitted` Phase 9 hook so cash + stock + (eventually) crypto donations all sync uniformly through the same pipeline. Off by default — existing v1.3.x sites see zero behavior change until admin opts in.
@@ -309,6 +312,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 2.0.1 =
+Critical fix: donor-side AJAX submit was throwing ArgumentCountError on every site running v1.1.0 — v2.0.0, leaving donors stuck on an infinite spinner and processing no donations. Mismatch between our filter binding (2 args) and the parent plugin's actual call shape (1 arg). Upgrade required if you've taken any donation traffic on v1.1.0 or later.
 
 = 2.0.0 =
 Major version bump: introduces the first runtime third-party API surface (QuickBooks Online sync) and persistent encrypted-secret storage. Adds real-time per-donation Sales Receipt creation in QBO via OAuth2 with admin-supplied app credentials; works for cash, stock, and (when shipped) crypto donations through the standard Phase 9 hook. Off by default — existing v1.3.x sites see zero behavior change until admins opt in via Settings → QuickBooks Online sync. Backward-compatible.

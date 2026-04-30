@@ -3,11 +3,16 @@
  * Submission_Tracker — fires the donation_submitted / donation_failed
  * hooks server-side at the form-submit boundary.
  *
- * Hooks `wc_donation_alter_donate_response` (a parent-plugin filter that
- * runs after parent's AJAX handler builds its JSON response). The filter's
- * second argument carries the raw POST payload; we read campaign_id /
- * interval / amount from it, derive the engine cadence, and fire the
- * appropriate companion hook based on parent's success / failure verdict.
+ * Hooks `wc_donation_alter_donate_response` — a parent-plugin filter that
+ * runs after parent's AJAX handler builds its JSON response. **Critical
+ * detail:** the parent's three apply_filters call sites
+ * (`class-wcdonationorder.php:1592, 1634, 1821`) all pass ONE argument
+ * (`$response`); they do NOT pass the request payload. v1.1.0 — v2.0.0
+ * mistakenly registered with `accepted_args=2`, which threw an
+ * ArgumentCountError mid-AJAX and stuck the donor's submit on an infinite
+ * spinner. v2.0.1 fixes by binding 1 arg and reading `$_POST` directly
+ * (we're inside parent's AJAX handler at this point, so `$_POST` is the
+ * donor's submission).
  *
  * Privacy posture matches the rest of Phase 9: aggregate-only data, no
  * donor PII. Listeners that need PII (CRM tagging) pull it from their own
@@ -30,18 +35,25 @@ use DFWC\Companion\Config\Engine_Interval_Map;
 final class Submission_Tracker {
 
 	public function __construct() {
-		// Parent's filter signature: ( $response, $request_data ).
+		// Parent's filter signature: ( $response ) — single arg. Bind 1 to
+		// match. We read POST directly inside the callback because we're
+		// being invoked mid-AJAX (parent's `donation_to_order` action).
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- parent plugin's filter
-		add_filter( 'wc_donation_alter_donate_response', array( $this, 'on_donate_response' ), 10, 2 );
+		add_filter( 'wc_donation_alter_donate_response', array( $this, 'on_donate_response' ), 10, 1 );
 	}
 
 	/**
 	 * @param mixed $response Parent's AJAX response (typically array).
-	 * @param mixed $request  POST payload parent received.
 	 * @return mixed The unmodified response.
 	 */
-	public function on_donate_response( $response, $request ) {
-		if ( ! is_array( $request ) ) {
+	public function on_donate_response( $response ) {
+		// Inside parent's AJAX handler. `$_POST` is the donor's submission.
+		// We never trust raw values — every field flows through Privacy_Guard
+		// or absint/float casts before reaching the do_action call.
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- parent's AJAX action verifies its own nonce; we're a passive observer
+		$request = wp_unslash( $_POST );
+		// phpcs:enable
+		if ( ! is_array( $request ) || empty( $request ) ) {
 			return $response;
 		}
 
