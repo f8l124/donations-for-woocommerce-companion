@@ -94,6 +94,17 @@ final class Plugin {
 		new REST\Stock_Pledge_REST_Controller();
 		new REST\Overflow_Webhook_REST_Controller();
 
+		// Phase 15 (v2.0.0) — QuickBooks Online sync. Donation_Listener +
+		// Sync_Handler always wire (so toggling the feature on doesn't
+		// require a deactivate/reactivate); they self-gate on
+		// `qbo_sync_enabled` + Token_Store::has_tokens(). Admin page
+		// instance handles admin-post.php callbacks; the OAuth callback
+		// REST controller registers its route on rest_api_init.
+		new QuickBooks\Donation_Listener();
+		new QuickBooks\Sync_Handler();
+		new Admin\QuickBooks_Page();
+		new REST\QBO_OAuth_Callback_Controller();
+
 		// Phase 11 — `wp dfwc-companion` CLI commands. No-op outside WP-CLI.
 		CLI\CLI_Commands::register();
 

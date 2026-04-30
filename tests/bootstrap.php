@@ -335,6 +335,33 @@ if ( ! function_exists( 'get_locale' ) ) {
 if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
 	define( 'HOUR_IN_SECONDS', 3600 );
 }
+if ( ! defined( 'DAY_IN_SECONDS' ) ) {
+	define( 'DAY_IN_SECONDS', 86400 );
+}
+if ( ! defined( 'AUTH_KEY' ) ) {
+	define( 'AUTH_KEY', 'test-auth-key-with-enough-entropy-for-test-runs-only' );
+}
+if ( ! defined( 'AUTH_SALT' ) ) {
+	define( 'AUTH_SALT', 'test-auth-salt-with-enough-entropy-for-test-runs-only' );
+}
+
+if ( ! function_exists( 'wp_generate_password' ) ) {
+	function wp_generate_password( $length = 12, $special_chars = true, $extra_special_chars = false ) {
+		return bin2hex( random_bytes( max( 1, (int) ( $length / 2 ) ) ) );
+	}
+}
+
+if ( ! function_exists( 'get_current_user_id' ) ) {
+	function get_current_user_id() {
+		return (int) ( $GLOBALS['_dfwc_test_current_user_id'] ?? 0 );
+	}
+}
+
+if ( ! function_exists( 'rest_url' ) ) {
+	function rest_url( $path = '' ) {
+		return 'https://example.test/wp-json/' . ltrim( (string) $path, '/' );
+	}
+}
 
 // Reset helper for tests
 if ( ! function_exists( 'dfwc_test_reset' ) ) {

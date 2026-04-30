@@ -38,6 +38,10 @@ $dfwc_options = array(
 	'dfwc_companion_templates',
 	'dfwc_companion_schema_version',
 	'dfwc_companion_terms_seeded',
+	// v2.0.0 — QBO sync option keys (Phase 15).
+	'dfwc_qbo_oauth_tokens',
+	'dfwc_qbo_account_mapping',
+	'dfwc_qbo_sync_log',
 );
 foreach ( $dfwc_options as $dfwc_option ) {
 	delete_option( $dfwc_option );

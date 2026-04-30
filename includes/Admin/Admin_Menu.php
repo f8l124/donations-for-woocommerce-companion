@@ -26,6 +26,7 @@ final class Admin_Menu {
 	public const TEMPLATES_SLUG    = 'dfwc-companion-templates';
 	public const DIAGNOSTICS_SLUG  = 'dfwc-companion-diagnostics';
 	public const STOCK_PLEDGES_SLUG = 'dfwc-companion-stock-pledges';
+	public const QBO_PAGE_SLUG      = 'dfwc-companion-quickbooks';
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'register' ) );
@@ -85,6 +86,18 @@ final class Admin_Menu {
 				self::CAPABILITY,
 				self::STOCK_PLEDGES_SLUG,
 				array( Stock_Pledges_Page::class, 'render' )
+			);
+		}
+
+		// Phase 15 (v2.0.0) — QuickBooks Sync sub-page (only when feature enabled).
+		if ( ! empty( $global['qbo_sync_enabled'] ) ) {
+			add_submenu_page(
+				self::PARENT_SLUG,
+				__( 'QuickBooks Sync', 'dfwc-companion' ),
+				__( 'QuickBooks Sync', 'dfwc-companion' ),
+				self::CAPABILITY,
+				self::QBO_PAGE_SLUG,
+				array( QuickBooks_Page::class, 'render' )
 			);
 		}
 	}

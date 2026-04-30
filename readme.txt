@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 2.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,25 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 2.0.0 =
+QuickBooks Online sync release. Real-time per-donation Sales Receipt creation in QBO. OAuth2 with admin-supplied app credentials, encrypted token storage, campaign-to-income-account mapping, async retry queue powered by Action Scheduler. Listens on the standard `dfwc_companion_donation_submitted` Phase 9 hook so cash + stock + (eventually) crypto donations all sync uniformly through the same pipeline. Off by default — existing v1.3.x sites see zero behavior change until admin opts in.
+
+* **New: `QuickBooks\Token_Store`.** Encrypted persistence (AES-256-CBC, key derived from `AUTH_KEY . AUTH_SALT`, per-write random IV) for OAuth2 access + refresh tokens. Plaintext never leaves this class except via the explicit getter; `get_option('dfwc_qbo_*')` from elsewhere can never accidentally surface plaintext. Defends against the SQLi / leaked-backup threat model; a filesystem-read attack with `wp-config.php` access remains out of scope (use a real KMS for that threat).
+* **New: `QuickBooks\OAuth_Client`.** Hand-rolled Intuit OAuth2 (no SDK; ~250 LOC). Three flows: `authorize_url()` mints + transient-stores a 32-char state nonce; `exchange_code()` swaps the auth code for tokens; `ensure_fresh_token()` runs before every API call and force-refreshes within a 5-minute safety window. State nonces are single-use (consume_state burns the transient). Disconnect calls Intuit's revoke endpoint to invalidate refresh tokens server-side too.
+* **New: `REST\QBO_OAuth_Callback_Controller`.** `GET /wp-json/dfwc-companion/v1/qbo-oauth-callback` — the URL admins register at developer.intuit.com. Permission gated on `manage_options` (a non-admin who somehow lands here gets 401). Verifies state, exchanges code, redirects to the QuickBooks Sync admin page with success / error flash.
+* **New: `QuickBooks\API_Client`.** Three-endpoint surface: create Sales Receipt, list income accounts (for the mapping UI), fetch company name (for status display). Auto-refresh on 401 with single retry; pinned to API minor version 70 for shape stability.
+* **New: `QuickBooks\Account_Mapper`.** Per-campaign + `_default` income-account mapping. Account IDs sanitized via positive-integer regex (rejects "haxx"/etc.). Empty values strip the entry rather than persisting empty.
+* **New: `QuickBooks\Sync_Queue` + `Sync_Handler`.** Action Scheduler-backed async queue (AS ships with WC, no install friction). Backoff schedule: 60s → 5m → 15m → giving up. Retryable = 5xx, 408, 429, network-layer; non-retryable = 4xx other than 401 (which API_Client handles). Bounded ring-buffer log (last 50 entries) for the admin Recent Activity panel. Failures surface in the new `qbo_sync_health` diagnostic check.
+* **New: `QuickBooks\Donation_Listener`.** Bridges Phase 9 `dfwc_companion_donation_submitted` to the sync queue. Self-gates on `qbo_sync_enabled` + token presence, so toggling sync on doesn't require deactivate/reactivate. Crypto donations (v1.4.0) will sync automatically when shipped — no per-channel wiring needed.
+* **New: `Admin\QuickBooks_Page`.** Connect / Disconnect / Account mapping table / Recent activity log. Conditional submenu — only registered when `qbo_sync_enabled` is true. Three admin-post.php actions, all capability + nonce gated.
+* **New: 4 admin settings.** *WooCommerce → Donations Companion → Settings → QuickBooks Online sync*: enable toggle, environment dropdown (production/sandbox), client ID, client secret. Client secret is sensitive; redacted in admin UI on save (placeholder shown in the input rather than the real value); preserves existing stored value when admin re-saves without changing the field.
+* **New: 2 diagnostic checks (`qbo_connection`, `qbo_sync_health`).** Pass silently when sync is disabled; warn when tokens are missing, refresh-token expiry is within 10 days, or 24h failure count exceeds 5. Surfaces on the Diagnostics page and via `wp dfwc-companion health`.
+* **New: `wp dfwc-companion qbo-sync` CLI command.** Re-enqueue historical donations. Supports `--campaign=<id>` filter, `--days=<N>` lookback (default 30), `--dry-run`. Useful for backfill after a connection gap or migration from another QBO sync tool.
+* **New: `dfwc_companion_qbo_payload` filter.** Mutate the Sales Receipt payload before submit. Use to add named-customer references, QBO classes/locations, custom memo lines, etc. Ships with empty default — admins who don't filter get an anonymous-donor receipt.
+* **New: `docs/quickbooks-sync.md`.** ~400-line reference covering Intuit app registration walk-through, setup, listener path diagram, retry policy, idempotency tradeoffs, threat model (token storage, OAuth callback CSRF, refresh-token exposure), filters, diagnostics, manual re-sync via CLI, troubleshooting.
+* **Internal:** test coverage 241 → 268 cases, 621 → 683 assertions. New `QBO_Token_Store_Test` (10 cases — round-trip encrypt/decrypt, ciphertext-vs-plaintext guarantee, IV randomness across writes, corrupt-blob fail-closed), `QBO_Account_Mapper_Test` (8 cases — per-campaign / default fallback / sanitize / empty-strip), `QBO_Sync_Queue_Test` (7 cases — log buffer cap, failures-since window, AS-unavailable graceful path), `QBO_OAuth_State_Test` (5 cases — single-use state nonce, missing-creds path, scope correctness).
+* **Backward compat:** Phase 9 hook signature unchanged. The new admin submenu is conditional; sites that don't enable QBO sync see zero UI changes. No new DB tables — Action Scheduler reuses its own tables and we add three options. The existing `Frontend\Submit_Guard`, `Stock_Pledge_Handler`, and Overflow webhook code paths fire the standard donation_submitted hook unchanged; sync wiring sits at the listener boundary.
 
 = 1.3.0 =
 Stock-donations release. Two opt-in modes for accepting gifts of appreciated securities, picked per-site by the admin: a built-in pledge form that captures pledge details and emails the donor your DTC transfer instructions, or an integration with [Overflow](https://overflow.co/) that routes donors to your hosted stock-giving page and listens for completion via webhook. Crypto donations ship in v1.4.0.
@@ -290,6 +309,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 2.0.0 =
+Major version bump: introduces the first runtime third-party API surface (QuickBooks Online sync) and persistent encrypted-secret storage. Adds real-time per-donation Sales Receipt creation in QBO via OAuth2 with admin-supplied app credentials; works for cash, stock, and (when shipped) crypto donations through the standard Phase 9 hook. Off by default — existing v1.3.x sites see zero behavior change until admins opt in via Settings → QuickBooks Online sync. Backward-compatible.
 
 = 1.3.0 =
 Adds stock-donation support in two modes (built-in pledge form OR Overflow integration). Both off by default — existing sites see zero behavior change until admins opt in via Settings → Stock donations. Stock donations route through the same `dfwc_companion_donation_submitted` Phase 9 hook (with `$context = 'stock'`) as cash, so existing CRM/analytics listeners pick them up automatically. Backward-compatible.

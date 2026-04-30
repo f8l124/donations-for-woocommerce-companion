@@ -87,6 +87,15 @@ final class Defaults {
 				// Overflow mode settings:
 				'stock_overflow_url'           => '',  // org's overflow.co donation URL
 				'stock_overflow_webhook_secret' => '', // optional HMAC secret for incoming webhooks
+				// Phase 15 (v2.0.0) — QuickBooks Online sync. Each admin
+				// registers their own Intuit app (under their own Intuit
+				// Developer account) and pastes the resulting client_id /
+				// client_secret here; the plugin then uses OAuth2 to obtain
+				// realm-scoped tokens. Encrypted at rest via Token_Store.
+				'qbo_sync_enabled'             => false,
+				'qbo_environment'              => 'production', // or 'sandbox'
+				'qbo_client_id'                => '',
+				'qbo_client_secret'            => '',           // sensitive — redacted in admin UI
 			)
 		);
 	}
