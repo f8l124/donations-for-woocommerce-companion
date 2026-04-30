@@ -38,6 +38,9 @@ final class Defaults_Test extends TestCase {
 		$this->assertSame( '', $g['default_template_id'] );
 		$this->assertTrue( $g['preserve_data_on_uninstall'] );
 		$this->assertFalse( $g['enable_advanced_intervals'] );
+		// Phase 18 (v2.2.0) — augment-all flips the historical opt-in default
+		// so fresh installs render our forms on every campaign automatically.
+		$this->assertTrue( $g['augment_all_campaigns'] );
 	}
 
 	public function test_interval_block_default_disabled(): void {

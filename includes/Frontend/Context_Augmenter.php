@@ -77,6 +77,32 @@ final class Context_Augmenter {
 		}
 	}
 
+	/**
+	 * Should this campaign + context get our overlay?
+	 *
+	 * v2.2.0 (Phase 18): when `augment_all_campaigns` is on (default),
+	 * every published `wc-donation` post is augmented regardless of
+	 * whether the admin saved per-campaign companion config. Off reverts
+	 * to the v0.7.0 — v2.1.0 behavior of augmenting only campaigns where
+	 * the admin saved a template assignment, per-campaign overrides, or
+	 * legacy intervals meta.
+	 *
+	 * The `dfwc_should_augment_parent_form` filter is the per-campaign
+	 * escape hatch in either mode.
+	 */
+	public static function should_augment( int $campaign_id, string $context ): bool {
+		$global             = Config_Resolver::get_global_settings();
+		$augment_all        = ! empty( $global['augment_all_campaigns'] );
+		$default_should_aug = $augment_all ? true : Config_Resolver::is_configured( $campaign_id );
+
+		return (bool) apply_filters(
+			'dfwc_should_augment_parent_form',
+			$default_should_aug,
+			$campaign_id,
+			$context
+		);
+	}
+
 	private function emit_open( string $context, int $campaign_id ): void {
 		// Skip if our Renderer is already wrapping this render.
 		if ( Renderer::is_inside_render() ) {
@@ -91,14 +117,7 @@ final class Context_Augmenter {
 			return;
 		}
 
-		// Allow third-party opt-out per campaign + context.
-		$should_augment = (bool) apply_filters(
-			'dfwc_should_augment_parent_form',
-			Config_Resolver::is_configured( $campaign_id ),
-			$campaign_id,
-			$context
-		);
-		if ( ! $should_augment ) {
+		if ( ! self::should_augment( $campaign_id, $context ) ) {
 			return;
 		}
 

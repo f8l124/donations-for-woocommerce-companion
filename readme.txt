@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.1.0
+Stable tag: 2.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,16 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 2.2.0 =
+**Default behavior change.** Companion now augments every published `wc-donation` campaign with our donor form by default — no per-campaign opt-in required. Previous behavior (since v0.7.0) gated augmentation on `Config_Resolver::is_configured()`, meaning only campaigns where the admin had saved a template assignment, per-campaign overrides, or legacy v0.6.x intervals meta got our form. Fresh installs and unconfigured campaigns rendered parent's vanilla form, which surprised admins who reasonably expected "install companion = get companion's form everywhere".
+
+* **New:** `augment_all_campaigns` global setting under *WooCommerce → Donations Companion → Settings → General*. Default **on**. When on, every campaign renders with the companion overlay regardless of per-campaign config. Admins who want the old per-campaign-opt-in behavior can flip it off.
+* **New:** `Frontend\Context_Augmenter::should_augment( $campaign_id, $context )` public static helper exposes the gating decision (consults the toggle, calls `is_configured` when off, applies the `dfwc_should_augment_parent_form` filter). Useful for plugins that want to predict augmentation behavior without re-implementing the logic.
+* **`dfwc_should_augment_parent_form` filter unchanged.** Still the per-campaign escape hatch. In augment-all-on mode, the filter sees `true` as the default; in augment-all-off mode, it sees `is_configured($campaign_id)`. Listeners can return `false` to keep specific campaigns on parent's vanilla form (e.g., a legacy memorial campaign you don't want our overlay on) regardless of mode.
+* **Internal:** test coverage 245 → 250 cases, 629 → 636 assertions. New `Context_Augmenter_Test` (5 cases) locks both branches of the gating decision + verifies the filter escape hatch works in both modes.
+* **Backward compat:** v2.1.x sites that upgrade get the new default. Sites where this changes behavior unexpectedly (admins who relied on the old per-campaign-opt-in semantics to keep some campaigns vanilla) can flip the toggle off in Settings → General. The `dfwc_should_augment_parent_form` filter continues to be the per-campaign override seam either way.
+* **Why now:** post-v2.1.0 user feedback flagged the "install companion → most campaigns still show vanilla form" gap as the actual reason people install the plugin. The new default matches user expectation; the toggle preserves legacy behavior for sites that need it.
 
 = 2.1.0 =
 **Architectural cleanup.** QuickBooks Online sync extracted to a sibling plugin: [Donations for WooCommerce QuickBooks Sync](https://github.com/f8l124/donations-for-woocommerce-qbo-sync). The companion's job is donor-form UX + emitting Phase 9 event hooks; anything that consumes those hooks (this, future FluentCRM/GA4/Xero connectors) belongs separately. Migration is automatic: existing tokens, account mappings, sync log, and pending Action Scheduler jobs all carry over because option keys + the action slug are identical between companion v2.0.x and qbo-sync v1.0.0. Sites that upgrade companion to v2.1.0 without installing the sibling plugin see a one-time admin notice with a download link.
@@ -323,6 +333,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 2.2.0 =
+Default behavior change: every published donation campaign now uses our overlay form automatically. Sites that relied on per-campaign opt-in (the v0.7.0 — v2.1.0 behavior) can flip the new "Augment all campaigns by default" toggle off under Settings → General. The dfwc_should_augment_parent_form filter remains as a per-campaign escape hatch in either mode. No data migration required.
 
 = 2.1.0 =
 QuickBooks Online sync moved to a separate plugin (donations-for-woocommerce-qbo-sync v1.0.0). If you use QBO sync, install the sibling plugin alongside this upgrade — your existing tokens, mappings, and sync log carry over with no reconnection. Sites that don't use QBO are unaffected. Backward-compatible Phase 9 hooks unchanged.

@@ -63,6 +63,14 @@ final class Defaults {
 				'default_template_id'        => '',
 				'enable_advanced_intervals'  => false,
 				'preserve_data_on_uninstall' => true,
+				// Phase 18 (v2.2.0) — augment ALL published `wc-donation`
+				// campaigns with our overlay by default, regardless of
+				// whether the admin has saved per-campaign companion config.
+				// Admins who want the old per-campaign-opt-in behavior can
+				// flip this off in Settings → General. The
+				// `dfwc_should_augment_parent_form` filter remains as a
+				// per-campaign escape hatch.
+				'augment_all_campaigns'      => true,
 				// Phase 13 (v1.2.0) — goal-aware giving. All opt-in; existing
 				// installs see no behavior change until admin enables.
 				'enable_goal_based_max'        => false,

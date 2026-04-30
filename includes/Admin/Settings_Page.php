@@ -82,6 +82,14 @@ final class Settings_Page {
 			'dfwc_section_general'
 		);
 
+		add_settings_field(
+			'augment_all_campaigns',
+			__( 'Augment all campaigns by default', 'dfwc-companion' ),
+			array( $this, 'render_augment_all_field' ),
+			'dfwc-companion',
+			'dfwc_section_general'
+		);
+
 		// Phase 13 (v1.2.0) — goal-aware giving fields.
 		add_settings_section(
 			'dfwc_section_goal_aware',
@@ -211,6 +219,27 @@ final class Settings_Page {
 		</label>
 		<p class="description">
 			<?php esc_html_e( 'Off by default — donors see the standard One-time / Monthly / Annually tabs. Turn on to expose extra intervals in the campaign meta box and Templates page; each interval is then per-campaign / per-template opt-in via its own enable checkbox.', 'dfwc-companion' ); ?>
+		</p>
+		<?php
+	}
+
+	public function render_augment_all_field(): void {
+		$current = (bool) ( Config_Resolver::get_global_settings()['augment_all_campaigns'] ?? true );
+		?>
+		<label>
+			<input
+				type="checkbox"
+				name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[augment_all_campaigns]"
+				value="1"
+				<?php checked( $current ); ?>
+			>
+			<?php esc_html_e( 'Apply our donor form to every campaign automatically.', 'dfwc-companion' ); ?>
+		</label>
+		<p class="description">
+			<?php esc_html_e( 'Default: on. When on, every published campaign renders with the companion overlay regardless of per-campaign settings.', 'dfwc-companion' ); ?>
+		</p>
+		<p class="description">
+			<?php esc_html_e( 'Turn off to revert to the v0.7.0 — v2.1.0 behavior of augmenting only campaigns where you saved companion config (template assignment, per-campaign overrides, or legacy intervals meta). The dfwc_should_augment_parent_form filter remains as a per-campaign escape hatch in either mode.', 'dfwc-companion' ); ?>
 		</p>
 		<?php
 	}
@@ -471,6 +500,7 @@ final class Settings_Page {
 		// HTML form-checkbox semantics: missing = unchecked = false.
 		$preserve          = ! empty( $raw['preserve_data_on_uninstall'] );
 		$advanced_enabled  = ! empty( $raw['enable_advanced_intervals'] );
+		$augment_all       = ! empty( $raw['augment_all_campaigns'] );
 
 		// Phase 13 — goal-aware giving fields.
 		$goal_based_max          = ! empty( $raw['enable_goal_based_max'] );
@@ -510,6 +540,7 @@ final class Settings_Page {
 				'default_template_id'           => $default_template_id,
 				'preserve_data_on_uninstall'    => $preserve,
 				'enable_advanced_intervals'     => $advanced_enabled,
+				'augment_all_campaigns'         => $augment_all,
 				'enable_goal_based_max'         => $goal_based_max,
 				'enable_fully_funded_redirect'  => $fully_funded_redirect,
 				'general_fund_campaign_id'      => $general_fund_campaign_id,
