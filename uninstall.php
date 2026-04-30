@@ -38,10 +38,11 @@ $dfwc_options = array(
 	'dfwc_companion_templates',
 	'dfwc_companion_schema_version',
 	'dfwc_companion_terms_seeded',
-	// v2.0.0 — QBO sync option keys (Phase 15).
-	'dfwc_qbo_oauth_tokens',
-	'dfwc_qbo_account_mapping',
-	'dfwc_qbo_sync_log',
+	// v2.1.0+ — the QBO migration notice's dismiss flag. Other QBO keys
+	// (`dfwc_qbo_oauth_tokens`, `dfwc_qbo_account_mapping`, `dfwc_qbo_sync_log`)
+	// are owned by the sibling donations-for-woocommerce-qbo-sync plugin
+	// and cleaned up by its uninstall.php — not ours.
+	'dfwc_qbo_migration_notice_dismissed',
 );
 foreach ( $dfwc_options as $dfwc_option ) {
 	delete_option( $dfwc_option );

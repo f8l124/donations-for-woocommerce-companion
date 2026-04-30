@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.0.1
+Stable tag: 2.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,17 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 2.1.0 =
+**Architectural cleanup.** QuickBooks Online sync extracted to a sibling plugin: [Donations for WooCommerce QuickBooks Sync](https://github.com/f8l124/donations-for-woocommerce-qbo-sync). The companion's job is donor-form UX + emitting Phase 9 event hooks; anything that consumes those hooks (this, future FluentCRM/GA4/Xero connectors) belongs separately. Migration is automatic: existing tokens, account mappings, sync log, and pending Action Scheduler jobs all carry over because option keys + the action slug are identical between companion v2.0.x and qbo-sync v1.0.0. Sites that upgrade companion to v2.1.0 without installing the sibling plugin see a one-time admin notice with a download link.
+
+* **Removed:** `includes/QuickBooks/` (7 classes), `includes/Admin/QuickBooks_Page.php`, `includes/REST/QBO_OAuth_Callback_Controller.php`, `templates/quickbooks-page.php`, `docs/quickbooks-sync.md`, the 4 `qbo_*` global settings + their Settings UI section + sanitizer, the `dfwc-companion-quickbooks` admin sub-page, the 2 QBO diagnostic checks (`qbo_connection`, `qbo_sync_health`), the `wp dfwc-companion qbo-sync` CLI subcommand, and the 4 QBO unit-test files. Companion has zero references to `QuickBooks\*`, `qbo_*`, or `quickbooks-*` after this release.
+* **Added:** `Admin\QBO_Migration_Notice` — surfaces ONLY when the companion-era `dfwc_qbo_oauth_tokens` option exists AND the sibling plugin isn't installed. Dismissible. Auto-disappears once the sibling is detected.
+* **Hook contract unchanged:** `dfwc_companion_donation_submitted`, `dfwc_companion_donation_failed`, the other Phase 9 hooks — all signatures and firing semantics identical. Existing listeners (FluentCRM tagging, GA4, custom CRM webhooks, etc.) continue to work without modification.
+* **Diagnostics page extensibility:** the existing `dfwc_companion_contracts` filter is the canonical extension seam for plugins like qbo-sync to inject health checks. The sibling plugin uses it; future connectors can do the same.
+* **Internal:** test coverage 272 → 245 cases, 691 → 629 assertions (the 27 QBO-specific tests carried over to the sibling plugin's repo).
+* **Backward compat:** existing v2.0.x sites with QBO active should install the sibling plugin BEFORE upgrading to companion v2.1.0 (or as soon as possible after) to keep sync running. Tokens / mappings / log all preserved either way; the gap is just whether sync is paused while the sibling is missing. Sites without QBO are unaffected.
+* **Major version rationale:** technically a feature removal from this plugin (per release-process.md, that's a major-bump trigger), but the functionality moves to a sibling rather than going away — so v2.1.0 (minor) reflects that. Sites that don't install the sibling lose QBO; sites that do, lose nothing.
 
 = 2.0.1 =
 **Critical fix.** Donor-side AJAX submit was throwing `ArgumentCountError` and stalling on an infinite spinner on every site running v1.1.0 — v2.0.0. Root cause: `Analytics\Submission_Tracker` registered the parent's `wc_donation_alter_donate_response` filter with `accepted_args=2`, but the parent plugin's three apply_filters call sites (`class-wcdonationorder.php:1592, 1634, 1821`) all pass only ONE argument. Any donor reaching the submit step on a site running v1.1.0+ saw their AJAX request 500-out, the loader spin forever, and no donation get processed. Fix: bind the filter with `accepted_args=1` and read `$_POST` inside the callback (we're inside parent's AJAX action at that point, so `$_POST` is the donor's submission). Privacy posture unchanged — every read still flows through Privacy_Guard's allow-list sanitizers. New regression test (`Submission_Tracker_Test`, 4 cases) locks the binding; tests would have caught the original mismatch had this codepath been exercised end-to-end. Upgrade required for any v1.1.0 — v2.0.0 site that ever takes a donation.
@@ -312,6 +323,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 2.1.0 =
+QuickBooks Online sync moved to a separate plugin (donations-for-woocommerce-qbo-sync v1.0.0). If you use QBO sync, install the sibling plugin alongside this upgrade — your existing tokens, mappings, and sync log carry over with no reconnection. Sites that don't use QBO are unaffected. Backward-compatible Phase 9 hooks unchanged.
 
 = 2.0.1 =
 Critical fix: donor-side AJAX submit was throwing ArgumentCountError on every site running v1.1.0 — v2.0.0, leaving donors stuck on an infinite spinner and processing no donations. Mismatch between our filter binding (2 args) and the parent plugin's actual call shape (1 arg). Upgrade required if you've taken any donation traffic on v1.1.0 or later.

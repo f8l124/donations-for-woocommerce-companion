@@ -164,51 +164,10 @@ final class Settings_Page {
 			'dfwc_section_stock'
 		);
 
-		// Phase 15 (v2.0.0) — QuickBooks Online sync.
-		add_settings_section(
-			'dfwc_section_qbo',
-			__( 'QuickBooks Online sync', 'dfwc-companion' ),
-			static function () {
-				$intro = __(
-					'Real-time per-donation Sales Receipt creation in QuickBooks Online. Each admin must register their own Intuit app at',
-					'dfwc-companion'
-				);
-				$tail = __(
-					'paste the resulting client ID + client secret below, then complete OAuth from the QuickBooks Sync sub-page.',
-					'dfwc-companion'
-				);
-				echo '<p class="description">'
-					. esc_html( $intro )
-					. ' <a href="https://developer.intuit.com/" target="_blank" rel="noopener">developer.intuit.com</a>; '
-					. esc_html( $tail )
-					. '</p>';
-			},
-			'dfwc-companion'
-		);
-
-		add_settings_field(
-			'qbo_sync_enabled',
-			__( 'Enable QuickBooks sync', 'dfwc-companion' ),
-			array( $this, 'render_qbo_enabled_field' ),
-			'dfwc-companion',
-			'dfwc_section_qbo'
-		);
-
-		add_settings_field(
-			'qbo_environment',
-			__( 'Environment', 'dfwc-companion' ),
-			array( $this, 'render_qbo_environment_field' ),
-			'dfwc-companion',
-			'dfwc_section_qbo'
-		);
-
-		add_settings_field(
-			'qbo_credentials',
-			__( 'Intuit app credentials', 'dfwc-companion' ),
-			array( $this, 'render_qbo_credentials_fields' ),
-			'dfwc-companion',
-			'dfwc_section_qbo'
-		);
+		// Phase 15 (v2.0.0 → v2.1.0) — QuickBooks Online sync moved to a
+		// sibling plugin (donations-for-woocommerce-qbo-sync). The settings
+		// + admin page live there now. A migration notice surfaces if the
+		// admin upgraded companion without installing the sibling plugin.
 	}
 
 	public static function render(): void {
@@ -544,20 +503,6 @@ final class Settings_Page {
 		$stock_overflow_url     = isset( $raw['stock_overflow_url'] ) ? esc_url_raw( (string) $raw['stock_overflow_url'] ) : '';
 		$stock_overflow_secret  = isset( $raw['stock_overflow_webhook_secret'] ) ? sanitize_text_field( (string) $raw['stock_overflow_webhook_secret'] ) : '';
 
-		// Phase 15 (v2.0.0) — QBO sync fields.
-		$qbo_enabled     = ! empty( $raw['qbo_sync_enabled'] );
-		$qbo_environment = isset( $raw['qbo_environment'] ) ? sanitize_key( (string) $raw['qbo_environment'] ) : 'production';
-		if ( ! in_array( $qbo_environment, array( 'production', 'sandbox' ), true ) ) {
-			$qbo_environment = 'production';
-		}
-		$qbo_client_id     = isset( $raw['qbo_client_id'] ) ? sanitize_text_field( (string) $raw['qbo_client_id'] ) : '';
-		$qbo_client_secret = isset( $raw['qbo_client_secret'] ) ? sanitize_text_field( (string) $raw['qbo_client_secret'] ) : '';
-		// If the field is the redacted placeholder, preserve the existing
-		// stored secret rather than overwriting it with the placeholder.
-		if ( '••••••••' === $qbo_client_secret ) {
-			$qbo_client_secret = (string) ( $existing['qbo_client_secret'] ?? '' );
-		}
-
 		return array_merge(
 			$existing,
 			array(
@@ -577,87 +522,7 @@ final class Settings_Page {
 				'stock_tax_id'                  => $stock_tax_id,
 				'stock_overflow_url'            => $stock_overflow_url,
 				'stock_overflow_webhook_secret' => $stock_overflow_secret,
-				'qbo_sync_enabled'              => $qbo_enabled,
-				'qbo_environment'               => $qbo_environment,
-				'qbo_client_id'                 => $qbo_client_id,
-				'qbo_client_secret'             => $qbo_client_secret,
 			)
 		);
-	}
-
-	public function render_qbo_enabled_field(): void {
-		$current = (bool) ( Config_Resolver::get_global_settings()['qbo_sync_enabled'] ?? false );
-		?>
-		<label>
-			<input
-				type="checkbox"
-				name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[qbo_sync_enabled]"
-				value="1"
-				<?php checked( $current ); ?>
-			>
-			<?php esc_html_e( 'Sync each donation to QuickBooks Online as a Sales Receipt.', 'dfwc-companion' ); ?>
-		</label>
-		<p class="description">
-			<?php esc_html_e( 'Off by default. When on, the QuickBooks Sync sub-page appears under Donations Companion; complete OAuth + map campaigns to income accounts there.', 'dfwc-companion' ); ?>
-		</p>
-		<?php
-	}
-
-	public function render_qbo_environment_field(): void {
-		$current = (string) ( Config_Resolver::get_global_settings()['qbo_environment'] ?? 'production' );
-		?>
-		<select name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[qbo_environment]">
-			<option value="production" <?php selected( 'production', $current ); ?>>
-				<?php esc_html_e( 'Production', 'dfwc-companion' ); ?>
-			</option>
-			<option value="sandbox" <?php selected( 'sandbox', $current ); ?>>
-				<?php esc_html_e( 'Sandbox', 'dfwc-companion' ); ?>
-			</option>
-		</select>
-		<p class="description">
-			<?php esc_html_e( 'Use Sandbox while you verify the integration; switch to Production once OAuth + a test sync succeed. Switching environments invalidates the existing token bundle — you\'ll need to reconnect.', 'dfwc-companion' ); ?>
-		</p>
-		<?php
-	}
-
-	public function render_qbo_credentials_fields(): void {
-		$global       = Config_Resolver::get_global_settings();
-		$client_id    = (string) ( $global['qbo_client_id'] ?? '' );
-		$has_secret   = '' !== (string) ( $global['qbo_client_secret'] ?? '' );
-		$secret_value = $has_secret ? '••••••••' : '';
-		?>
-		<fieldset>
-			<p>
-				<label for="dfwc-qbo-client-id"><strong><?php esc_html_e( 'Client ID', 'dfwc-companion' ); ?></strong></label><br>
-				<input
-					type="text"
-					id="dfwc-qbo-client-id"
-					name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[qbo_client_id]"
-					value="<?php echo esc_attr( $client_id ); ?>"
-					class="regular-text code"
-				>
-			</p>
-			<p>
-				<label for="dfwc-qbo-client-secret"><strong><?php esc_html_e( 'Client secret', 'dfwc-companion' ); ?></strong></label><br>
-				<input
-					type="password"
-					id="dfwc-qbo-client-secret"
-					name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[qbo_client_secret]"
-					value="<?php echo esc_attr( $secret_value ); ?>"
-					class="regular-text code"
-					autocomplete="off"
-				>
-			</p>
-			<p class="description">
-				<?php
-				printf(
-					/* translators: %s: redirect URI to register at developer.intuit.com */
-					esc_html__( 'Generate these at developer.intuit.com under your Intuit app\'s "Keys & OAuth" tab. Register this redirect URI on the same app: %s', 'dfwc-companion' ),
-					'<code>' . esc_html( function_exists( 'rest_url' ) ? (string) rest_url( 'dfwc-companion/v1/qbo-oauth-callback' ) : '/wp-json/dfwc-companion/v1/qbo-oauth-callback' ) . '</code>'
-				);
-				?>
-			</p>
-		</fieldset>
-		<?php
 	}
 }

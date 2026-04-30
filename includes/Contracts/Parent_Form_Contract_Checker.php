@@ -26,8 +26,6 @@ defined( 'ABSPATH' ) || exit;
 
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Engine_Detector;
-use DFWC\Companion\QuickBooks\Sync_Queue;
-use DFWC\Companion\QuickBooks\Token_Store;
 
 final class Parent_Form_Contract_Checker {
 
@@ -250,23 +248,10 @@ final class Parent_Form_Contract_Checker {
 				Parent_Form_Contract::SEVERITY_WARNING,
 				array( $this, 'check_advanced_intervals_engine' )
 			),
-			// Phase 15 (v2.0.0) — QBO sync health. Both checks pass silently
-			// when sync is disabled; warn / fail surface only when admin opts in.
-			new Parent_Form_Contract(
-				'qbo_connection',
-				__( 'QuickBooks connection healthy', 'dfwc-companion' ),
-				__( 'QuickBooks tokens must be present and the refresh token cannot be near expiry.', 'dfwc-companion' ),
-				Parent_Form_Contract::SEVERITY_WARNING,
-				array( $this, 'check_qbo_connection' )
-			),
-			new Parent_Form_Contract(
-				'qbo_sync_health',
-				__( 'QuickBooks sync queue healthy', 'dfwc-companion' ),
-				__( 'Recent sync attempts must not have consistently failed.', 'dfwc-companion' ),
-				Parent_Form_Contract::SEVERITY_WARNING,
-				array( $this, 'check_qbo_sync_health' )
-			),
 		);
+		// Phase 17 (v2.1.0): QBO health checks moved to the sibling
+		// donations-for-woocommerce-qbo-sync plugin, which injects them
+		// via the `dfwc_companion_contracts` filter.
 
 		/**
 		 * Allow third parties to add custom contract entries.
@@ -519,87 +504,6 @@ final class Parent_Form_Contract_Checker {
 			/* translators: %s: engine slug (wcs / wps_sfw) */
 			sprintf( __( 'Advanced intervals supported by active engine (%s).', 'dfwc-companion' ), $engine ),
 			array( 'engine' => $engine )
-		);
-	}
-
-	public function check_qbo_connection(): Parent_Form_Contract_Result {
-		$settings = Config_Resolver::get_global_settings();
-		if ( empty( $settings['qbo_sync_enabled'] ) ) {
-			return Parent_Form_Contract_Result::pass(
-				'qbo_connection',
-				__( 'QuickBooks sync is off.', 'dfwc-companion' )
-			);
-		}
-		if ( ! Token_Store::has_tokens() ) {
-			return Parent_Form_Contract_Result::warn(
-				'qbo_connection',
-				__( 'QuickBooks sync is enabled but no OAuth tokens are stored. Donations are not syncing.', 'dfwc-companion' ),
-				__( 'Open Donations Companion → QuickBooks Sync and click Connect to QuickBooks.', 'dfwc-companion' )
-			);
-		}
-
-		// Refresh tokens expire after ~100 days of inactivity. Warn at 90.
-		$refresh_expires = Token_Store::refresh_expires_at();
-		$days_remaining  = max( 0, (int) floor( ( $refresh_expires - time() ) / DAY_IN_SECONDS ) );
-		if ( $refresh_expires > 0 && $days_remaining < 10 ) {
-			return Parent_Form_Contract_Result::warn(
-				'qbo_connection',
-				sprintf(
-					/* translators: %d: days remaining */
-					__( 'QuickBooks refresh token expires in %d days. Reconnect soon to avoid sync interruption.', 'dfwc-companion' ),
-					$days_remaining
-				),
-				__( 'Open Donations Companion → QuickBooks Sync, click Disconnect, and then Connect again.', 'dfwc-companion' )
-			);
-		}
-
-		return Parent_Form_Contract_Result::pass(
-			'qbo_connection',
-			'' !== Token_Store::company_name()
-				? sprintf(
-					/* translators: %s: connected company name */
-					__( 'Connected to %s.', 'dfwc-companion' ),
-					Token_Store::company_name()
-				)
-				: __( 'QuickBooks tokens stored.', 'dfwc-companion' ),
-			array(
-				'company_name'         => Token_Store::company_name(),
-				'realm_id'             => Token_Store::realm_id(),
-				'refresh_days_remaining' => $days_remaining,
-			)
-		);
-	}
-
-	public function check_qbo_sync_health(): Parent_Form_Contract_Result {
-		$settings = Config_Resolver::get_global_settings();
-		if ( empty( $settings['qbo_sync_enabled'] ) ) {
-			return Parent_Form_Contract_Result::pass(
-				'qbo_sync_health',
-				__( 'QuickBooks sync is off.', 'dfwc-companion' )
-			);
-		}
-		$failures_24h = Sync_Queue::failures_since( DAY_IN_SECONDS );
-		if ( $failures_24h > 5 ) {
-			return Parent_Form_Contract_Result::warn(
-				'qbo_sync_health',
-				sprintf(
-					/* translators: %d: failed sync attempts in 24h */
-					__( '%d failed sync attempts in the last 24h.', 'dfwc-companion' ),
-					$failures_24h
-				),
-				__( 'Open Donations Companion → QuickBooks Sync and review the recent activity panel for the underlying error.', 'dfwc-companion' )
-			);
-		}
-		return Parent_Form_Contract_Result::pass(
-			'qbo_sync_health',
-			0 === $failures_24h
-				? __( 'No sync failures in the last 24h.', 'dfwc-companion' )
-				: sprintf(
-					/* translators: %d: failed sync attempts in 24h (under threshold) */
-					__( '%d transient sync error(s) in the last 24h (under warn threshold).', 'dfwc-companion' ),
-					$failures_24h
-				),
-			array( 'failures_24h' => $failures_24h )
 		);
 	}
 
