@@ -70,3 +70,17 @@ $wpdb->query(
 		$dfwc_timeout_like
 	)
 );
+
+// v1.3.0 — `dfwc_stock_pledge` CPT records (Phase 14A). The post type isn't
+// registered during uninstall (the Plugin module never boots in this
+// context), so a normal WP_Query won't find them. Hit `wp_posts` directly,
+// scoped to our post_type slug; `wp_delete_post` cascades child meta cleanup.
+$dfwc_pledge_ids = $wpdb->get_col(
+	$wpdb->prepare(
+		"SELECT ID FROM {$wpdb->posts} WHERE post_type = %s",
+		'dfwc_stock_pledge'
+	)
+);
+foreach ( (array) $dfwc_pledge_ids as $dfwc_pledge_id ) {
+	wp_delete_post( (int) $dfwc_pledge_id, true );
+}

@@ -118,6 +118,51 @@ final class Settings_Page {
 			'dfwc-companion',
 			'dfwc_section_goal_aware'
 		);
+
+		// Phase 14A — stock donation settings.
+		add_settings_section(
+			'dfwc_section_stock',
+			__( 'Stock donations', 'dfwc-companion' ),
+			static function () {
+				echo '<p class="description">' . esc_html__(
+					'Accept gifts of appreciated stock. Choose between the built-in pledge form (donor fills our form; we email DTC instructions; you reconcile when shares clear) or Overflow (overflow.co — routes donors to your Overflow-hosted donation page).',
+					'dfwc-companion'
+				) . '</p>';
+			},
+			'dfwc-companion'
+		);
+
+		add_settings_field(
+			'stock_donations_enabled',
+			__( 'Enable stock donations', 'dfwc-companion' ),
+			array( $this, 'render_stock_enabled_field' ),
+			'dfwc-companion',
+			'dfwc_section_stock'
+		);
+
+		add_settings_field(
+			'stock_giving_mode',
+			__( 'Mode', 'dfwc-companion' ),
+			array( $this, 'render_stock_mode_field' ),
+			'dfwc-companion',
+			'dfwc_section_stock'
+		);
+
+		add_settings_field(
+			'stock_pledge_form_settings',
+			__( 'Pledge-form mode settings', 'dfwc-companion' ),
+			array( $this, 'render_stock_pledge_form_fields' ),
+			'dfwc-companion',
+			'dfwc_section_stock'
+		);
+
+		add_settings_field(
+			'stock_overflow_settings',
+			__( 'Overflow mode settings', 'dfwc-companion' ),
+			array( $this, 'render_stock_overflow_fields' ),
+			'dfwc-companion',
+			'dfwc_section_stock'
+		);
 	}
 
 	public static function render(): void {
@@ -249,6 +294,149 @@ final class Settings_Page {
 		<?php
 	}
 
+	public function render_stock_enabled_field(): void {
+		$current = (bool) ( Config_Resolver::get_global_settings()['stock_donations_enabled'] ?? false );
+		?>
+		<label>
+			<input
+				type="checkbox"
+				name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[stock_donations_enabled]"
+				value="1"
+				<?php checked( $current ); ?>
+			>
+			<?php esc_html_e( 'Show a "Donate stock" affordance on the donor form.', 'dfwc-companion' ); ?>
+		</label>
+		<p class="description">
+			<?php esc_html_e( 'Off by default. When on, the affordance appears below the cash-donation form using whichever mode is selected below.', 'dfwc-companion' ); ?>
+		</p>
+		<?php
+	}
+
+	public function render_stock_mode_field(): void {
+		$current = (string) ( Config_Resolver::get_global_settings()['stock_giving_mode'] ?? 'pledge_form' );
+		?>
+		<select name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[stock_giving_mode]" id="dfwc-stock-giving-mode">
+			<option value="pledge_form" <?php selected( 'pledge_form', $current ); ?>>
+				<?php esc_html_e( 'Built-in pledge form (DIY)', 'dfwc-companion' ); ?>
+			</option>
+			<option value="overflow" <?php selected( 'overflow', $current ); ?>>
+				<?php esc_html_e( 'Overflow (overflow.co hosted page)', 'dfwc-companion' ); ?>
+			</option>
+		</select>
+		<p class="description">
+			<?php esc_html_e( '"Pledge form" captures donor + stock details, emails DTC instructions, and you reconcile when shares clear. "Overflow" routes donors to your overflow.co donation page; their team handles broker connection + transfer.', 'dfwc-companion' ); ?>
+		</p>
+		<?php
+	}
+
+	public function render_stock_pledge_form_fields(): void {
+		$global = Config_Resolver::get_global_settings();
+		?>
+		<fieldset>
+			<p>
+				<label for="dfwc-stock-broker-name"><strong><?php esc_html_e( 'Receiving broker name', 'dfwc-companion' ); ?></strong></label><br>
+				<input
+					type="text"
+					id="dfwc-stock-broker-name"
+					name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[stock_broker_name]"
+					value="<?php echo esc_attr( (string) ( $global['stock_broker_name'] ?? '' ) ); ?>"
+					class="regular-text"
+					placeholder="<?php esc_attr_e( 'e.g. Charles Schwab', 'dfwc-companion' ); ?>"
+				>
+			</p>
+			<p>
+				<label for="dfwc-stock-dtc-account"><strong><?php esc_html_e( 'DTC account number', 'dfwc-companion' ); ?></strong></label><br>
+				<input
+					type="text"
+					id="dfwc-stock-dtc-account"
+					name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[stock_dtc_account_number]"
+					value="<?php echo esc_attr( (string) ( $global['stock_dtc_account_number'] ?? '' ) ); ?>"
+					class="regular-text"
+				>
+			</p>
+			<p>
+				<label for="dfwc-stock-dtc-clearing"><strong><?php esc_html_e( 'DTC clearing-house number', 'dfwc-companion' ); ?></strong></label><br>
+				<input
+					type="text"
+					id="dfwc-stock-dtc-clearing"
+					name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[stock_dtc_clearing_house_number]"
+					value="<?php echo esc_attr( (string) ( $global['stock_dtc_clearing_house_number'] ?? '' ) ); ?>"
+					class="regular-text"
+				>
+			</p>
+			<p>
+				<label for="dfwc-stock-admin-email"><strong><?php esc_html_e( 'Admin notification email', 'dfwc-companion' ); ?></strong></label><br>
+				<input
+					type="email"
+					id="dfwc-stock-admin-email"
+					name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[stock_admin_email]"
+					value="<?php echo esc_attr( (string) ( $global['stock_admin_email'] ?? '' ) ); ?>"
+					class="regular-text"
+					placeholder="<?php echo esc_attr( function_exists( 'get_option' ) ? (string) get_option( 'admin_email' ) : '' ); ?>"
+				>
+			</p>
+			<p>
+				<label for="dfwc-stock-tax-id"><strong><?php esc_html_e( 'Organization tax ID (EIN)', 'dfwc-companion' ); ?></strong></label><br>
+				<input
+					type="text"
+					id="dfwc-stock-tax-id"
+					name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[stock_tax_id]"
+					value="<?php echo esc_attr( (string) ( $global['stock_tax_id'] ?? '' ) ); ?>"
+					class="regular-text"
+					placeholder="<?php esc_attr_e( 'e.g. 12-3456789', 'dfwc-companion' ); ?>"
+				>
+			</p>
+			<p class="description">
+				<?php esc_html_e( 'These fields are emailed to the donor as DTC transfer instructions for their broker. Required for Pledge-form mode.', 'dfwc-companion' ); ?>
+			</p>
+		</fieldset>
+		<?php
+	}
+
+	public function render_stock_overflow_fields(): void {
+		$global = Config_Resolver::get_global_settings();
+		?>
+		<fieldset>
+			<p>
+				<label for="dfwc-stock-overflow-url"><strong><?php esc_html_e( 'Your Overflow donation URL', 'dfwc-companion' ); ?></strong></label><br>
+				<input
+					type="url"
+					id="dfwc-stock-overflow-url"
+					name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[stock_overflow_url]"
+					value="<?php echo esc_attr( (string) ( $global['stock_overflow_url'] ?? '' ) ); ?>"
+					class="regular-text code"
+					placeholder="https://overflow.co/donate/your-org"
+				>
+			</p>
+			<p>
+				<label for="dfwc-stock-overflow-secret"><strong><?php esc_html_e( 'Webhook secret (optional)', 'dfwc-companion' ); ?></strong></label><br>
+				<input
+					type="text"
+					id="dfwc-stock-overflow-secret"
+					name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[stock_overflow_webhook_secret]"
+					value="<?php echo esc_attr( (string) ( $global['stock_overflow_webhook_secret'] ?? '' ) ); ?>"
+					class="regular-text code"
+				>
+			</p>
+			<p class="description">
+				<?php
+				$webhook_url = function_exists( 'rest_url' )
+					? (string) rest_url( 'dfwc-companion/v1/overflow-webhook' )
+					: '/wp-json/dfwc-companion/v1/overflow-webhook';
+				printf(
+					/* translators: %s: webhook URL */
+					esc_html__(
+						'When set, configure the same secret in Overflow\'s webhook settings pointing to: %s. The companion verifies HMAC-SHA256 signatures on incoming webhooks and creates pledge records automatically. Without a secret, donors complete on Overflow and you reconcile in Overflow\'s dashboard.',
+						'dfwc-companion'
+					),
+					'<code>' . esc_html( $webhook_url ) . '</code>'
+				);
+				?>
+			</p>
+		</fieldset>
+		<?php
+	}
+
 	/**
 	 * Sanitize callback for the global-settings option. Receives the raw
 	 * POSTed array and returns a sanitized array suitable for storage.
@@ -296,16 +484,39 @@ final class Settings_Page {
 			}
 		}
 
+		// Phase 14A — stock donation fields.
+		$stock_enabled = ! empty( $raw['stock_donations_enabled'] );
+		$stock_mode    = isset( $raw['stock_giving_mode'] ) ? sanitize_key( (string) $raw['stock_giving_mode'] ) : 'pledge_form';
+		if ( ! in_array( $stock_mode, array( 'pledge_form', 'overflow' ), true ) ) {
+			$stock_mode = 'pledge_form';
+		}
+		$stock_broker_name      = isset( $raw['stock_broker_name'] ) ? sanitize_text_field( (string) $raw['stock_broker_name'] ) : '';
+		$stock_dtc_account      = isset( $raw['stock_dtc_account_number'] ) ? sanitize_text_field( (string) $raw['stock_dtc_account_number'] ) : '';
+		$stock_dtc_clearing     = isset( $raw['stock_dtc_clearing_house_number'] ) ? sanitize_text_field( (string) $raw['stock_dtc_clearing_house_number'] ) : '';
+		$stock_admin_email      = isset( $raw['stock_admin_email'] ) ? sanitize_email( (string) $raw['stock_admin_email'] ) : '';
+		$stock_tax_id           = isset( $raw['stock_tax_id'] ) ? sanitize_text_field( (string) $raw['stock_tax_id'] ) : '';
+		$stock_overflow_url     = isset( $raw['stock_overflow_url'] ) ? esc_url_raw( (string) $raw['stock_overflow_url'] ) : '';
+		$stock_overflow_secret  = isset( $raw['stock_overflow_webhook_secret'] ) ? sanitize_text_field( (string) $raw['stock_overflow_webhook_secret'] ) : '';
+
 		return array_merge(
 			$existing,
 			array(
-				'version'                      => 1,
-				'default_template_id'          => $default_template_id,
-				'preserve_data_on_uninstall'   => $preserve,
-				'enable_advanced_intervals'    => $advanced_enabled,
-				'enable_goal_based_max'        => $goal_based_max,
-				'enable_fully_funded_redirect' => $fully_funded_redirect,
-				'general_fund_campaign_id'     => $general_fund_campaign_id,
+				'version'                       => 1,
+				'default_template_id'           => $default_template_id,
+				'preserve_data_on_uninstall'    => $preserve,
+				'enable_advanced_intervals'     => $advanced_enabled,
+				'enable_goal_based_max'         => $goal_based_max,
+				'enable_fully_funded_redirect'  => $fully_funded_redirect,
+				'general_fund_campaign_id'      => $general_fund_campaign_id,
+				'stock_donations_enabled'       => $stock_enabled,
+				'stock_giving_mode'             => $stock_mode,
+				'stock_broker_name'             => $stock_broker_name,
+				'stock_dtc_account_number'      => $stock_dtc_account,
+				'stock_dtc_clearing_house_number' => $stock_dtc_clearing,
+				'stock_admin_email'             => $stock_admin_email,
+				'stock_tax_id'                  => $stock_tax_id,
+				'stock_overflow_url'            => $stock_overflow_url,
+				'stock_overflow_webhook_secret' => $stock_overflow_secret,
 			)
 		);
 	}

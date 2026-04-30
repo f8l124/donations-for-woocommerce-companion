@@ -86,6 +86,14 @@ final class Plugin {
 		new Analytics\Submission_Tracker();
 		new REST\Track_REST_Controller();
 
+		// Phase 14A — built-in stock donations + Overflow integration. CPT
+		// + admin reconciliation page wire unconditionally; the donor-side
+		// affordance gates on the global toggle at render time.
+		new Stock\Stock_Pledge_Post_Type();
+		new Admin\Stock_Pledges_Page();
+		new REST\Stock_Pledge_REST_Controller();
+		new REST\Overflow_Webhook_REST_Controller();
+
 		// Phase 11 — `wp dfwc-companion` CLI commands. No-op outside WP-CLI.
 		CLI\CLI_Commands::register();
 

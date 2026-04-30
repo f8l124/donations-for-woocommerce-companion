@@ -97,6 +97,10 @@ final class Assets {
 			// browser state replaying old payloads, not against forgery.
 			'trackUrl'       => function_exists( 'rest_url' ) ? rest_url( 'dfwc-companion/v1/track' ) : '',
 			'trackNonce'     => wp_create_nonce( 'wp_rest' ),
+			// Phase 14A — stock pledge endpoint. Public endpoint;
+			// rate-limited server-side. Same wp_rest nonce used as
+			// the track endpoint.
+			'stockPledgeUrl' => function_exists( 'rest_url' ) ? rest_url( 'dfwc-companion/v1/stock-pledge' ) : '',
 			'i18n'           => array(
 				'errorGeneric'        => __( 'Something went wrong. Please try again.', 'dfwc-companion' ),
 				'errorAmountRequired' => __( 'Please choose a preset amount or enter a custom amount.', 'dfwc-companion' ),
@@ -107,6 +111,21 @@ final class Assets {
 				'goalMetHeading'      => __( 'This campaign reached its goal!', 'dfwc-companion' ),
 				'goalMetCopy'         => __( 'Want to keep supporting our work? Make a gift to our general fund instead.', 'dfwc-companion' ),
 				'generalFundCta'      => __( 'Give to the general fund', 'dfwc-companion' ),
+				// Phase 14A — stock pledge form copy.
+				'donateStockToggle'   => __( 'Donate stock instead', 'dfwc-companion' ),
+				'donateStockOverflow' => __( 'Donate stock via Overflow', 'dfwc-companion' ),
+				'stockIntro'          => __( 'Pledge stock to support this campaign. We\'ll send DTC transfer instructions to your email.', 'dfwc-companion' ),
+				'stockDonorName'      => __( 'Your name', 'dfwc-companion' ),
+				'stockDonorEmail'     => __( 'Email', 'dfwc-companion' ),
+				'stockDonorPhone'     => __( 'Phone (optional)', 'dfwc-companion' ),
+				'stockBrokerName'     => __( 'Your broker', 'dfwc-companion' ),
+				'stockTicker'         => __( 'Ticker', 'dfwc-companion' ),
+				'stockShares'         => __( 'Shares', 'dfwc-companion' ),
+				'stockEstimatedValue' => __( 'Estimated value', 'dfwc-companion' ),
+				'stockNotes'          => __( 'Notes (optional)', 'dfwc-companion' ),
+				'stockSubmit'         => __( 'Submit pledge', 'dfwc-companion' ),
+				'stockSuccess'        => __( 'Pledge received! Check your email for transfer instructions.', 'dfwc-companion' ),
+				'stockNetworkError'   => __( 'Could not submit pledge. Please try again or email us directly.', 'dfwc-companion' ),
 			),
 		);
 	}

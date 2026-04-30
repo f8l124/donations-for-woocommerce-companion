@@ -59,6 +59,9 @@ final class Privacy_Guard {
 	 * wrapper. `unknown` is the safe fallback when the context can't be
 	 * derived (e.g. donor on an old cached page that predates Phase 9).
 	 *
+	 * Phase 14A added `stock` for stock-pledge donations (fired by
+	 * `Stock_Pledge_Handler::mark_received` and the Overflow webhook).
+	 *
 	 * @return array<int,string>
 	 */
 	public static function contexts(): array {
@@ -72,6 +75,7 @@ final class Privacy_Guard {
 			'block',
 			'elementor',
 			'preview',
+			'stock',
 			'unknown',
 		);
 	}

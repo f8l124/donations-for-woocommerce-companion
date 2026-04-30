@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,22 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 1.3.0 =
+Stock-donations release. Two opt-in modes for accepting gifts of appreciated securities, picked per-site by the admin: a built-in pledge form that captures pledge details and emails the donor your DTC transfer instructions, or an integration with [Overflow](https://overflow.co/) that routes donors to your hosted stock-giving page and listens for completion via webhook. Crypto donations ship in v1.4.0.
+
+* **New: built-in stock pledge form (mode 1).** Donors fill an inline form on the campaign page (donor info + broker + ticker + shares + estimated value + optional notes); companion records the pledge as `pledged`, sends donor + admin emails containing the org's DTC transfer instructions, and tracks the pledge through to receipt. Admin reconciles in *Donations Companion → Stock Pledges* by entering the actual transfer value + date — at that moment the standard `dfwc_companion_donation_submitted` hook fires with `$context = 'stock'` so QBO sync (Phase 15+), CRM listeners, GA4 events, etc. all see stock donations as first-class donations alongside cash.
+* **New: Overflow integration (mode 2).** Alternative to mode 1 for orgs that prefer a hosted stock-giving flow. Companion shows a single "Donate stock via Overflow" button on the campaign page that routes to the configured Overflow URL with `?utm_source=dfwc-companion&campaign_id=N` appended for attribution. Overflow notifies the companion via webhook on completion; companion verifies HMAC-SHA256 signature with `hash_equals`, deduplicates by Overflow's transaction ID (replay-safe), creates a `received`-status pledge record, and fires the standard donation-submitted hook with `$context = 'stock'`.
+* **New: `dfwc_stock_pledge` custom post type.** Admin-only CPT with status workflow tracked in meta (`pledged → in_transit → received` OR `pledged → cancelled`). The post's `post_status` stays `publish` throughout — meta-driven workflow keeps standard WP_Query usable. 13 meta keys for donor info, broker info, stock details, status, admin notes, plus a 14th (`_dfwc_stock_pledge_overflow_id`) for mode-2 idempotency.
+* **New: `Stock_Pledge_Handler`.** Centralized create / mark-received / transition-status / read-pledge surface. Donor input is sanitized via allow-list rules: ticker regex `^[A-Z]{1,5}(\.[A-Z]{1,2})?$`, shares ∈ (0, 1,000,000], estimated value ∈ (0, $100,000,000], donor notes capped at 2000 chars, campaign_id must reference a `wc-donation` post. PII never flows raw through Phase 9: `dfwc_companion_stock_pledge_created` receives a sha256 hash of the donor email; `dfwc_companion_donation_submitted` carries only aggregate data (campaign, amount, currency, language).
+* **New: `POST /wp-json/dfwc-companion/v1/stock-pledge`.** Public REST endpoint for donor-side submits, rate-limited 5/IP/min, returns DTC instructions in the success response. Returns 404 (not 403) when the feature is disabled so misconfigured donor-side JS doesn't trip security scanners.
+* **New: `POST /wp-json/dfwc-companion/v1/overflow-webhook`.** HMAC-SHA256 verified webhook receiver. Idempotent via Overflow's external donation ID. Permissive about Overflow's exact field names (`transaction_id` || `donation_id` || `id`).
+* **New: 9 admin settings.** *WooCommerce → Donations Companion → Settings → Stock donations*: enable toggle, mode dropdown, broker name, DTC account number + clearing house number, admin notification email, org tax ID (mode 1 fields), Overflow URL + webhook secret (mode 2 fields). Webhook secret is sensitive and redacted in the admin UI on save.
+* **New: 3 wrapper attributes.** `data-stock-pledge-enabled`, `data-stock-mode`, `data-stock-overflow-url` emitted from all three wrapper sites (`Renderer::wrap_with_overlay`, `Context_Augmenter::emit_open`, `Preview_Renderer::render`). Overlay JS reads them and renders the appropriate panel: inline form for mode 1, anchor button for mode 2.
+* **New: `docs/stock-donations.md`.** ~280 lines covering both modes, donor flow, setup, reconciliation, tax-receipt guidance, Phase 9 hook integration, privacy posture, storage, edge cases, verification.
+* **New: `'stock'` event context.** `Privacy_Guard::contexts()` allow-list extended so `dfwc_companion_donation_submitted` events with `$context = 'stock'` flow through the analytics layer cleanly.
+* **Internal:** test coverage 214 → 241 cases, 552 → 621 assertions. New `Stock_Pledge_Handler_Test` (24 cases) covers sanitizer validation paths, Phase 9 hook firing on create + mark-received, hashed-email guarantee, transition-status guards, and the defensive default for missing status meta. `Privacy_Guard_Test` extends with the `stock` context check.
+* **Backward compat:** existing v1.2.x campaigns render unchanged. The three new wrapper attributes are additive; sites without stock donations enabled emit `data-stock-pledge-enabled="0"` and the donor-side panel never mounts. No new tables. The new `dfwc_stock_pledge` CPT is admin-only and irrelevant on sites that haven't enabled stock donations.
 
 = 1.2.0 =
 Goal-aware giving release. Two opt-in features that read the parent plugin's campaign goal and shape donor behavior: (1) clamp the donor's max custom amount to the campaign's remaining goal so a one-time donor can fully fund the campaign but no more; (2) when a campaign meets its goal, surface a "Goal met! Support our general fund" card so donors can keep giving without overshooting.
@@ -274,6 +290,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+Adds stock-donation support in two modes (built-in pledge form OR Overflow integration). Both off by default — existing sites see zero behavior change until admins opt in via Settings → Stock donations. Stock donations route through the same `dfwc_companion_donation_submitted` Phase 9 hook (with `$context = 'stock'`) as cash, so existing CRM/analytics listeners pick them up automatically. Backward-compatible.
 
 = 1.2.0 =
 Adds goal-aware giving: opt-in clamp of the donor's max custom amount to the campaign's remaining goal, plus a "Goal met! Support our general fund" card when a campaign is fully funded. Both off by default — existing sites see zero behavior change until admins opt in via Settings → Goal-aware giving. Backward-compatible.

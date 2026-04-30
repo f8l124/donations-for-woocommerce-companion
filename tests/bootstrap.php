@@ -255,6 +255,82 @@ if ( ! function_exists( 'delete_transient' ) ) {
 	}
 }
 
+// Email validation stubs (used by Stock_Pledge_Handler::sanitize_pledge_input).
+if ( ! function_exists( 'sanitize_email' ) ) {
+	function sanitize_email( $email ) {
+		$email = trim( (string) $email );
+		// Quick-and-dirty: keep characters WP keeps; strip the rest.
+		$email = preg_replace( '/[^a-zA-Z0-9.!#$%&\'*+\/=?^_`{|}~@\-]/', '', $email );
+		return $email;
+	}
+}
+if ( ! function_exists( 'is_email' ) ) {
+	function is_email( $email ) {
+		return filter_var( $email, FILTER_VALIDATE_EMAIL ) ? $email : false;
+	}
+}
+
+// Per-post register for tests. Lets us simulate `get_post` lookups.
+if ( ! isset( $GLOBALS['_dfwc_test_posts'] ) ) {
+	$GLOBALS['_dfwc_test_posts'] = array();
+}
+if ( ! function_exists( 'get_post' ) ) {
+	function get_post( $post_id ) {
+		return $GLOBALS['_dfwc_test_posts'][ (int) $post_id ] ?? null;
+	}
+}
+if ( ! function_exists( 'get_the_title' ) ) {
+	function get_the_title( $post_id ) {
+		$post = $GLOBALS['_dfwc_test_posts'][ (int) $post_id ] ?? null;
+		return $post && isset( $post->post_title ) ? (string) $post->post_title : '';
+	}
+}
+if ( ! function_exists( 'get_post_time' ) ) {
+	function get_post_time( $format = 'U', $gmt = false, $post = null ) {
+		return time();
+	}
+}
+if ( ! function_exists( 'wp_insert_post' ) ) {
+	function wp_insert_post( $args, $wp_error = false ) {
+		static $next = 1000;
+		$id = ++$next;
+		$post = (object) array(
+			'ID'          => $id,
+			'post_type'   => $args['post_type'] ?? 'post',
+			'post_status' => $args['post_status'] ?? 'publish',
+			'post_title'  => $args['post_title'] ?? '',
+		);
+		$GLOBALS['_dfwc_test_posts'][ $id ] = $post;
+		return $id;
+	}
+}
+if ( ! function_exists( 'is_wp_error' ) ) {
+	function is_wp_error( $thing ) {
+		return $thing instanceof \WP_Error;
+	}
+}
+if ( ! class_exists( '\\WP_Error' ) ) {
+	class WP_Error {
+		public $code;
+		public $message;
+		public function __construct( $code = '', $message = '' ) {
+			$this->code    = $code;
+			$this->message = $message;
+		}
+		public function get_error_code() {
+			return $this->code;
+		}
+		public function get_error_message() {
+			return $this->message;
+		}
+	}
+}
+if ( ! function_exists( 'get_locale' ) ) {
+	function get_locale() {
+		return 'en_US';
+	}
+}
+
 // Constants used by Checker.
 if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
 	define( 'HOUR_IN_SECONDS', 3600 );
@@ -268,6 +344,7 @@ if ( ! function_exists( 'dfwc_test_reset' ) ) {
 		$GLOBALS['_dfwc_test_transients'] = array();
 		$GLOBALS['_dfwc_test_filters']    = array();
 		$GLOBALS['_dfwc_test_actions']    = array();
+		$GLOBALS['_dfwc_test_posts']      = array();
 		// Reset the static request cache on the Checker so each test starts fresh.
 		if ( class_exists( '\\DFWC\\Companion\\Contracts\\Parent_Form_Contract_Checker' ) ) {
 			$reflection = new \ReflectionClass( '\\DFWC\\Companion\\Contracts\\Parent_Form_Contract_Checker' );

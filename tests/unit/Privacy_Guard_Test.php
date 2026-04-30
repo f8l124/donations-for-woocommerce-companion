@@ -93,6 +93,13 @@ final class Privacy_Guard_Test extends TestCase {
 		$this->assertSame( 'unknown', Privacy_Guard::sanitize_context( '' ) );
 	}
 
+	public function test_sanitize_context_accepts_stock(): void {
+		// Phase 14A — stock-pledge donations need their own context value so
+		// listeners can split cash vs stock metrics.
+		$this->assertSame( 'stock', Privacy_Guard::sanitize_context( 'stock' ) );
+		$this->assertContains( 'stock', Privacy_Guard::contexts() );
+	}
+
 	public function test_sanitize_currency_uppercases_and_validates_iso(): void {
 		$this->assertSame( 'GBP', Privacy_Guard::sanitize_currency( 'gbp' ) );
 		$this->assertSame( 'USD', Privacy_Guard::sanitize_currency( 'USD' ) );

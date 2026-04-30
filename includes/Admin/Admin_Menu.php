@@ -20,11 +20,12 @@ defined( 'ABSPATH' ) || exit;
 
 final class Admin_Menu {
 
-	public const PARENT_SLUG      = 'dfwc-companion';
-	public const CAPABILITY       = 'manage_woocommerce';
-	public const SETTINGS_SLUG    = 'dfwc-companion';
-	public const TEMPLATES_SLUG   = 'dfwc-companion-templates';
-	public const DIAGNOSTICS_SLUG = 'dfwc-companion-diagnostics';
+	public const PARENT_SLUG       = 'dfwc-companion';
+	public const CAPABILITY        = 'manage_woocommerce';
+	public const SETTINGS_SLUG     = 'dfwc-companion';
+	public const TEMPLATES_SLUG    = 'dfwc-companion-templates';
+	public const DIAGNOSTICS_SLUG  = 'dfwc-companion-diagnostics';
+	public const STOCK_PLEDGES_SLUG = 'dfwc-companion-stock-pledges';
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'register' ) );
@@ -73,5 +74,18 @@ final class Admin_Menu {
 			self::DIAGNOSTICS_SLUG,
 			array( Diagnostics_Page::class, 'render' )
 		);
+
+		// Phase 14A — stock pledges sub-page (only when feature enabled).
+		$global = \DFWC\Companion\Config\Config_Resolver::get_global_settings();
+		if ( ! empty( $global['stock_donations_enabled'] ) ) {
+			add_submenu_page(
+				self::PARENT_SLUG,
+				__( 'Stock Pledges', 'dfwc-companion' ),
+				__( 'Stock Pledges', 'dfwc-companion' ),
+				self::CAPABILITY,
+				self::STOCK_PLEDGES_SLUG,
+				array( Stock_Pledges_Page::class, 'render' )
+			);
+		}
 	}
 }

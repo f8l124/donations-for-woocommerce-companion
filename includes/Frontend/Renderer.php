@@ -97,7 +97,12 @@ final class Renderer {
 		$attrs = self::build_overlay_attributes( $campaign_id );
 
 		return sprintf(
-			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d" data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s" data-intervals="%5$s" data-display="%6$s" data-context="%7$s" data-language="%8$s" data-fully-funded="%9$s" data-general-fund-url="%10$s">%11$s</div>',
+			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d"'
+				. ' data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s"'
+				. ' data-intervals="%5$s" data-display="%6$s" data-context="%7$s"'
+				. ' data-language="%8$s" data-fully-funded="%9$s" data-general-fund-url="%10$s"'
+				. ' data-stock-pledge-enabled="%11$s" data-stock-mode="%12$s"'
+				. ' data-stock-overflow-url="%13$s">%14$s</div>',
 			(int) $campaign_id,
 			esc_attr( $attrs['engine'] ),
 			esc_attr( $attrs['active_interval'] ),
@@ -108,6 +113,9 @@ final class Renderer {
 			esc_attr( $attrs['language'] ),
 			$attrs['fully_funded'] ? '1' : '0',
 			esc_attr( $attrs['general_fund_url'] ),
+			$attrs['stock_pledge_enabled'] ? '1' : '0',
+			esc_attr( $attrs['stock_mode'] ),
+			esc_attr( $attrs['stock_overflow_url'] ),
 			$inner // already escaped inside parent's shortcode/template
 		);
 	}
@@ -118,7 +126,7 @@ final class Renderer {
 	 * Used by `wrap_with_overlay()` and by Context_Augmenter when emitting
 	 * the wrapper's opening tag separately from its closing tag.
 	 *
-	 * @return array{engine:string,enabled_intervals:array<int,string>,active_interval:string,form_config:array<string,array>,display:array{show_title:bool,show_image:bool,cause_heading:string},language:string,fully_funded:bool,general_fund_url:string}
+	 * @return array{engine:string,enabled_intervals:array<int,string>,active_interval:string,form_config:array<string,array>,display:array{show_title:bool,show_image:bool,cause_heading:string},language:string,fully_funded:bool,general_fund_url:string,stock_pledge_enabled:bool,stock_mode:string,stock_overflow_url:string}
 	 */
 	public static function build_overlay_attributes( int $campaign_id ): array {
 		$config            = Config_Resolver::resolve( $campaign_id );
@@ -146,15 +154,41 @@ final class Renderer {
 			: '';
 		$fully_funded     = $goal->is_fully_funded() && '' !== $general_fund_url;
 
+		// Phase 14A — built-in stock donations. Two modes:
+		// - pledge_form: the org has filled in broker + DTC details
+		// - overflow:    the org has filled in their overflow.co donation URL
+		// `stock_pledge_enabled` is true when ANY supported mode is fully
+		// configured. The mode itself + the Overflow URL travel separately
+		// to the overlay JS so it can branch on which UI to render.
+		$stock_mode = (string) ( $global['stock_giving_mode'] ?? 'pledge_form' );
+		if ( ! in_array( $stock_mode, array( 'pledge_form', 'overflow' ), true ) ) {
+			$stock_mode = 'pledge_form';
+		}
+		$stock_overflow_url = (string) ( $global['stock_overflow_url'] ?? '' );
+		if ( '' !== $stock_overflow_url ) {
+			$stock_overflow_url = (string) esc_url_raw( $stock_overflow_url );
+		}
+		if ( empty( $global['stock_donations_enabled'] ) ) {
+			$stock_pledge_enabled = false;
+		} elseif ( 'overflow' === $stock_mode ) {
+			$stock_pledge_enabled = '' !== $stock_overflow_url;
+		} else {
+			$stock_pledge_enabled = '' !== (string) ( $global['stock_broker_name'] ?? '' )
+				&& '' !== (string) ( $global['stock_dtc_account_number'] ?? '' );
+		}
+
 		return array(
-			'engine'            => $engine,
-			'enabled_intervals' => $enabled_intervals,
-			'active_interval'   => $active_interval,
-			'form_config'       => $form_config,
-			'display'           => $display,
-			'language'          => $language,
-			'fully_funded'      => $fully_funded,
-			'general_fund_url'  => $general_fund_url,
+			'engine'              => $engine,
+			'enabled_intervals'   => $enabled_intervals,
+			'active_interval'     => $active_interval,
+			'form_config'         => $form_config,
+			'display'             => $display,
+			'language'            => $language,
+			'fully_funded'        => $fully_funded,
+			'general_fund_url'    => $general_fund_url,
+			'stock_pledge_enabled' => $stock_pledge_enabled,
+			'stock_mode'          => $stock_mode,
+			'stock_overflow_url'  => $stock_overflow_url,
 		);
 	}
 

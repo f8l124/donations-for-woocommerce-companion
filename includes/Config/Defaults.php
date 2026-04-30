@@ -68,6 +68,25 @@ final class Defaults {
 				'enable_goal_based_max'        => false,
 				'enable_fully_funded_redirect' => false,
 				'general_fund_campaign_id'     => 0,
+				// Phase 14A (v1.3.0) — built-in stock donations. Opt-in; the
+				// donor-facing "Donate Stock" UI only appears when
+				// `stock_donations_enabled` is true AND the chosen mode
+				// (pledge_form or overflow) is fully configured.
+				'stock_donations_enabled'      => false,
+				// Mode selector — `pledge_form` is the DIY built-in flow
+				// (donor fills our form; admin reconciles manually after
+				// shares clear). `overflow` routes donors to the org's
+				// Overflow (overflow.co) hosted donation page.
+				'stock_giving_mode'            => 'pledge_form',
+				// Built-in pledge_form mode settings:
+				'stock_broker_name'            => '',
+				'stock_dtc_account_number'     => '',
+				'stock_dtc_clearing_house_number' => '',
+				'stock_admin_email'            => '',  // org email that receives pledge notifications
+				'stock_tax_id'                 => '',  // org's EIN (e.g., "12-3456789") for tax receipts
+				// Overflow mode settings:
+				'stock_overflow_url'           => '',  // org's overflow.co donation URL
+				'stock_overflow_webhook_secret' => '', // optional HMAC secret for incoming webhooks
 			)
 		);
 	}

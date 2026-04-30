@@ -88,6 +88,9 @@ final class Preview_Renderer {
 			data-language="<?php echo esc_attr( isset( $args['language'] ) ? (string) $args['language'] : '' ); ?>"
 			data-fully-funded="0"
 			data-general-fund-url=""
+			data-stock-pledge-enabled="0"
+			data-stock-mode="pledge_form"
+			data-stock-overflow-url=""
 			data-preview="1"
 		>
 			<div class="wc-donation-in-action dfwc-preview__scope">

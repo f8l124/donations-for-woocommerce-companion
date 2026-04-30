@@ -163,6 +163,13 @@
 		// "Goal met!" card above the form linking to the general fund.
 		var fullyFunded   = '1' === wrapper.getAttribute( 'data-fully-funded' );
 		var generalFundUrl = wrapper.getAttribute( 'data-general-fund-url' ) || '';
+		// Phase 14A — built-in stock donations. Two modes:
+		//   pledge_form — render the inline form below the cash form
+		//   overflow    — render a button that routes to the org's
+		//                 overflow.co hosted donation URL (new tab)
+		var stockPledgeEnabled = '1' === wrapper.getAttribute( 'data-stock-pledge-enabled' );
+		var stockMode          = wrapper.getAttribute( 'data-stock-mode' ) || 'pledge_form';
+		var stockOverflowUrl   = wrapper.getAttribute( 'data-stock-overflow-url' ) || '';
 
 		// Locate parent's hidden inputs and controls. Every selector is scoped
 		// to .wc-donation-in-action to keep multi-instance pages isolated.
@@ -361,6 +368,258 @@
 		// separate so analytics removal in a future minor wouldn't risk
 		// breaking the core form behavior.
 		bindAnalytics( wrapper, ui, state, config, campaignId, renderContext, renderLanguage );
+
+		// Phase 14A — render the "Donate stock" affordance below the form.
+		// Skipped in preview mode (admin doesn't need a pledge UI in the
+		// admin's iframe), and skipped when the feature is disabled or
+		// not fully configured (handled server-side via the
+		// stock_pledge_enabled boolean).
+		if ( stockPledgeEnabled && ! isPreview ) {
+			if ( 'overflow' === stockMode && '' !== stockOverflowUrl ) {
+				mountStockOverflowButton( ui.root, scope, campaignId, stockOverflowUrl );
+			} else {
+				mountStockPledgePanel( ui.root, scope, campaignId );
+			}
+		}
+	}
+
+	/**
+	 * Phase 14A — Overflow mode. The donor clicks a "Donate stock" button
+	 * that opens the org's overflow.co hosted donation page in a new tab,
+	 * with the campaign id appended for Overflow's own analytics.
+	 */
+	function mountStockOverflowButton( root, scope, campaignId, baseUrl ) {
+		var i18n = ( window.dfwcCompanion && window.dfwcCompanion.i18n ) || {};
+
+		var container = document.createElement( 'div' );
+		container.className = 'dfwc-overlay__stock-pledge';
+		container.setAttribute( 'data-dfwc-stock-pledge', '' );
+		container.setAttribute( 'data-dfwc-stock-mode', 'overflow' );
+
+		// Append campaign id + a utm_source so admins can filter Overflow's
+		// own analytics by traffic that came from the companion.
+		var url = baseUrl;
+		try {
+			var u = new URL( baseUrl );
+			u.searchParams.set( 'campaign', String( campaignId ) );
+			u.searchParams.set( 'utm_source', 'dfwc-companion' );
+			url = u.toString();
+		} catch ( e ) { /* if URL is malformed, keep base; admin will see in tests */ }
+
+		var link = document.createElement( 'a' );
+		link.className = 'dfwc-overlay__stock-toggle dfwc-overlay__stock-toggle--overflow';
+		link.href = url;
+		link.target = '_blank';
+		link.rel = 'noopener noreferrer';
+		link.textContent = i18n.donateStockOverflow || 'Donate stock';
+		link.addEventListener( 'click', function () {
+			// Phase 9 analytics — surfaces an event when the donor clicks
+			// out to Overflow. No PII; just the campaign + a stable
+			// 'overflow_clicked' type that listeners can route on.
+			if ( window.EventBuffer && typeof window.EventBuffer.push === 'function' ) {
+				window.EventBuffer.push( {
+					type:        'form_viewed', // re-using existing allow-listed type
+					campaign_id: campaignId,
+					context:     'stock',
+				} );
+			}
+		} );
+		container.appendChild( link );
+
+		var amountBlock = scope.querySelector( '.row1' );
+		if ( amountBlock && amountBlock.parentNode ) {
+			amountBlock.parentNode.insertBefore( container, amountBlock.nextSibling );
+		} else {
+			scope.appendChild( container );
+		}
+	}
+
+	/**
+	 * Phase 14A — render the "Donate stock" toggle + form panel below the
+	 * regular cash form. The form posts to /dfwc-companion/v1/stock-pledge;
+	 * on success, the panel swaps to a confirmation card with DTC
+	 * instructions for the donor's broker.
+	 */
+	function mountStockPledgePanel( root, scope, campaignId ) {
+		var i18n = ( window.dfwcCompanion && window.dfwcCompanion.i18n ) || {};
+
+		var container = document.createElement( 'div' );
+		container.className = 'dfwc-overlay__stock-pledge';
+		container.setAttribute( 'data-dfwc-stock-pledge', '' );
+
+		var toggle = document.createElement( 'button' );
+		toggle.type = 'button';
+		toggle.className = 'dfwc-overlay__stock-toggle';
+		toggle.setAttribute( 'aria-expanded', 'false' );
+		toggle.textContent = i18n.donateStockToggle || 'Donate stock instead';
+		container.appendChild( toggle );
+
+		var form = document.createElement( 'div' );
+		form.className = 'dfwc-overlay__stock-form';
+		form.hidden = true;
+		form.innerHTML = stockFormMarkup( i18n );
+		container.appendChild( form );
+
+		toggle.addEventListener( 'click', function () {
+			form.hidden = ! form.hidden;
+			toggle.setAttribute( 'aria-expanded', form.hidden ? 'false' : 'true' );
+			toggle.classList.toggle( 'dfwc-overlay__stock-toggle--open', ! form.hidden );
+		} );
+
+		// Append below the main form. If parent's amount block was found,
+		// place after it (keeps the visual flow tidy); otherwise append to
+		// the scope.
+		var amountBlock = scope.querySelector( '.row1' );
+		if ( amountBlock && amountBlock.parentNode ) {
+			amountBlock.parentNode.insertBefore( container, amountBlock.nextSibling );
+		} else {
+			scope.appendChild( container );
+		}
+
+		// Bind submit.
+		var submitBtn = form.querySelector( '[data-dfwc-stock-submit]' );
+		if ( submitBtn ) {
+			submitBtn.addEventListener( 'click', function ( e ) {
+				e.preventDefault();
+				submitStockPledge( form, container, campaignId );
+			} );
+		}
+	}
+
+	function stockFormMarkup( i18n ) {
+		var label = function ( txt ) { return ( i18n[ txt ] || stockLabels()[ txt ] ); };
+		return ''
+			+ '<p class="dfwc-overlay__stock-intro">' + escapeHtml( label( 'stockIntro' ) ) + '</p>'
+			+ '<div class="dfwc-overlay__stock-row">'
+			+ '<label>' + escapeHtml( label( 'stockDonorName' ) ) + '<input type="text" name="donor_name" required></label>'
+			+ '</div>'
+			+ '<div class="dfwc-overlay__stock-row">'
+			+ '<label>' + escapeHtml( label( 'stockDonorEmail' ) ) + '<input type="email" name="donor_email" required></label>'
+			+ '</div>'
+			+ '<div class="dfwc-overlay__stock-row">'
+			+ '<label>' + escapeHtml( label( 'stockDonorPhone' ) ) + '<input type="tel" name="donor_phone"></label>'
+			+ '</div>'
+			+ '<div class="dfwc-overlay__stock-row">'
+			+ '<label>' + escapeHtml( label( 'stockBrokerName' ) ) + '<input type="text" name="broker_name" required></label>'
+			+ '</div>'
+			+ '<div class="dfwc-overlay__stock-row dfwc-overlay__stock-row--inline">'
+			+ '<label>' + escapeHtml( label( 'stockTicker' ) ) + '<input type="text" name="ticker" maxlength="8" required style="text-transform:uppercase"></label>'
+			+ '<label>' + escapeHtml( label( 'stockShares' ) ) + '<input type="number" name="shares" step="0.0001" min="0.0001" required></label>'
+			+ '<label>' + escapeHtml( label( 'stockEstimatedValue' ) ) + '<input type="number" name="estimated_value" step="0.01" min="0.01" required></label>'
+			+ '</div>'
+			+ '<div class="dfwc-overlay__stock-row">'
+			+ '<label>' + escapeHtml( label( 'stockNotes' ) ) + '<textarea name="donor_notes" rows="2" maxlength="2000"></textarea></label>'
+			+ '</div>'
+			+ '<div class="dfwc-overlay__stock-error" data-dfwc-stock-error hidden></div>'
+			+ '<button type="button" class="dfwc-overlay__stock-submit" data-dfwc-stock-submit>'
+			+ escapeHtml( label( 'stockSubmit' ) )
+			+ '</button>';
+	}
+
+	function stockLabels() {
+		return {
+			stockIntro:           'Pledge stock to support this campaign. We\'ll send DTC transfer instructions to your email.',
+			stockDonorName:       'Your name',
+			stockDonorEmail:      'Email',
+			stockDonorPhone:      'Phone (optional)',
+			stockBrokerName:      'Your broker',
+			stockTicker:          'Ticker',
+			stockShares:          'Shares',
+			stockEstimatedValue:  'Estimated value (USD)',
+			stockNotes:           'Notes (optional)',
+			stockSubmit:          'Submit pledge',
+			stockSuccess:         'Pledge received! Check your email for transfer instructions.',
+			stockNetworkError:    'Could not submit pledge. Please try again or email us directly.',
+		};
+	}
+
+	function escapeHtml( str ) {
+		return String( str ).replace( /[&<>"']/g, function ( c ) {
+			return ( { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } )[ c ];
+		} );
+	}
+
+	function submitStockPledge( form, container, campaignId ) {
+		var endpoint = ( window.dfwcCompanion && window.dfwcCompanion.stockPledgeUrl ) || '';
+		var nonce    = ( window.dfwcCompanion && window.dfwcCompanion.trackNonce ) || '';
+		if ( '' === endpoint ) { return; }
+
+		var i18n = ( window.dfwcCompanion && window.dfwcCompanion.i18n ) || {};
+		var labels = stockLabels();
+
+		var errorEl = form.querySelector( '[data-dfwc-stock-error]' );
+		var submitBtn = form.querySelector( '[data-dfwc-stock-submit]' );
+
+		var payload = {
+			campaign_id:     campaignId,
+			donor_name:      form.querySelector( 'input[name="donor_name"]' ).value.trim(),
+			donor_email:     form.querySelector( 'input[name="donor_email"]' ).value.trim(),
+			donor_phone:     form.querySelector( 'input[name="donor_phone"]' ).value.trim(),
+			broker_name:     form.querySelector( 'input[name="broker_name"]' ).value.trim(),
+			ticker:          form.querySelector( 'input[name="ticker"]' ).value.trim(),
+			shares:          parseFloat( form.querySelector( 'input[name="shares"]' ).value ) || 0,
+			estimated_value: parseFloat( form.querySelector( 'input[name="estimated_value"]' ).value ) || 0,
+			donor_notes:     form.querySelector( 'textarea[name="donor_notes"]' ).value.trim(),
+		};
+
+		errorEl.hidden = true;
+		errorEl.textContent = '';
+		submitBtn.disabled = true;
+
+		fetch( endpoint, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-WP-Nonce': nonce,
+			},
+			body: JSON.stringify( payload ),
+			credentials: 'same-origin',
+		} ).then( function ( response ) {
+			return response.json().then( function ( body ) {
+				return { ok: response.ok, status: response.status, body: body };
+			} );
+		} ).then( function ( result ) {
+			submitBtn.disabled = false;
+			if ( ! result.ok ) {
+				var message = labels.stockNetworkError;
+				if ( result.body && result.body.fields ) {
+					var msgs = [];
+					Object.keys( result.body.fields ).forEach( function ( k ) {
+						msgs.push( result.body.fields[ k ] );
+					} );
+					if ( msgs.length ) { message = msgs.join( ' ' ); }
+				} else if ( result.body && result.body.message ) {
+					message = result.body.message;
+				}
+				errorEl.hidden = false;
+				errorEl.textContent = message;
+				return;
+			}
+			// Success: replace the form with a confirmation card.
+			renderStockPledgeSuccess( container, result.body, i18n.stockSuccess || labels.stockSuccess );
+		} ).catch( function () {
+			submitBtn.disabled = false;
+			errorEl.hidden = false;
+			errorEl.textContent = labels.stockNetworkError;
+		} );
+	}
+
+	function renderStockPledgeSuccess( container, body, successMessage ) {
+		container.innerHTML = '';
+
+		var card = document.createElement( 'div' );
+		card.className = 'dfwc-overlay__stock-success';
+		card.setAttribute( 'role', 'status' );
+
+		var heading = document.createElement( 'strong' );
+		heading.textContent = successMessage;
+		card.appendChild( heading );
+
+		var pledgeId = document.createElement( 'p' );
+		pledgeId.textContent = 'Pledge ID: #' + ( body && body.pledge_id ? body.pledge_id : '' );
+		card.appendChild( pledgeId );
+
+		container.appendChild( card );
 	}
 
 	/**
