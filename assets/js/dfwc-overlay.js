@@ -138,10 +138,11 @@
 		try {
 			display = JSON.parse( wrapper.getAttribute( 'data-display' ) || '{}' );
 		} catch ( e ) { display = {}; }
-		// Defaults match Config_Resolver::display_defaults() — show everything,
-		// don't override the cause heading.
+		// Defaults match Config_Resolver::display_defaults(). v2.2.1: show_image
+		// defaults to false (companion overlay is the donor's primary visual focus;
+		// parent's hero block doubles up). show_title still defaults true.
 		if ( typeof display.show_title    !== 'boolean' ) { display.show_title    = true; }
-		if ( typeof display.show_image    !== 'boolean' ) { display.show_image    = true; }
+		if ( typeof display.show_image    !== 'boolean' ) { display.show_image    = false; }
 		if ( typeof display.cause_heading !== 'string'  ) { display.cause_heading = ''; }
 
 		var campaignId = parseInt( wrapper.getAttribute( 'data-campaign-id' ), 10 ) || 0;

@@ -83,11 +83,21 @@ final class Defaults_Test extends TestCase {
 		$this->assertTrue( $b['custom_amount_enabled'] );
 	}
 
+	public function test_display_show_title_default_on_show_image_default_off(): void {
+		// v2.2.1: show_image defaults to OFF (was ON through v2.2.0). Stored
+		// per-campaign overrides keep their value via the layered resolver;
+		// only unconfigured campaigns inherit this new default.
+		$d = Defaults::for_campaign()['display'];
+		$this->assertTrue( $d['show_title'] );
+		$this->assertFalse( $d['show_image'] );
+	}
+
 	public function test_display_returns_show_title_show_image_cause_heading(): void {
 		$d = Defaults::display();
 
 		$this->assertTrue( $d['show_title'] );
-		$this->assertTrue( $d['show_image'] );
+		// v2.2.1: show_image defaults OFF.
+		$this->assertFalse( $d['show_image'] );
 		$this->assertSame( '', $d['cause_heading'] );
 	}
 

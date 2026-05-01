@@ -43,7 +43,14 @@ final class Defaults {
 			'custom'           => self::interval_block( false, __( 'Donate {amount} {custom_label}', 'dfwc-companion' ), 'custom' ),
 			'display'          => array(
 				'show_title'    => true,
-				'show_image'    => true,
+				// v2.2.1 (Phase 18): default to OFF. The companion's overlay is the
+				// donor's primary visual focus; parent's campaign-image hero block above
+				// it doubles up the visual weight on most themes. Admins who want the
+				// image visible flip it back on per-campaign via the meta box's Display
+				// Options, or globally via a template that sets show_image=true.
+				// Existing campaigns with stored display overrides keep their saved
+				// value (per the layered config; overrides always win over defaults).
+				'show_image'    => false,
 				'cause_heading' => '',
 			),
 		);

@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.2.0
+Stable tag: 2.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,14 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 2.2.1 =
+**Default behavior tweak.** Campaign image now defaults to **off** in the donor view. The companion overlay is the donor's primary visual focus; parent's hero campaign-image block above the form doubles up the visual weight on most themes. Existing campaigns with stored display overrides keep their saved value (the layered config respects user choices); only new and unconfigured campaigns inherit the new default. Per-campaign meta box's "Show campaign image" checkbox is the per-campaign override seam.
+
+* `Defaults::for_campaign()['display']['show_image']` now defaults to `false` (was `true`).
+* Donor-side overlay JS safety fallback in `dfwc-overlay.js` flipped to match (when the wrapper attribute parse fails, default to `show_image=false` instead of `true`).
+* Tests updated: `Defaults_Test::test_display_show_title_default_on_show_image_default_off` (new) + `test_display_returns_show_title_show_image_cause_heading` + `Config_Resolver_Test::test_resolve_display_returns_defaults_when_unset` updated to assert the new default.
+* **Backward compat:** Layered config guarantees stored values win. A campaign with `_dfwc_companion_overrides.display.show_image = true` continues to render the image. A template assigned to a campaign that explicitly sets `show_image: true` continues to render the image. Only campaigns with no override AND no template inherit the new default — typical of fresh installs and never-edited campaigns.
 
 = 2.2.0 =
 **Default behavior change.** Companion now augments every published `wc-donation` campaign with our donor form by default — no per-campaign opt-in required. Previous behavior (since v0.7.0) gated augmentation on `Config_Resolver::is_configured()`, meaning only campaigns where the admin had saved a template assignment, per-campaign overrides, or legacy v0.6.x intervals meta got our form. Fresh installs and unconfigured campaigns rendered parent's vanilla form, which surprised admins who reasonably expected "install companion = get companion's form everywhere".
@@ -333,6 +341,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 2.2.1 =
+Default tweak: campaign image now defaults to off in the donor view. Existing campaigns with explicit show_image overrides keep their saved value; only new and unconfigured campaigns flip to the new default. Toggle back on per-campaign in the meta box's Display Options section if needed.
 
 = 2.2.0 =
 Default behavior change: every published donation campaign now uses our overlay form automatically. Sites that relied on per-campaign opt-in (the v0.7.0 — v2.1.0 behavior) can flip the new "Augment all campaigns by default" toggle off under Settings → General. The dfwc_should_augment_parent_form filter remains as a per-campaign escape hatch in either mode. No data migration required.

@@ -301,7 +301,8 @@ final class Config_Resolver_Test extends TestCase {
 	public function test_resolve_display_returns_defaults_when_unset(): void {
 		$display = Config_Resolver::resolve_display( 42 );
 		$this->assertTrue( $display['show_title'] );
-		$this->assertTrue( $display['show_image'] );
+		// v2.2.1: show_image defaults OFF.
+		$this->assertFalse( $display['show_image'] );
 		$this->assertSame( '', $display['cause_heading'] );
 	}
 
