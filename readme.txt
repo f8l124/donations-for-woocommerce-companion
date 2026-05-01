@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.2.3
+Stable tag: 2.2.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -98,6 +98,23 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 2.2.4 =
+**Bug fix.** Donor form rendered inside an Elementor Pro popup (or any modal library that clones the popup template's DOM at show-time) was visually correct but tabs, preset cards, and the donate button didn't respond to clicks.
+
+Root cause: `assets/js/dfwc-overlay.js` ran a single `DOMContentLoaded` scan, found the overlay wrapper, built the tabs UI, and bound click handlers via `addEventListener` to each tab button. When Elementor Pro's popup-show event fired, Elementor cloned the popup template's DOM into a visible container — and `addEventListener` listeners are not preserved on cloned nodes. The visible tabs in the popup were different DOM nodes than the ones we'd bound handlers to.
+
+Fix:
+
+1. **MutationObserver on `document.body`** — detects when a new `[data-dfwc-overlay-target]` wrapper is added to the DOM (by any popup builder, modal library, or AJAX-injected campaign embed) and re-runs init on it.
+2. **`elementor/popup/show` listener** — belt-and-suspenders for Elementor Pro popups that recycle offscreen DOM via class-flip rather than appending a new node (which MutationObserver childList wouldn't catch).
+3. **WeakSet idempotency guard** — re-running init on a wrapper we've already booted is a no-op. Cloned wrappers are different DOM nodes and get a fresh init pass without double-binding the original.
+4. **Stale-clone cleanup** — at init start, any `.dfwc-overlay__root` / `.dfwc-overlay__goal-met` / `.dfwc-overlay__stock-pledge` left over from a clone is removed so the rebuild produces a single live UI rather than two stacked copies.
+
+Side benefit: this also fixes any future "donation form in a $generic_modal_plugin" scenario — the bug class is dynamic-DOM-injection generally, not Elementor-specific.
+
+* No data migration. Pure JS file change. Cache-busted via the existing `DFWC_COMPANION_VERSION` constant in `wp_enqueue_script` — admins on LiteSpeed Cache / WP Rocket / similar should soft-refresh after upgrade.
+* Donors who experienced the bug will see normal tab interaction immediately after upgrade + browser reload.
 
 = 2.2.3 =
 **Bug fix.** Plugin upgrade via "Delete + Upload" silently wiped per-campaign config (intervals, presets, monthly/annual toggles, min/max, CTA template, display options) on installs where the admin had never explicitly toggled the *Preserve data on uninstall* setting.
@@ -370,6 +387,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 2.2.4 =
+Bug fix: donor form embedded in an Elementor Pro popup (or any modal library that clones DOM on show) now responds to tab / preset / submit clicks correctly. Root cause was a one-shot DOMContentLoaded handler-bind that didn't survive popup cloning. Fix is a MutationObserver + WeakSet-guarded re-init that handles dynamic DOM injection generally — works for any popup builder, not only Elementor.
 
 = 2.2.3 =
 Critical fix: plugin upgrade via Delete + Upload no longer wipes per-campaign config. uninstall.php now defaults to preserving data when the setting hasn't been explicitly turned off, matching the documented default. Use Plugins → Add New → Upload Plugin → Replace current with uploaded as the safe upgrade path going forward.

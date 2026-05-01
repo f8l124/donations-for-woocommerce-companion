@@ -102,13 +102,80 @@
 		return { push: push, flush: flush };
 	} )();
 
-	ready( function () {
+	// v2.2.4 — Track wrappers we've already booted so init() is safe to re-run
+	// on every DOM-injection signal. WeakSet keys by element reference, so a
+	// cloned wrapper (Elementor Pro popup show, AJAX-injected modal, etc.) is
+	// a NEW entry that gets a fresh init pass — the original stays initialized
+	// without double-binding.
+	var initializedWrappers = ( typeof WeakSet === 'function' ) ? new WeakSet() : null;
+
+	function initAll() {
 		var targets = document.querySelectorAll( '[data-dfwc-overlay-target]' );
 		Array.prototype.forEach.call( targets, init );
+	}
+
+	// v2.2.4 — Detect dynamic insertion of our wrapper (Elementor Pro popups,
+	// generic modal libraries, AJAX-loaded campaign embeds, etc.). Without
+	// this, popups injected after DOMContentLoaded ship a wrapper with no
+	// bound tab/preset/submit handlers — donor sees the form but can't
+	// interact with it.
+	function startObserver() {
+		if ( typeof MutationObserver !== 'function' || ! document.body ) { return; }
+		var observer = new MutationObserver( function ( mutations ) {
+			for ( var i = 0; i < mutations.length; i++ ) {
+				var added = mutations[ i ].addedNodes;
+				for ( var j = 0; j < added.length; j++ ) {
+					var node = added[ j ];
+					if ( ! node || node.nodeType !== 1 ) { continue; }
+					var isWrapper = node.matches && node.matches( '[data-dfwc-overlay-target]' );
+					var hasWrapper = node.querySelector && node.querySelector( '[data-dfwc-overlay-target]' );
+					if ( isWrapper || hasWrapper ) {
+						initAll();
+						return;
+					}
+				}
+			}
+		} );
+		observer.observe( document.body, { childList: true, subtree: true } );
+	}
+
+	ready( function () {
+		initAll();
+		startObserver();
+	} );
+
+	// v2.2.4 — Belt-and-suspenders for Elementor Pro popups. Their popup-show
+	// event fires reliably even when the popup recycles offscreen DOM that
+	// MutationObserver wouldn't catch (no childList mutation, just a class
+	// flip on the existing container). The setTimeout(0) lets Elementor
+	// finish its own DOM tweaks before we re-init.
+	document.addEventListener( 'elementor/popup/show', function () {
+		setTimeout( initAll, 0 );
 	} );
 
 	function init( wrapper ) {
+		// Idempotency guard — re-runs on a wrapper we've already booted are
+		// no-ops. Cloned wrappers (popups, AJAX-injected) are different DOM
+		// nodes and bypass this guard naturally.
+		if ( initializedWrappers && initializedWrappers.has( wrapper ) ) { return; }
+
 		var scope = wrapper.querySelector( '.wc-donation-in-action' );
+
+		// v2.2.4 — strip any companion-injected DOM left over from a clone.
+		// When Elementor Pro popups (or similar modal libraries) duplicate
+		// the popup template's DOM at show-time, the clone carries our
+		// overlay UI from the original init pass — but with dead event
+		// listeners. We remove the stale clone here so the rest of init()
+		// builds a fresh UI with live handlers. Element references compared
+		// by class name keep this resilient to DOM-position changes.
+		if ( scope ) {
+			var staleNodes = scope.querySelectorAll( '.dfwc-overlay__root, .dfwc-overlay__goal-met, .dfwc-overlay__stock-pledge' );
+			for ( var s = 0; s < staleNodes.length; s++ ) {
+				if ( staleNodes[ s ].parentNode ) {
+					staleNodes[ s ].parentNode.removeChild( staleNodes[ s ] );
+				}
+			}
+		}
 		if ( ! scope ) {
 			console.warn( '[dfwc] .wc-donation-in-action not found inside overlay target — parent shortcode produced no form. Bailing.' );
 			return;
@@ -330,6 +397,7 @@
 			previewFlag.setAttribute( 'data-dfwc-injected', '' );
 			scope.appendChild( previewFlag );
 
+			if ( initializedWrappers ) { initializedWrappers.add( wrapper ); }
 			return; // skip the normal submit guard binding
 		}
 
@@ -382,6 +450,8 @@
 				mountStockPledgePanel( ui.root, scope, campaignId );
 			}
 		}
+
+		if ( initializedWrappers ) { initializedWrappers.add( wrapper ); }
 	}
 
 	/**
