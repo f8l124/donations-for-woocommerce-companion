@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.2.1
+Stable tag: 2.2.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,16 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 2.2.2 =
+**Bug fix.** Drag-drop preset reorder didn't persist. Reordering 25/50/100 (or any default-amount presets) by dragging in the campaign meta box appeared to work in the UI, but the saved order reverted on next render — defaults always sank back to the bottom.
+
+Root cause: `renumberRows()` in `assets/js/dfwc-admin.js` rewrote each row's `name` attribute (`[presets][0]` → `[presets][1]` to match new array index) but skipped the per-row hidden `sort_order` input's `value`. So you'd save `presets[0] = {amount:100, sort_order:30}` (still the old sort_order). On re-render, `Config_Resolver::validate_and_clamp` sorts presets ASC by `sort_order` and 30 outranks 10/20 — so 100 lands at the bottom, 25 at the top, ignoring your visual reorder.
+
+Fix: `renumberRows()` now also rewrites the `sort_order` hidden value to `(idx + 1) * 10` after each reorder, so the saved values match the visual order.
+
+* No data migration required — existing saved presets keep working. The fix takes effect on the next save after upgrading.
+* If your campaigns currently have stuck-out-of-order presets, simply drag any row, drop it, and Save Campaign — the new JS rewrites all `sort_order` values on save and the order persists.
 
 = 2.2.1 =
 **Default behavior tweak.** Campaign image now defaults to **off** in the donor view. The companion overlay is the donor's primary visual focus; parent's hero campaign-image block above the form doubles up the visual weight on most themes. Existing campaigns with stored display overrides keep their saved value (the layered config respects user choices); only new and unconfigured campaigns inherit the new default. Per-campaign meta box's "Show campaign image" checkbox is the per-campaign override seam.
@@ -341,6 +351,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 2.2.2 =
+Bug fix: drag-drop preset reorder now persists. Reordering preset amounts (e.g., 25/50/100) in the campaign meta box previously appeared to work but the saved order reverted on next render due to a missing sort_order rewrite in the admin JS. Fixed in renumberRows(). After upgrading, drag + drop + save once on each affected campaign and the new order sticks.
 
 = 2.2.1 =
 Default tweak: campaign image now defaults to off in the donor view. Existing campaigns with explicit show_image overrides keep their saved value; only new and unconfigured campaigns flip to the new default. Toggle back on per-campaign in the meta box's Display Options section if needed.

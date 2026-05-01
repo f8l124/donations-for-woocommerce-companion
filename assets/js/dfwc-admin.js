@@ -137,8 +137,14 @@
 
 	/**
 	 * Rewrite name="…[presets][N][amount]" indexes after add/remove/reorder.
-	 * Also renumbers the per-row default radio's `value` attribute so the
-	 * server-side default_index always matches a real row.
+	 * Also renumbers:
+	 *   - the per-row default radio's `value` attribute so the server-side
+	 *     default_index always matches a real row,
+	 *   - the per-row hidden `sort_order` input's `value` so the resolver's
+	 *     sort-by-sort_order step matches the visual order. Without this,
+	 *     drag-drop reorders the visual rows but the saved sort_order keeps
+	 *     the original values (10, 20, 30), and the next render sorts the
+	 *     defaults back to the bottom — exact behavior reported in v2.2.1.
 	 */
 	function renumberRows( tbody, key ) {
 		var rows = tbody.querySelectorAll( 'tr' );
@@ -153,6 +159,9 @@
 				}
 				if ( input.type === 'radio' && input.name && input.name.indexOf( '[default_index]' ) !== -1 ) {
 					input.value = String( idx );
+				}
+				if ( input.type === 'hidden' && input.name && input.name.indexOf( '[sort_order]' ) !== -1 ) {
+					input.value = String( ( idx + 1 ) * 10 );
 				}
 			} );
 		} );
