@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.2.2
+Stable tag: 2.2.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,6 +42,14 @@ The companion plugin works by feeding the parent plugin's existing AJAX pipeline
    * Shortcode: `[dfwc_recurring_donation campaign_id="123"]`
    * Gutenberg block: search for **"Recurring Donation"** in the block inserter
    * Elementor widget: search for **"Recurring Donation"** in the Elementor widget panel
+
+= Upgrading =
+
+**Use the in-place upgrade path, not Delete + Upload.** When a new version is released:
+
+* Recommended: **Plugins → Add New → Upload Plugin →** drag the new ZIP →  WordPress prompts *"This plugin is already installed"* → click **Replace current with uploaded** → activate. This preserves all campaign settings + templates + global config.
+* Avoid: **Plugins → Delete → Add New → Upload**. Deleting any WordPress plugin runs its `uninstall.php`, which (depending on your "Preserve data on uninstall" setting under *WooCommerce → Donations Companion → Settings*) may wipe per-campaign config. v2.2.3+ defaults to preserving data when the setting is missing or never explicitly turned off, but the in-place replace is still the safer path.
+* Auto-update via WordPress → Plugins is also safe (it runs the WordPress upgrader, not the uninstaller).
 
 == Frequently Asked Questions ==
 
@@ -90,6 +98,17 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 2.2.3 =
+**Bug fix.** Plugin upgrade via "Delete + Upload" silently wiped per-campaign config (intervals, presets, monthly/annual toggles, min/max, CTA template, display options) on installs where the admin had never explicitly toggled the *Preserve data on uninstall* setting.
+
+Root cause: `uninstall.php` read the raw `dfwc_companion_global_settings` option without merging defaults. When the option existed as an array but `preserve_data_on_uninstall` was missing from the stored array (admin never opened Settings → Save, or saved before that toggle existed), the legacy ternary `! empty( $array['missing_key'] )` evaluated to `false` → preserve treated as `false` → uninstall wiped `_dfwc_companion_overrides` + 5 sibling meta keys from every post that carried them. The intended default per `Defaults::for_global()` was `true`; the form correctly defaulted to checked. Only the uninstall path hit the missing-key fallback.
+
+Fix: `uninstall.php` now uses `array_key_exists` to distinguish missing key from key-explicitly-set-to-false. Missing key → preserve = `true` (the documented default). Only an admin who explicitly unchecked *Preserve data on uninstall* and saved the form gets a destructive uninstall.
+
+* Existing campaigns with stored config are no longer at risk on the next upgrade.
+* Already-wiped data from prior upgrades is unrecoverable from this fix alone — `uninstall.php` ran in the prior upgrade cycle and the post meta is gone. Admins who upgraded via Delete + Upload before v2.2.3 need to reconfigure affected campaigns once.
+* New `Upgrading` subsection added to Installation: use **Plugins → Add New → Upload Plugin → Replace current with uploaded** rather than Delete + Upload. WordPress's auto-update path is also safe.
 
 = 2.2.2 =
 **Bug fix.** Drag-drop preset reorder didn't persist. Reordering 25/50/100 (or any default-amount presets) by dragging in the campaign meta box appeared to work in the UI, but the saved order reverted on next render — defaults always sank back to the bottom.
@@ -351,6 +370,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 2.2.3 =
+Critical fix: plugin upgrade via Delete + Upload no longer wipes per-campaign config. uninstall.php now defaults to preserving data when the setting hasn't been explicitly turned off, matching the documented default. Use Plugins → Add New → Upload Plugin → Replace current with uploaded as the safe upgrade path going forward.
 
 = 2.2.2 =
 Bug fix: drag-drop preset reorder now persists. Reordering preset amounts (e.g., 25/50/100) in the campaign meta box previously appeared to work but the saved order reverted on next render due to a missing sort_order rewrite in the admin JS. Fixed in renumberRows(). After upgrading, drag + drop + save once on each affected campaign and the new order sticks.

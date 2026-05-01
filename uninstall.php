@@ -17,8 +17,18 @@
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
-$dfwc_global   = get_option( 'dfwc_companion_global_settings', array() );
-$dfwc_preserve = is_array( $dfwc_global ) ? ! empty( $dfwc_global['preserve_data_on_uninstall'] ) : true;
+$dfwc_global = get_option( 'dfwc_companion_global_settings', array() );
+
+// Default-safe preserve check: only wipe when the admin has explicitly stored
+// preserve_data_on_uninstall = false. Missing key (admin never opened Settings,
+// or saved before the toggle existed) defaults to preserve = true. Without this
+// the Delete-then-Upload upgrade path silently wiped per-campaign meta on
+// admins who'd never touched the Settings checkbox.
+if ( is_array( $dfwc_global ) && array_key_exists( 'preserve_data_on_uninstall', $dfwc_global ) ) {
+	$dfwc_preserve = ! empty( $dfwc_global['preserve_data_on_uninstall'] );
+} else {
+	$dfwc_preserve = true;
+}
 
 // Always clear caches — they're cheap to rebuild and can grow stale across
 // reinstalls regardless of the preserve preference.
