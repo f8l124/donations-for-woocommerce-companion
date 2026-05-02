@@ -20,8 +20,10 @@ defined( 'ABSPATH' ) || exit;
 
 final class Assets {
 
-	public const HANDLE_CSS = 'dfwc-overlay';
-	public const HANDLE_JS  = 'dfwc-overlay';
+	public const HANDLE_CSS        = 'dfwc-overlay';
+	public const HANDLE_JS         = 'dfwc-overlay';
+	public const HANDLE_CRYPTO_CSS = 'dfwc-crypto';
+	public const HANDLE_CRYPTO_JS  = 'dfwc-crypto';
 
 	public function __construct() {
 		add_action( 'wp_enqueue_scripts', array( $this, 'register' ), 5 );
@@ -48,6 +50,27 @@ final class Assets {
 		);
 
 		wp_localize_script( self::HANDLE_JS, 'dfwcCompanion', $this->build_localize() );
+
+		// v2.3.0 sub-phase 13.B — crypto donations module. Self-contained
+		// (no dependency on dfwc-overlay.js); registered separately so it
+		// can be enqueued + cache-busted independently.
+		wp_register_style(
+			self::HANDLE_CRYPTO_CSS,
+			DFWC_COMPANION_URL . 'assets/css/dfwc-crypto.css',
+			array(),
+			DFWC_COMPANION_VERSION
+		);
+
+		wp_register_script(
+			self::HANDLE_CRYPTO_JS,
+			DFWC_COMPANION_URL . 'assets/js/dfwc-crypto.js',
+			array(),
+			DFWC_COMPANION_VERSION,
+			array(
+				'in_footer' => true,
+				'strategy'  => 'defer',
+			)
+		);
 	}
 
 	/**
@@ -81,6 +104,12 @@ final class Assets {
 	public static function enqueue(): void {
 		wp_enqueue_style( self::HANDLE_CSS );
 		wp_enqueue_script( self::HANDLE_JS );
+		// Crypto module ships alongside the cash overlay — donor-side gating
+		// happens in the JS by reading data-crypto-enabled on the wrapper, so
+		// enqueueing unconditionally costs only the parse of a small inert
+		// module on pages where crypto isn't enabled.
+		wp_enqueue_style( self::HANDLE_CRYPTO_CSS );
+		wp_enqueue_script( self::HANDLE_CRYPTO_JS );
 	}
 
 	private function build_localize(): array {
@@ -126,6 +155,26 @@ final class Assets {
 				'stockSubmit'         => __( 'Submit pledge', 'dfwc-companion' ),
 				'stockSuccess'        => __( 'Pledge received! Check your email for transfer instructions.', 'dfwc-companion' ),
 				'stockNetworkError'   => __( 'Could not submit pledge. Please try again or email us directly.', 'dfwc-companion' ),
+				// v2.3.0 — crypto donation copy.
+				'cryptoDivider'       => __( 'or donate non-cash', 'dfwc-companion' ),
+				'donateCrypto'        => __( 'Donate Crypto', 'dfwc-companion' ),
+				'cryptoLoading'       => __( 'Loading…', 'dfwc-companion' ),
+				'cryptoLoadError'     => __( 'Could not load the donation widget. Please try again.', 'dfwc-companion' ),
+				'cryptoMountError'    => __( 'Could not mount the donation widget.', 'dfwc-companion' ),
+				'cryptoHostedFallback' => __( 'Open the donation page', 'dfwc-companion' ),
+				'cryptoPending'       => __( 'Donation submitted. Awaiting on-chain confirmation…', 'dfwc-companion' ),
+				'cryptoSuccess'       => __( 'Thanks! We\'ll email you when the donation is fully confirmed on-chain.', 'dfwc-companion' ),
+				'cryptoRecordingError' => __( 'Donation received by The Giving Block. Order recording on our side delayed; we\'ll reconcile via the webhook.', 'dfwc-companion' ),
+			),
+			// v2.3.0 — TGB widget URL overrides. Filterable so admins on
+			// hosted-private TGB deployments can override without forking.
+			'tgb' => apply_filters(
+				'dfwc_companion_tgb_widget_localize',
+				array(
+					'widgetScriptUrlSandbox'    => '',
+					'widgetScriptUrlProduction' => '',
+					'hostedUrl'                 => '',
+				)
 			),
 		);
 	}

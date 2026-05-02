@@ -125,7 +125,10 @@ final class Context_Augmenter {
 		// so the handles already exist; this just enqueues.
 		Assets::enqueue();
 
-		$attrs = Renderer::build_overlay_attributes( $campaign_id );
+		$attrs        = Renderer::build_overlay_attributes( $campaign_id );
+		$crypto_attrs = Crypto_Donation_Renderer::should_render( $campaign_id, $context )
+			? Crypto_Donation_Renderer::get_data_attributes( $campaign_id )
+			: Crypto_Donation_Renderer::get_disabled_attributes();
 
 		// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped
 		printf(
@@ -134,7 +137,7 @@ final class Context_Augmenter {
 				. ' data-intervals="%5$s" data-display="%6$s" data-context="%7$s"'
 				. ' data-language="%8$s" data-fully-funded="%9$s" data-general-fund-url="%10$s"'
 				. ' data-stock-pledge-enabled="%11$s" data-stock-mode="%12$s"'
-				. ' data-stock-overflow-url="%13$s">',
+				. ' data-stock-overflow-url="%13$s"%14$s>',
 			(int) $campaign_id,
 			esc_attr( $attrs['engine'] ),
 			esc_attr( $attrs['active_interval'] ),
@@ -147,7 +150,8 @@ final class Context_Augmenter {
 			esc_attr( (string) ( $attrs['general_fund_url'] ?? '' ) ),
 			! empty( $attrs['stock_pledge_enabled'] ) ? '1' : '0',
 			esc_attr( (string) ( $attrs['stock_mode'] ?? 'pledge_form' ) ),
-			esc_attr( (string) ( $attrs['stock_overflow_url'] ?? '' ) )
+			esc_attr( (string) ( $attrs['stock_overflow_url'] ?? '' ) ),
+			Renderer::format_crypto_attrs( $crypto_attrs )
 		);
 		// phpcs:enable
 

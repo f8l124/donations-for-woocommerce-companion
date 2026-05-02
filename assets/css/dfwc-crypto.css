@@ -1,0 +1,135 @@
+/**
+ * Donations for WooCommerce Companion — donor-side crypto donation styles.
+ *
+ * Mirrors the Phase 14A stock-pledge visual vocabulary (subtle divider,
+ * full-width secondary button) so the cash + crypto + stock affordances
+ * read as siblings rather than competing CTAs.
+ *
+ * @package   DFWC\Companion
+ * @copyright Copyright (c) 2026 David Stells
+ * @license   GPL-2.0-or-later https://www.gnu.org/licenses/gpl-2.0.html
+ */
+
+.dfwc-crypto {
+	margin-top: 1.5em;
+	font-family: inherit;
+}
+
+.dfwc-crypto__divider {
+	position: relative;
+	margin: 1em 0;
+	font-size: 0.85em;
+	color: #767676;
+	text-align: center;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.dfwc-crypto__divider::before,
+.dfwc-crypto__divider::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	width: calc(50% - 6em);
+	height: 1px;
+	background: #e0e0e0;
+}
+
+.dfwc-crypto__divider::before { left: 0; }
+.dfwc-crypto__divider::after  { right: 0; }
+
+.dfwc-crypto__toggle {
+	display: block;
+	width: 100%;
+	padding: 0.75em 1em;
+	font-size: 1em;
+	font-weight: 500;
+	color: #1a1a1a;
+	background: #fff;
+	border: 1px solid #1a1a1a;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dfwc-crypto__toggle:hover:not(:disabled),
+.dfwc-crypto__toggle:focus:not(:disabled) {
+	background: #1a1a1a;
+	color: #fff;
+}
+
+.dfwc-crypto__toggle:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.dfwc-crypto__toggle--loading::after {
+	content: '';
+	display: inline-block;
+	width: 0.75em;
+	height: 0.75em;
+	margin-left: 0.5em;
+	border: 2px solid currentColor;
+	border-right-color: transparent;
+	border-radius: 50%;
+	animation: dfwc-crypto-spin 0.7s linear infinite;
+	vertical-align: middle;
+}
+
+@keyframes dfwc-crypto-spin {
+	to { transform: rotate(360deg); }
+}
+
+.dfwc-crypto__widget-mount {
+	margin-top: 1em;
+	min-height: 200px;
+}
+
+.dfwc-crypto__widget-mount[hidden] {
+	display: none;
+}
+
+.dfwc-crypto__hosted-link {
+	display: inline-block;
+	padding: 0.75em 1em;
+	color: #fff;
+	background: #1a1a1a;
+	border-radius: 4px;
+	text-decoration: none;
+}
+
+.dfwc-crypto__status {
+	margin-top: 0.75em;
+	padding: 0.6em 0.8em;
+	border-radius: 4px;
+	font-size: 0.95em;
+	display: none;
+}
+
+.dfwc-crypto__status:not(:empty) {
+	display: block;
+}
+
+.dfwc-crypto__status--pending {
+	background: #fff8e6;
+	color: #5a4500;
+	border-left: 3px solid #d4a200;
+}
+
+.dfwc-crypto__status--success {
+	background: #ecfdf3;
+	color: #155b3a;
+	border-left: 3px solid #16a34a;
+}
+
+.dfwc-crypto__status--warning {
+	background: #fff4e6;
+	color: #7a3d00;
+	border-left: 3px solid #ea7c00;
+}
+
+.dfwc-crypto__status--error {
+	background: #fef2f2;
+	color: #7a1a1a;
+	border-left: 3px solid #dc2626;
+}

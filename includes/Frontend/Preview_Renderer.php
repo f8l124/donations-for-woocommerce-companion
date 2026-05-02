@@ -91,6 +91,11 @@ final class Preview_Renderer {
 			data-stock-pledge-enabled="0"
 			data-stock-mode="pledge_form"
 			data-stock-overflow-url=""
+			data-crypto-enabled="0"
+			data-tgb-environment=""
+			data-tgb-org-id=""
+			data-tgb-project-id=""
+			data-crypto-pending-url=""
 			data-preview="1"
 		>
 			<div class="wc-donation-in-action dfwc-preview__scope">
