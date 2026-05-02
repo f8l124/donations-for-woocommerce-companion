@@ -102,9 +102,13 @@ final class Plugin {
 
 		// Phase 13 (v2.3.0) — crypto donations via The Giving Block.
 		// Admin settings page is always wired (so admins can configure
-		// before enabling). Donor-side renderer + REST controllers will
-		// land in sub-phases 13.B-D.
+		// before enabling). Donor-side rendering happens via the
+		// Crypto_Donation_Renderer attribute emit in Renderer/Augmenter
+		// (13.B). Pending-order REST + WC payment method registration
+		// always wire — gating happens server-side via the global toggle.
 		new Admin\Crypto_Settings_Page();
+		new Gateways\TGB_Payment_Gateway();
+		new REST\Crypto_Pending_Order_REST_Controller();
 
 		// Phase 11 — `wp dfwc-companion` CLI commands. No-op outside WP-CLI.
 		CLI\CLI_Commands::register();
