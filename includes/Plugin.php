@@ -102,9 +102,12 @@ final class Plugin {
 
 		// Phase 14 (v2.4.0) — cause-aware giving. Sub-phase 14.A wires
 		// stable cause identity (companion-minted UUIDs threaded through
-		// the cart → order line item meta). Per-cause goal storage,
-		// raised aggregation, closure UX land in 14.B-D.
+		// the cart → order line item meta). 14.C wires the per-cause
+		// raised-amount aggregator + invalidation hooks. Per-cause
+		// goal storage (14.B) lives in Config\Cause_Goals_Schema with no
+		// runtime hooks. Closure UX (14.D) lands separately.
 		new Config\Cause_Identity();
+		new Config\Cause_Raised_Aggregator();
 
 		// Phase 13 (v2.3.0) — crypto donations via The Giving Block.
 		// Admin settings page is always wired (so admins can configure
