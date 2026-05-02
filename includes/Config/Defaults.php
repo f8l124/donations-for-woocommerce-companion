@@ -120,6 +120,15 @@ final class Defaults {
 				'tgb_environment'          => 'sandbox',  // 'sandbox' | 'production'
 				'tgb_organization_id'      => '',         // public id (org-level)
 				'tgb_default_project_id'   => '',         // org-default fallback when campaign override is empty
+				// Phase 14 (v2.4.0) — cause-aware giving. Master toggle
+				// is opt-in; existing installs see no behavior change
+				// until admin enables. Per-cause goals live under
+				// `_dfwc_companion_overrides.cause_goals`. Closure
+				// modes: 'hide' | 'redirect_to_cause' | 'redirect_off_campaign'.
+				// Default mode matches the v1.2.0 goal-aware-giving
+				// "surface, don't hard-block" precedent.
+				'enable_cause_goals'         => false,
+				'default_cause_closure_mode' => 'redirect_to_cause',
 			)
 		);
 	}

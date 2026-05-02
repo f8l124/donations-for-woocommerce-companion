@@ -83,6 +83,130 @@ final class Meta_Box {
 				'default'
 			);
 		}
+
+		// v2.4.0 (Phase 14.B): per-cause goals. Registered when the
+		// global feature toggle is on. Each row populates from the
+		// companion's cause-id map (Cause_Identity); the box is empty
+		// (with a hint) when the campaign has no causes yet.
+		if ( \DFWC\Companion\Config\Cause_Goals_Schema::feature_enabled() ) {
+			add_meta_box(
+				'dfwc_companion_cause_goals',
+				__( 'Per-cause goals', 'dfwc-companion' ),
+				array( $this, 'render_cause_goals' ),
+				self::PARENT_POST_TYPE,
+				'normal',
+				'default'
+			);
+		}
+	}
+
+	public function render_cause_goals( \WP_Post $post ): void {
+		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
+			return;
+		}
+
+		$ids   = \DFWC\Companion\Config\Cause_Identity::for_campaign( $post->ID );
+		$names = array();
+		foreach ( $ids as $position => $cause_id ) {
+			$names[ $cause_id ] = (string) \DFWC\Companion\Config\Cause_Identity::name_for_id( $post->ID, $cause_id );
+		}
+
+		if ( empty( $ids ) ) {
+			?>
+			<p class="description">
+				<?php esc_html_e( 'No causes configured on this campaign yet. Add causes via the parent plugin\'s "Donation Cause" section, then return here to set per-cause goals.', 'dfwc-companion' ); ?>
+			</p>
+			<?php
+			return;
+		}
+
+		$saved          = \DFWC\Companion\Config\Cause_Goals_Schema::for_campaign( $post->ID );
+		$global_default = \DFWC\Companion\Config\Cause_Goals_Schema::resolve_global_default_mode();
+		$mode_options   = array(
+			\DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_INHERIT              => sprintf(
+				/* translators: %s: global default closure mode label */
+				__( 'Inherit (currently: %s)', 'dfwc-companion' ),
+				self::closure_mode_label( $global_default )
+			),
+			\DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_HIDE                 => self::closure_mode_label( \DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_HIDE ),
+			\DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_REDIRECT_TO_CAUSE    => self::closure_mode_label( \DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_REDIRECT_TO_CAUSE ),
+			\DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_REDIRECT_OFF_CAMPAIGN => self::closure_mode_label( \DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_REDIRECT_OFF_CAMPAIGN ),
+		);
+		?>
+		<p class="description" style="margin-bottom: 1em;">
+			<?php esc_html_e( 'Set a goal amount per cause. When a cause hits its goal, the closure mode determines what donors see (hide, prompt to pick another cause, or redirect off campaign).', 'dfwc-companion' ); ?>
+		</p>
+		<table class="widefat striped">
+			<thead>
+				<tr>
+					<th style="width: 30%;"><?php esc_html_e( 'Cause', 'dfwc-companion' ); ?></th>
+					<th style="width: 10%;"><?php esc_html_e( 'Track', 'dfwc-companion' ); ?></th>
+					<th style="width: 25%;"><?php esc_html_e( 'Goal amount', 'dfwc-companion' ); ?></th>
+					<th><?php esc_html_e( 'Closure mode', 'dfwc-companion' ); ?></th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach ( $ids as $position => $cause_id ) : ?>
+					<?php
+					$row     = $saved[ $cause_id ] ?? array();
+					$enabled = ! empty( $row['enabled'] );
+					$amount  = isset( $row['goal_amount'] ) ? (float) $row['goal_amount'] : 0.0;
+					$mode    = isset( $row['closure_mode'] ) ? (string) $row['closure_mode'] : \DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_INHERIT;
+					if ( ! array_key_exists( $mode, $mode_options ) ) {
+						$mode = \DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_INHERIT;
+					}
+					$name_for_label  = isset( $names[ $cause_id ] ) ? $names[ $cause_id ] : $cause_id;
+					$enabled_field   = sprintf( 'dfwc_cause_goals[%s][enabled]', $cause_id );
+					$amount_field    = sprintf( 'dfwc_cause_goals[%s][goal_amount]', $cause_id );
+					$mode_field      = sprintf( 'dfwc_cause_goals[%s][closure_mode]', $cause_id );
+					?>
+					<tr>
+						<td><strong><?php echo esc_html( $name_for_label ); ?></strong></td>
+						<td>
+							<label>
+								<input type="checkbox" name="<?php echo esc_attr( $enabled_field ); ?>" value="1" <?php checked( $enabled ); ?>>
+							</label>
+						</td>
+						<td>
+							<input
+								type="number"
+								step="0.01"
+								min="0"
+								class="widefat"
+								name="<?php echo esc_attr( $amount_field ); ?>"
+								value="<?php echo esc_attr( (string) $amount ); ?>"
+								placeholder="0.00"
+							>
+						</td>
+						<td>
+							<select name="<?php echo esc_attr( $mode_field ); ?>" class="widefat">
+								<?php foreach ( $mode_options as $value => $label ) : ?>
+									<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $value, $mode ); ?>>
+										<?php echo esc_html( $label ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
+		<?php
+	}
+
+	private static function closure_mode_label( string $mode ): string {
+		switch ( $mode ) {
+			case \DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_HIDE:
+				return __( 'Hide', 'dfwc-companion' );
+			case \DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_REDIRECT_TO_CAUSE:
+				return __( 'Redirect to another cause', 'dfwc-companion' );
+			case \DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_REDIRECT_OFF_CAMPAIGN:
+				return __( 'Redirect off campaign', 'dfwc-companion' );
+			case \DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_INHERIT:
+				return __( 'Inherit', 'dfwc-companion' );
+			default:
+				return $mode;
+		}
 	}
 
 	public function render_crypto( \WP_Post $post ): void {
@@ -376,6 +500,17 @@ final class Meta_Box {
 					: '',
 			);
 			\DFWC\Companion\Gateways\TGB_Project_Mapper::set( $post_id, $crypto_in );
+		}
+
+		// v2.4.0 (Phase 14.B): per-cause goals. The cause-goals meta
+		// box only renders when global cause goals is on AND the
+		// campaign has parent causes. When the box rendered, the form
+		// always carries `dfwc_cause_goals` keyed by companion cause id
+		// (one row per cause). Sanitizer drops all-default rows so the
+		// stored shape stays minimal.
+		if ( isset( $_POST['dfwc_cause_goals'] ) && is_array( $_POST['dfwc_cause_goals'] ) ) {
+			$cause_goals_raw = wp_unslash( $_POST['dfwc_cause_goals'] );
+			\DFWC\Companion\Config\Cause_Goals_Schema::set( $post_id, $cause_goals_raw );
 		}
 		// phpcs:enable
 	}

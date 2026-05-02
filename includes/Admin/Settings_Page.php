@@ -127,6 +127,23 @@ final class Settings_Page {
 			'dfwc_section_goal_aware'
 		);
 
+		// Phase 14 (v2.4.0) — cause-aware giving.
+		add_settings_field(
+			'enable_cause_goals',
+			__( 'Enable per-cause goals', 'dfwc-companion' ),
+			array( $this, 'render_enable_cause_goals_field' ),
+			'dfwc-companion',
+			'dfwc_section_goal_aware'
+		);
+
+		add_settings_field(
+			'default_cause_closure_mode',
+			__( 'Default cause closure mode', 'dfwc-companion' ),
+			array( $this, 'render_default_cause_closure_mode_field' ),
+			'dfwc-companion',
+			'dfwc_section_goal_aware'
+		);
+
 		// Phase 14A — stock donation settings.
 		add_settings_section(
 			'dfwc_section_stock',
@@ -328,6 +345,46 @@ final class Settings_Page {
 		<?php
 	}
 
+	public function render_enable_cause_goals_field(): void {
+		$current = (bool) ( Config_Resolver::get_global_settings()['enable_cause_goals'] ?? false );
+		?>
+		<label>
+			<input
+				type="checkbox"
+				name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[enable_cause_goals]"
+				value="1"
+				<?php checked( $current ); ?>
+			>
+			<?php esc_html_e( 'Track per-cause goals and close causes when their goal is reached.', 'dfwc-companion' ); ?>
+		</label>
+		<p class="description">
+			<?php esc_html_e( 'Off by default. When on, every campaign with parent causes enabled gains a "Per-cause goals" section in its meta box. Causes that hit their goal trigger one of the closure modes below (admin can override per-cause).', 'dfwc-companion' ); ?>
+		</p>
+		<?php
+	}
+
+	public function render_default_cause_closure_mode_field(): void {
+		$current = (string) ( Config_Resolver::get_global_settings()['default_cause_closure_mode']
+			?? \DFWC\Companion\Config\Cause_Goals_Schema::DEFAULT_CLOSURE_MODE );
+		$options = array(
+			\DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_HIDE                 => __( 'Hide — silently drop the closed cause from the picker', 'dfwc-companion' ),
+			\DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_REDIRECT_TO_CAUSE    => __( 'Redirect to another cause — donor stays on this campaign, picks a different cause', 'dfwc-companion' ),
+			\DFWC\Companion\Config\Cause_Goals_Schema::CLOSURE_MODE_REDIRECT_OFF_CAMPAIGN => __( 'Redirect off campaign — donor sent to General Fund / configured fallback', 'dfwc-companion' ),
+		);
+		?>
+		<select name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[default_cause_closure_mode]" id="dfwc-default-cause-closure-mode">
+			<?php foreach ( $options as $value => $label ) : ?>
+				<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $value, $current ); ?>>
+					<?php echo esc_html( $label ); ?>
+				</option>
+			<?php endforeach; ?>
+		</select>
+		<p class="description">
+			<?php esc_html_e( 'Applied to closed causes whose per-cause closure mode is set to Inherit. Recommended: Redirect to another cause (matches the v1.2.0 goal-aware giving "surface, don\'t hard-block" UX).', 'dfwc-companion' ); ?>
+		</p>
+		<?php
+	}
+
 	public function render_stock_enabled_field(): void {
 		$current = (bool) ( Config_Resolver::get_global_settings()['stock_donations_enabled'] ?? false );
 		?>
@@ -519,6 +576,15 @@ final class Settings_Page {
 			}
 		}
 
+		// Phase 14 (v2.4.0) — cause-aware giving fields.
+		$enable_cause_goals          = ! empty( $raw['enable_cause_goals'] );
+		$default_cause_closure_mode  = isset( $raw['default_cause_closure_mode'] )
+			? sanitize_key( (string) $raw['default_cause_closure_mode'] )
+			: \DFWC\Companion\Config\Cause_Goals_Schema::DEFAULT_CLOSURE_MODE;
+		if ( ! in_array( $default_cause_closure_mode, \DFWC\Companion\Config\Cause_Goals_Schema::global_closure_modes(), true ) ) {
+			$default_cause_closure_mode = \DFWC\Companion\Config\Cause_Goals_Schema::DEFAULT_CLOSURE_MODE;
+		}
+
 		// Phase 14A — stock donation fields.
 		$stock_enabled = ! empty( $raw['stock_donations_enabled'] );
 		$stock_mode    = isset( $raw['stock_giving_mode'] ) ? sanitize_key( (string) $raw['stock_giving_mode'] ) : 'pledge_form';
@@ -544,6 +610,8 @@ final class Settings_Page {
 				'enable_goal_based_max'         => $goal_based_max,
 				'enable_fully_funded_redirect'  => $fully_funded_redirect,
 				'general_fund_campaign_id'      => $general_fund_campaign_id,
+				'enable_cause_goals'            => $enable_cause_goals,
+				'default_cause_closure_mode'    => $default_cause_closure_mode,
 				'stock_donations_enabled'       => $stock_enabled,
 				'stock_giving_mode'             => $stock_mode,
 				'stock_broker_name'             => $stock_broker_name,
