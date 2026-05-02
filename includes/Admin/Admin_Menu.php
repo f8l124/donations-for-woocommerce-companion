@@ -26,6 +26,7 @@ final class Admin_Menu {
 	public const TEMPLATES_SLUG    = 'dfwc-companion-templates';
 	public const DIAGNOSTICS_SLUG  = 'dfwc-companion-diagnostics';
 	public const STOCK_PLEDGES_SLUG = 'dfwc-companion-stock-pledges';
+	public const CRYPTO_SLUG        = 'dfwc-companion-crypto';
 
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'register' ) );
@@ -87,5 +88,17 @@ final class Admin_Menu {
 				array( Stock_Pledges_Page::class, 'render' )
 			);
 		}
+
+		// Phase 13 (v2.3.0) — crypto donations admin page. Always visible
+		// (admins need to find it to set up the integration), independent
+		// of whether crypto is enabled — gating happens on the donor side.
+		add_submenu_page(
+			self::PARENT_SLUG,
+			__( 'Crypto Donations', 'dfwc-companion' ),
+			__( 'Crypto Donations', 'dfwc-companion' ),
+			self::CAPABILITY,
+			self::CRYPTO_SLUG,
+			array( Crypto_Settings_Page::class, 'render' )
+		);
 	}
 }

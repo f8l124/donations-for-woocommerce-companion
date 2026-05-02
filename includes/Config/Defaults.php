@@ -109,6 +109,17 @@ final class Defaults {
 				// `qbo_*` keys in this option are left untouched (the new
 				// plugin's Migration_Detector reads them once, copies into
 				// its own option, and they become inert).
+				// Phase 13 (v2.3.0) — crypto donations via The Giving Block.
+				// All opt-in; the donor-facing "Donate Crypto" button only
+				// appears when `crypto_donations_enabled` is true AND a
+				// valid TGB connection is configured (api_key + webhook
+				// secret stored encrypted in the separate Token_Store
+				// option, not here). Per-campaign project routing lives
+				// under `_dfwc_companion_overrides.crypto`.
+				'crypto_donations_enabled' => false,
+				'tgb_environment'          => 'sandbox',  // 'sandbox' | 'production'
+				'tgb_organization_id'      => '',         // public id (org-level)
+				'tgb_default_project_id'   => '',         // org-default fallback when campaign override is empty
 			)
 		);
 	}

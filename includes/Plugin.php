@@ -100,6 +100,12 @@ final class Plugin {
 		// isn't installed.
 		new Admin\QBO_Migration_Notice();
 
+		// Phase 13 (v2.3.0) — crypto donations via The Giving Block.
+		// Admin settings page is always wired (so admins can configure
+		// before enabling). Donor-side renderer + REST controllers will
+		// land in sub-phases 13.B-D.
+		new Admin\Crypto_Settings_Page();
+
 		// Phase 11 — `wp dfwc-companion` CLI commands. No-op outside WP-CLI.
 		CLI\CLI_Commands::register();
 
