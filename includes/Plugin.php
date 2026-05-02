@@ -109,6 +109,7 @@ final class Plugin {
 		new Admin\Crypto_Settings_Page();
 		new Gateways\TGB_Payment_Gateway();
 		new REST\Crypto_Pending_Order_REST_Controller();
+		new REST\TGB_Webhook_REST_Controller();
 
 		// Phase 11 — `wp dfwc-companion` CLI commands. No-op outside WP-CLI.
 		CLI\CLI_Commands::register();
