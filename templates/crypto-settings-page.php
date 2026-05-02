@@ -72,6 +72,14 @@ if ( $test_result ) {
 		</button>
 	</form>
 
+	<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" style="display:inline-block; margin-right:10px;">
+		<?php wp_nonce_field( \DFWC\Companion\Admin\Crypto_Settings_Page::REFRESH_PROJECTS_ACTION ); ?>
+		<input type="hidden" name="action" value="<?php echo esc_attr( \DFWC\Companion\Admin\Crypto_Settings_Page::REFRESH_PROJECTS_ACTION ); ?>">
+		<button type="submit" class="button button-secondary" <?php disabled( ! $is_connected ); ?>>
+			<?php esc_html_e( 'Refresh project list', 'dfwc-companion' ); ?>
+		</button>
+	</form>
+
 	<?php if ( $is_connected ) : ?>
 	<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" style="display:inline-block;" onsubmit="return confirm('<?php echo esc_js( __( 'Disconnect TGB and clear stored credentials? Existing pending crypto orders will not be affected.', 'dfwc-companion' ) ); ?>');">
 		<?php wp_nonce_field( \DFWC\Companion\Admin\Crypto_Settings_Page::DISCONNECT_ACTION ); ?>

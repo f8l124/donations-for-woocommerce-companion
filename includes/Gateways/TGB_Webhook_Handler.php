@@ -309,72 +309,12 @@ final class TGB_Webhook_Handler {
 	}
 
 	/**
-	 * Reverse-lookup: TGB project_id → companion campaign_id. Scans every
-	 * campaign with crypto enabled looking for a per-campaign override
-	 * matching the project_id; falls back to the global default mapping.
-	 *
-	 * O(N) over campaigns with crypto config — acceptable up to a few
-	 * hundred campaigns; if we hit performance issues, add an index meta.
+	 * Reverse-lookup: TGB project_id → companion campaign_id. Delegates
+	 * to the centralized mapper so the resolution stays consistent
+	 * across read sites (donor renderer, webhook handler).
 	 */
 	private static function resolve_campaign_id_from_project( string $project_id ): int {
-		if ( '' === $project_id ) {
-			return 0;
-		}
-
-		// Query campaigns whose `_dfwc_companion_overrides` JSON contains
-		// the project_id. Using meta_query LIKE here because the value is
-		// nested inside a serialized array. Safe (escaped) but coarse.
-		$query = new \WP_Query(
-			array(
-				'post_type'      => 'wc-donation',
-				'post_status'    => 'publish',
-				'fields'         => 'ids',
-				'posts_per_page' => 50,
-				'meta_query'     => array(
-					array(
-						'key'     => '_dfwc_companion_overrides',
-						'value'   => $project_id,
-						'compare' => 'LIKE',
-					),
-				),
-				'no_found_rows'          => true,
-				'update_post_meta_cache' => false,
-				'update_post_term_cache' => false,
-			)
-		);
-
-		foreach ( $query->posts as $post_id ) {
-			$overrides = get_post_meta( (int) $post_id, '_dfwc_companion_overrides', true );
-			if ( is_array( $overrides ) && isset( $overrides['crypto']['tgb_project_id'] )
-				&& $project_id === (string) $overrides['crypto']['tgb_project_id']
-			) {
-				return (int) $post_id;
-			}
-		}
-
-		// Global default fallback — when the project_id matches the
-		// org-wide default, use the first crypto-enabled campaign as the
-		// attribution target. This is a heuristic for "donor came in
-		// without a specific campaign" and may be revisited in v2.3.x.
-		$global = \DFWC\Companion\Config\Config_Resolver::get_global_settings();
-		if ( (string) ( $global['tgb_default_project_id'] ?? '' ) === $project_id ) {
-			$fallback = new \WP_Query(
-				array(
-					'post_type'              => 'wc-donation',
-					'post_status'            => 'publish',
-					'fields'                 => 'ids',
-					'posts_per_page'         => 1,
-					'no_found_rows'          => true,
-					'update_post_meta_cache' => false,
-					'update_post_term_cache' => false,
-				)
-			);
-			if ( ! empty( $fallback->posts ) ) {
-				return (int) $fallback->posts[0];
-			}
-		}
-
-		return 0;
+		return TGB_Project_Mapper::find_campaign_by_project_id( $project_id );
 	}
 
 	/**

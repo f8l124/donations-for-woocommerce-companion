@@ -29,6 +29,7 @@ namespace DFWC\Companion\Frontend;
 defined( 'ABSPATH' ) || exit;
 
 use DFWC\Companion\Config\Config_Resolver;
+use DFWC\Companion\Gateways\TGB_Project_Mapper;
 use DFWC\Companion\Gateways\TGB_Token_Store;
 
 final class Crypto_Donation_Renderer {
@@ -60,13 +61,8 @@ final class Crypto_Donation_Renderer {
 		// Per-campaign opt-out lives under the layered overrides
 		// (`_dfwc_companion_overrides.crypto.enabled`). Default is true —
 		// when the global toggle is on, every campaign gets the button
-		// unless explicitly disabled. Per-campaign admin UI lands in 13.E.
-		$campaign_crypto = self::resolve_campaign_crypto_overrides( $campaign_id );
-		if ( array_key_exists( 'enabled', $campaign_crypto ) && ! $campaign_crypto['enabled'] ) {
-			return false;
-		}
-
-		return true;
+		// unless explicitly disabled via the per-campaign meta box.
+		return TGB_Project_Mapper::is_enabled_for_campaign( $campaign_id );
 	}
 
 	/**
@@ -80,24 +76,15 @@ final class Crypto_Donation_Renderer {
 	 * @return array<string,string>
 	 */
 	public static function get_data_attributes( int $campaign_id ): array {
-		$global          = Config_Resolver::get_global_settings();
-		$campaign_crypto = self::resolve_campaign_crypto_overrides( $campaign_id );
+		$global = Config_Resolver::get_global_settings();
 
 		$environment = isset( $global['tgb_environment'] ) ? (string) $global['tgb_environment'] : 'sandbox';
 		if ( ! in_array( $environment, array( 'sandbox', 'production' ), true ) ) {
 			$environment = 'sandbox';
 		}
 
-		$org_id  = isset( $global['tgb_organization_id'] ) ? (string) $global['tgb_organization_id'] : '';
-		$default = isset( $global['tgb_default_project_id'] ) ? (string) $global['tgb_default_project_id'] : '';
-
-		// Per-campaign project ID wins over org default. Empty string when
-		// neither set; the donor-side JS surfaces a console warning rather
-		// than crashing — the admin gets a "no project configured" diagnostic
-		// in 13.F.
-		$project_id = isset( $campaign_crypto['tgb_project_id'] ) && '' !== (string) $campaign_crypto['tgb_project_id']
-			? (string) $campaign_crypto['tgb_project_id']
-			: $default;
+		$org_id     = isset( $global['tgb_organization_id'] ) ? (string) $global['tgb_organization_id'] : '';
+		$project_id = TGB_Project_Mapper::resolve( $campaign_id );
 
 		$pending_url = function_exists( 'rest_url' )
 			? (string) rest_url( 'dfwc-companion/v1/crypto-pending-order' )
@@ -127,19 +114,5 @@ final class Crypto_Donation_Renderer {
 			'data-tgb-project-id'      => '',
 			'data-crypto-pending-url'  => '',
 		);
-	}
-
-	/**
-	 * Read `crypto` overrides from the per-campaign layered store. Returns
-	 * an empty array when the campaign has no crypto-specific config.
-	 *
-	 * @return array<string,mixed>
-	 */
-	private static function resolve_campaign_crypto_overrides( int $campaign_id ): array {
-		$overrides = get_post_meta( $campaign_id, '_dfwc_companion_overrides', true );
-		if ( ! is_array( $overrides ) || empty( $overrides['crypto'] ) || ! is_array( $overrides['crypto'] ) ) {
-			return array();
-		}
-		return $overrides['crypto'];
 	}
 }

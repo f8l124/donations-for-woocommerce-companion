@@ -66,6 +66,102 @@ final class Meta_Box {
 			'side',
 			'default'
 		);
+
+		// v2.3.0 (Phase 13.E): per-campaign crypto donation routing.
+		// Only registered when global crypto is on + TGB is connected, so
+		// admins on sites that don't use crypto don't see an empty box.
+		$global = \DFWC\Companion\Config\Config_Resolver::get_global_settings();
+		if ( ! empty( $global['crypto_donations_enabled'] )
+			&& ( new \DFWC\Companion\Gateways\TGB_Token_Store() )->is_configured()
+		) {
+			add_meta_box(
+				'dfwc_companion_crypto',
+				__( 'Crypto donations', 'dfwc-companion' ),
+				array( $this, 'render_crypto' ),
+				self::PARENT_POST_TYPE,
+				'side',
+				'default'
+			);
+		}
+	}
+
+	public function render_crypto( \WP_Post $post ): void {
+		if ( ! current_user_can( 'edit_post', $post->ID ) ) {
+			return;
+		}
+
+		$override   = \DFWC\Companion\Gateways\TGB_Project_Mapper::for_campaign( $post->ID );
+		$is_enabled = \DFWC\Companion\Gateways\TGB_Project_Mapper::is_enabled_for_campaign( $post->ID );
+		$selected   = isset( $override['tgb_project_id'] ) ? (string) $override['tgb_project_id'] : '';
+
+		$global         = \DFWC\Companion\Config\Config_Resolver::get_global_settings();
+		$default_label  = isset( $global['tgb_default_project_id'] ) && '' !== (string) $global['tgb_default_project_id']
+			? sprintf(
+				/* translators: %s: TGB project id used as the org default */
+				__( 'Inherit (org default: %s)', 'dfwc-companion' ),
+				(string) $global['tgb_default_project_id']
+			)
+			: __( 'Inherit (no org default set)', 'dfwc-companion' );
+
+		$projects = \DFWC\Companion\Gateways\TGB_Projects_Cache::get();
+
+		// Detect whether the saved project_id is in the cached list. If
+		// not (newly created in TGB after our last cache refresh, or admin
+		// typed a custom value), surface a "custom" hint so the dropdown
+		// state is visually accurate.
+		$saved_in_list = false;
+		foreach ( $projects as $project ) {
+			if ( (string) $project['id'] === $selected ) {
+				$saved_in_list = true;
+				break;
+			}
+		}
+		?>
+		<p>
+			<label>
+				<input
+					type="checkbox"
+					name="dfwc_crypto[enabled]"
+					value="1"
+					<?php checked( $is_enabled ); ?>
+				>
+				<?php esc_html_e( 'Show "Donate Crypto" button on this campaign', 'dfwc-companion' ); ?>
+			</label>
+		</p>
+		<p>
+			<label for="dfwc_crypto_project_id">
+				<strong><?php esc_html_e( 'TGB Project', 'dfwc-companion' ); ?></strong>
+			</label>
+			<select id="dfwc_crypto_project_id" name="dfwc_crypto[tgb_project_id]" class="widefat">
+				<option value=""><?php echo esc_html( $default_label ); ?></option>
+				<?php foreach ( $projects as $project ) : ?>
+					<option
+						value="<?php echo esc_attr( $project['id'] ); ?>"
+						<?php selected( $selected, $project['id'] ); ?>
+					>
+						<?php echo esc_html( $project['name'] . ' (' . $project['id'] . ')' ); ?>
+					</option>
+				<?php endforeach; ?>
+				<?php if ( '' !== $selected && ! $saved_in_list ) : ?>
+					<option value="<?php echo esc_attr( $selected ); ?>" selected>
+						<?php
+						printf(
+							/* translators: %s: project id not in cached list */
+							esc_html__( 'Custom: %s', 'dfwc-companion' ),
+							esc_html( $selected )
+						);
+						?>
+					</option>
+				<?php endif; ?>
+			</select>
+		</p>
+		<p class="description">
+			<?php esc_html_e( 'Routes crypto donations on this campaign to a specific TGB sub-project. Inherit uses the org-wide default from the Crypto settings page.', 'dfwc-companion' ); ?>
+			<?php if ( empty( $projects ) ) : ?>
+				<br><em><?php esc_html_e( 'Project list is empty — refresh under WooCommerce → Donations Companion → Crypto Donations.', 'dfwc-companion' ); ?></em>
+			<?php endif; ?>
+		</p>
+		<?php
 	}
 
 	public function render_featured( \WP_Post $post ): void {
@@ -262,6 +358,26 @@ final class Meta_Box {
 		} else {
 			delete_post_meta( $post_id, Campaign_Taxonomies::META_KEY_FEATURED );
 		}
+
+		// v2.3.0 (Phase 13.E): per-campaign crypto routing. The crypto
+		// meta box only renders when global crypto is on, so its POST
+		// keys are only present in that case. When the box was rendered
+		// + the form submitted, write the explicit values; otherwise
+		// leave existing overrides untouched (admin may have toggled
+		// global crypto off after configuring per-campaign).
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- nonce checked above
+		if ( isset( $_POST['dfwc_crypto'] ) && is_array( $_POST['dfwc_crypto'] ) ) {
+			$crypto_raw = wp_unslash( $_POST['dfwc_crypto'] );
+			$crypto_in  = array(
+				// HTML checkbox semantics: missing = unchecked.
+				'enabled'        => ! empty( $crypto_raw['enabled'] ),
+				'tgb_project_id' => isset( $crypto_raw['tgb_project_id'] )
+					? (string) $crypto_raw['tgb_project_id']
+					: '',
+			);
+			\DFWC\Companion\Gateways\TGB_Project_Mapper::set( $post_id, $crypto_in );
+		}
+		// phpcs:enable
 	}
 
 	/**

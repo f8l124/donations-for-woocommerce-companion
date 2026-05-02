@@ -34,6 +34,7 @@ defined( 'ABSPATH' ) || exit;
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Defaults;
 use DFWC\Companion\Gateways\TGB_Client;
+use DFWC\Companion\Gateways\TGB_Projects_Cache;
 use DFWC\Companion\Gateways\TGB_Token_Store;
 
 final class Crypto_Settings_Page {
@@ -42,11 +43,13 @@ final class Crypto_Settings_Page {
 	public const PAGE_SLUG      = 'dfwc-companion-crypto';
 	public const TEST_ACTION    = 'dfwc_tgb_test_connection';
 	public const DISCONNECT_ACTION = 'dfwc_tgb_disconnect';
+	public const REFRESH_PROJECTS_ACTION = 'dfwc_tgb_refresh_projects';
 
 	public function __construct() {
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_post_' . self::TEST_ACTION, array( $this, 'handle_test_connection' ) );
 		add_action( 'admin_post_' . self::DISCONNECT_ACTION, array( $this, 'handle_disconnect' ) );
+		add_action( 'admin_post_' . self::REFRESH_PROJECTS_ACTION, array( $this, 'handle_refresh_projects' ) );
 	}
 
 	public function register_settings(): void {
@@ -203,14 +206,84 @@ final class Crypto_Settings_Page {
 	}
 
 	public function render_default_project_field(): void {
-		$global  = Config_Resolver::get_global_settings();
-		$current = isset( $global['tgb_default_project_id'] ) ? (string) $global['tgb_default_project_id'] : '';
-		printf(
-			'<input type="text" class="regular-text" name="%1$s[tgb_default_project_id]" value="%2$s">',
-			esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ),
-			esc_attr( $current )
+		$global   = Config_Resolver::get_global_settings();
+		$current  = isset( $global['tgb_default_project_id'] ) ? (string) $global['tgb_default_project_id'] : '';
+		$projects = TGB_Projects_Cache::get();
+
+		// Match-detection so admins who entered a project_id pre-cache (or
+		// after deleting a project in TGB) see a clear "custom" indicator
+		// rather than a stale-looking blank dropdown.
+		$saved_in_list = false;
+		foreach ( $projects as $project ) {
+			if ( (string) $project['id'] === $current ) {
+				$saved_in_list = true;
+				break;
+			}
+		}
+		?>
+		<select name="<?php echo esc_attr( Config_Resolver::OPTION_KEY_GLOBAL ); ?>[tgb_default_project_id]" class="regular-text">
+			<option value=""><?php esc_html_e( '— None (use TGB org default) —', 'dfwc-companion' ); ?></option>
+			<?php foreach ( $projects as $project ) : ?>
+				<option
+					value="<?php echo esc_attr( $project['id'] ); ?>"
+					<?php selected( $current, $project['id'] ); ?>
+				>
+					<?php echo esc_html( $project['name'] . ' (' . $project['id'] . ')' ); ?>
+				</option>
+			<?php endforeach; ?>
+			<?php if ( '' !== $current && ! $saved_in_list ) : ?>
+				<option value="<?php echo esc_attr( $current ); ?>" selected>
+					<?php
+					printf(
+						/* translators: %s: project id not in cached list */
+						esc_html__( 'Custom: %s', 'dfwc-companion' ),
+						esc_html( $current )
+					);
+					?>
+				</option>
+			<?php endif; ?>
+		</select>
+		<p class="description">
+			<?php esc_html_e( 'Falls back to this project when a campaign has no per-campaign override. Leave blank to use TGB\'s organization-default.', 'dfwc-companion' ); ?>
+			<?php if ( empty( $projects ) ) : ?>
+				<br>
+				<em><?php esc_html_e( 'Project list is empty. Save credentials, then click "Refresh project list" below.', 'dfwc-companion' ); ?></em>
+			<?php endif; ?>
+		</p>
+		<?php
+	}
+
+	/**
+	 * admin-post handler for "Refresh project list" — discards cached
+	 * project list (both environments) and re-fetches the active env.
+	 */
+	public function handle_refresh_projects(): void {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'You do not have permission to perform this action.', 'dfwc-companion' ) );
+		}
+		check_admin_referer( self::REFRESH_PROJECTS_ACTION );
+
+		$projects = TGB_Projects_Cache::refresh();
+
+		set_transient(
+			'dfwc_tgb_test_result',
+			array(
+				'ok'      => true,
+				'message' => sprintf(
+					/* translators: %d: number of projects fetched */
+					_n(
+						'Refreshed: %d TGB project loaded.',
+						'Refreshed: %d TGB projects loaded.',
+						count( $projects ),
+						'dfwc-companion'
+					),
+					count( $projects )
+				),
+			),
+			60
 		);
-		echo '<p class="description">' . esc_html__( 'Falls back to this project when a campaign has no per-campaign override. Leave blank to use TGB\'s organization-default.', 'dfwc-companion' ) . '</p>';
+
+		$this->redirect_back();
 	}
 
 	public function render_master_toggle_field(): void {
