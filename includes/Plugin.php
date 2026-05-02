@@ -100,6 +100,12 @@ final class Plugin {
 		// isn't installed.
 		new Admin\QBO_Migration_Notice();
 
+		// Phase 14 (v2.4.0) — cause-aware giving. Sub-phase 14.A wires
+		// stable cause identity (companion-minted UUIDs threaded through
+		// the cart → order line item meta). Per-cause goal storage,
+		// raised aggregation, closure UX land in 14.B-D.
+		new Config\Cause_Identity();
+
 		// Phase 13 (v2.3.0) — crypto donations via The Giving Block.
 		// Admin settings page is always wired (so admins can configure
 		// before enabling). Donor-side rendering happens via the
