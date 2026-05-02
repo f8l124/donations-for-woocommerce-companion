@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.2.4
+Stable tag: 2.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -98,6 +98,22 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 2.3.0 =
+**Crypto donations via The Giving Block.** Third donor channel alongside cash and stock. Donors complete the wallet handshake inside The Giving Block widget; companion records the order and fires the existing Phase 9 hook so analytics + CRM listeners see crypto donations identically to cash. KYC/AML, supported coins, and on-chain confirmation are owned entirely by The Giving Block — companion never touches blockchain.
+
+* **New:** `WooCommerce → Donations Companion → Crypto Donations` admin page. Sandbox/production environment toggle. API key + webhook secret stored encrypted at rest (AES-256-CBC keyed off AUTH_KEY . AUTH_SALT). Test connection button. Refresh project list button. Disconnect button.
+* **New:** Per-campaign side meta box "Crypto donations" (visible only when crypto is globally enabled and connected). Per-campaign opt-out checkbox + project routing dropdown — different campaigns can route to different TGB sub-projects.
+* **New:** Donor-facing "Donate Crypto" button below the cash form on every crypto-enabled campaign. Lazy-loads The Giving Block widget on click — never on page load, never on non-crypto campaigns.
+* **New:** Two REST endpoints. `POST /wp-json/dfwc-companion/v1/crypto-pending-order` records on-hold WC orders at donor commit. `POST /wp-json/dfwc-companion/v1/tgb-webhook` receives TGB confirmation webhooks; HMAC-SHA256 verified with constant-time compare; idempotent + race-safe.
+* **New:** Custom WC payment method `dfwc_crypto` (hidden from donor checkout) so companion-created crypto orders carry a semantically correct `payment_method` slug for WC reports + downstream sync routing.
+* **New:** Two diagnostic checks added to the diagnostics page — TGB connection health + webhook activity proxy (warns when on-hold crypto orders > 7 days exist alongside zero/stale webhook traffic).
+* **Phase 9 hook contract preserved.** `dfwc_companion_donation_submitted` fires with `$context = 'crypto'`, `$amount = USD value`, `$currency = 'USD'`. Existing FluentCRM / GA4 / custom CRM listeners pick up crypto donations without modification.
+* **Filterable seams** for TGB API revisions: `dfwc_companion_tgb_base_url`, `dfwc_companion_tgb_widget_localize`, `dfwc_companion_tgb_webhook_signature_header`, `dfwc_companion_tgb_webhook_verify`. Stripe-style timestamped signature headers can be supported via the verify filter without code changes.
+* **Internal:** test coverage 252 → 374 cases. New unit tests: TGB_Token_Store_Test (11), TGB_Client_Test (11), Crypto_Donation_Renderer_Test (10), TGB_Pending_Order_Test (14), TGB_Webhook_Handler_Test (18), TGB_Project_Mapper_Test (13).
+* **Documented limitations:** one-time crypto only at v2.3.0 (recurring deferred to v2.3.1+); orders denominated in USD regardless of WC store base currency (TGB's reporting unit; cross-currency reconciliation is a v2.3.x concern); refund flow out of scope.
+* **Backward compat:** zero behavior change on sites that don't enable crypto. The donor form is unchanged. The donor JS module that ships unconditionally early-returns when `data-crypto-enabled="0"` so the cost on non-crypto pages is just a small inert script parse.
+* **Architectural note:** v2.3.0 is the third donor channel after cash + stock. The internal pattern (Channel-specific renderer + REST controller + admin section + Phase 9 fire with channel-specific `$context`) becomes the formal `Donor_Channel` interface in v3.0.0 (per `plans/v2/v3-channel-api-and-extraction.md`).
 
 = 2.2.4 =
 **Bug fix.** Donor form rendered inside an Elementor Pro popup (or any modal library that clones the popup template's DOM at show-time) was visually correct but tabs, preset cards, and the donate button didn't respond to clicks.
@@ -387,6 +403,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 2.3.0 =
+New feature: crypto donations via The Giving Block. Off by default — existing sites see zero behavior change until admins opt in via WooCommerce → Donations Companion → Crypto Donations. Donors get a "Donate Crypto" button below the cash form on enabled campaigns; The Giving Block handles wallet UX and KYC. Phase 9 hooks fire identically to cash donations with `$context = 'crypto'` so existing CRM/analytics listeners pick them up without code changes. Backward-compatible.
 
 = 2.2.4 =
 Bug fix: donor form embedded in an Elementor Pro popup (or any modal library that clones DOM on show) now responds to tab / preset / submit clicks correctly. Root cause was a one-shot DOMContentLoaded handler-bind that didn't survive popup cloning. Fix is a MutationObserver + WeakSet-guarded re-init that handles dynamic DOM injection generally — works for any popup builder, not only Elementor.

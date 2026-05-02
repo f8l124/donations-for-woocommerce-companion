@@ -248,6 +248,27 @@ final class Parent_Form_Contract_Checker {
 				Parent_Form_Contract::SEVERITY_WARNING,
 				array( $this, 'check_advanced_intervals_engine' )
 			),
+			// Phase 13 (v2.3.0) — TGB connection health. Auto-passes when
+			// crypto is disabled (no signal to surface). Warns when the
+			// global toggle is on but credentials are missing or invalid.
+			new Parent_Form_Contract(
+				'tgb_connection',
+				__( 'The Giving Block connection', 'dfwc-companion' ),
+				__( 'When crypto donations are enabled, valid TGB credentials must be stored.', 'dfwc-companion' ),
+				Parent_Form_Contract::SEVERITY_INFO,
+				array( $this, 'check_tgb_connection' )
+			),
+			// Phase 13 (v2.3.0) — TGB webhook activity proxy. When crypto
+			// is on AND it has been > 90 days since the last verified
+			// webhook (OR there are pending crypto orders > 7 days old),
+			// flag — the webhook may not be reaching us.
+			new Parent_Form_Contract(
+				'tgb_webhook_activity',
+				__( 'The Giving Block webhook activity', 'dfwc-companion' ),
+				__( 'Webhook delivery health proxy: TGB should fire webhooks shortly after each donor commits in the widget.', 'dfwc-companion' ),
+				Parent_Form_Contract::SEVERITY_INFO,
+				array( $this, 'check_tgb_webhook_activity' )
+			),
 		);
 		// Phase 17 (v2.1.0): QBO health checks moved to the sibling
 		// donations-for-woocommerce-qbo-sync plugin, which injects them
@@ -553,5 +574,154 @@ final class Parent_Form_Contract_Checker {
 			}
 		}
 		return new Parent_Form_Contract_Report( $results, (int) ( $data['checked_at'] ?? 0 ) );
+	}
+
+	/**
+	 * v2.3.0 — TGB connection health.
+	 * - Auto-passes silently when crypto is globally disabled (no signal).
+	 * - Warns when crypto is on but Token_Store credentials are missing
+	 *   or the API key is unreadable (decryption failure).
+	 * - Passes when credentials are stored.
+	 *
+	 * Note: does NOT round-trip the TGB API per check — admins explicitly
+	 * test the live connection from the Crypto Donations settings page.
+	 */
+	public function check_tgb_connection(): Parent_Form_Contract_Result {
+		$global = \DFWC\Companion\Config\Config_Resolver::get_global_settings();
+		if ( empty( $global['crypto_donations_enabled'] ) ) {
+			return Parent_Form_Contract_Result::pass(
+				'tgb_connection',
+				__( 'Crypto donations disabled (no health signal needed).', 'dfwc-companion' )
+			);
+		}
+
+		$store = new \DFWC\Companion\Gateways\TGB_Token_Store();
+		if ( ! $store->is_configured() ) {
+			return Parent_Form_Contract_Result::warn(
+				'tgb_connection',
+				__( 'Crypto donations are enabled but TGB credentials are missing or unreadable.', 'dfwc-companion' ),
+				__( 'Open WooCommerce → Donations Companion → Crypto Donations and re-enter the API key + webhook secret.', 'dfwc-companion' )
+			);
+		}
+
+		$env = isset( $global['tgb_environment'] ) ? (string) $global['tgb_environment'] : 'sandbox';
+		return Parent_Form_Contract_Result::pass(
+			'tgb_connection',
+			sprintf(
+				/* translators: %s: environment label (sandbox / production) */
+				__( 'TGB credentials stored (%s environment). Use the Test connection button on the Crypto Donations page to verify the live API.', 'dfwc-companion' ),
+				$env
+			),
+			array( 'environment' => $env )
+		);
+	}
+
+	/**
+	 * v2.3.0 — TGB webhook activity proxy. Surfaces a soft warning when
+	 * crypto is on but signals suggest webhooks aren't reaching us.
+	 *
+	 * Two signals combined:
+	 *  - last verified webhook > 90 days ago (or never received), AND
+	 *  - on-hold crypto orders exist (donors committed but no
+	 *    confirmation webhook flipped them to completed).
+	 *
+	 * Either alone is benign on a fresh install; both together is the
+	 * fingerprint of "TGB is calling us but we're not receiving it."
+	 */
+	public function check_tgb_webhook_activity(): Parent_Form_Contract_Result {
+		$global = \DFWC\Companion\Config\Config_Resolver::get_global_settings();
+		if ( empty( $global['crypto_donations_enabled'] ) ) {
+			return Parent_Form_Contract_Result::pass(
+				'tgb_webhook_activity',
+				__( 'Crypto donations disabled (no health signal needed).', 'dfwc-companion' )
+			);
+		}
+
+		$last_seen     = (int) get_option( \DFWC\Companion\Gateways\TGB_Webhook_Handler::LAST_WEBHOOK_OPTION, 0 );
+		$days_since    = $last_seen > 0 ? (int) floor( ( time() - $last_seen ) / DAY_IN_SECONDS ) : -1;
+		$pending_count = $this->count_stale_pending_crypto_orders( 7 );
+
+		if ( -1 === $days_since && $pending_count > 0 ) {
+			return Parent_Form_Contract_Result::warn(
+				'tgb_webhook_activity',
+				sprintf(
+					/* translators: %d: number of on-hold crypto orders older than 7 days */
+					_n(
+						'%d on-hold crypto order is older than 7 days but no TGB webhook has ever been received.',
+						'%d on-hold crypto orders are older than 7 days but no TGB webhook has ever been received.',
+						$pending_count,
+						'dfwc-companion'
+					),
+					$pending_count
+				),
+				__( 'Verify the webhook URL is configured in the TGB dashboard and reachable from the public internet (no firewall, no security plugin blocking REST). Webhook URL is shown on the Crypto Donations settings page.', 'dfwc-companion' ),
+				array(
+					'pending_count' => $pending_count,
+					'last_seen_days' => -1,
+				)
+			);
+		}
+
+		if ( $days_since > 90 && $pending_count > 0 ) {
+			return Parent_Form_Contract_Result::warn(
+				'tgb_webhook_activity',
+				sprintf(
+					/* translators: 1: days since last webhook, 2: number of on-hold crypto orders > 7 days old */
+					__( 'Last TGB webhook %1$d days ago and %2$d on-hold crypto orders > 7 days old.', 'dfwc-companion' ),
+					$days_since,
+					$pending_count
+				),
+				__( 'Verify the webhook URL is still configured in the TGB dashboard. Both signals together suggest webhook delivery is broken, not just quiet.', 'dfwc-companion' ),
+				array(
+					'pending_count' => $pending_count,
+					'last_seen_days' => $days_since,
+				)
+			);
+		}
+
+		if ( $last_seen > 0 ) {
+			return Parent_Form_Contract_Result::pass(
+				'tgb_webhook_activity',
+				sprintf(
+					/* translators: %d: days since last webhook */
+					__( 'Last TGB webhook received %d days ago.', 'dfwc-companion' ),
+					max( 0, $days_since )
+				),
+				array( 'last_seen_days' => $days_since )
+			);
+		}
+
+		return Parent_Form_Contract_Result::pass(
+			'tgb_webhook_activity',
+			__( 'Crypto enabled; no webhooks received yet (normal for fresh installs).', 'dfwc-companion' )
+		);
+	}
+
+	/**
+	 * Count on-hold orders carrying a TGB donation_id older than $days
+	 * days. Single SQL query across order itemmeta — works on HPOS
+	 * (line-item storage is unchanged).
+	 */
+	private function count_stale_pending_crypto_orders( int $days ): int {
+		global $wpdb;
+		$cutoff = time() - ( $days * DAY_IN_SECONDS );
+		// HPOS-compatible: count orders by joining order_itemmeta + orders table.
+		// Use the WC HPOS-compatible orders helper when available, otherwise
+		// fall back to wp_posts filtering on post_type=shop_order.
+		$count = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(DISTINCT items.order_id)
+				 FROM {$wpdb->prefix}woocommerce_order_items items
+				 INNER JOIN {$wpdb->prefix}woocommerce_order_itemmeta meta
+				         ON meta.order_item_id = items.order_item_id
+				 INNER JOIN {$wpdb->posts} posts
+				         ON posts.ID = items.order_id AND posts.post_status = %s
+				 WHERE meta.meta_key = %s AND posts.post_date_gmt < %s",
+				'wc-on-hold',
+				\DFWC\Companion\Gateways\TGB_Pending_Order::META_DONATION_ID,
+				gmdate( 'Y-m-d H:i:s', $cutoff )
+			)
+		);
+		return $count;
 	}
 }

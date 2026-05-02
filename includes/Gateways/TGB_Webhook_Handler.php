@@ -54,6 +54,7 @@ defined( 'ABSPATH' ) || exit;
 final class TGB_Webhook_Handler {
 
 	public const EVENT_DONATION_CONFIRMED = 'donation.confirmed';
+	public const LAST_WEBHOOK_OPTION      = 'dfwc_companion_tgb_last_webhook_at';
 
 	/**
 	 * Allow-listed event types. We only act on `donation.confirmed`; other
@@ -192,6 +193,12 @@ final class TGB_Webhook_Handler {
 	 * @return array{ok:bool,action?:string,order_id?:int,error?:string}
 	 */
 	public static function process( array $payload ): array {
+		// Record last-webhook-at on every successful HMAC-verified +
+		// schema-validated payload, including replays. The diagnostics
+		// "tgb_webhook_activity" check uses this to surface integration
+		// health. Stored as Unix timestamp.
+		update_option( self::LAST_WEBHOOK_OPTION, time(), false );
+
 		$donation_id = (string) $payload['donation_id'];
 
 		$existing = TGB_Pending_Order::find_existing_by_donation_id( $donation_id );
