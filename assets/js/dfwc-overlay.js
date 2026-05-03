@@ -285,6 +285,12 @@
 		// Apply admin's display options (campaign title, image, cause heading).
 		applyDisplay( scope, display );
 
+		// v2.4.0 — apply per-cause closure UX. Reads `data-closed-causes`
+		// JSON; for each closed cause, applies the configured mode by
+		// modifying parent's cause picker DOM. No-op when there are no
+		// closed causes (fastest path on the common case).
+		applyCauseClosures( wrapper, scope );
+
 		var state = {
 			interval:    initialKey,
 			amount:      0,
@@ -1344,6 +1350,140 @@
 		Array.prototype.forEach.call( nodeList || [], function ( el ) {
 			el.classList.add( 'dfwc-overlay-hidden' );
 		} );
+	}
+
+	/**
+	 * v2.4.0 — apply per-cause closure UX to parent's cause picker.
+	 *
+	 * Parent renders causes as `<li class="dropdown-item" data-name="...">`
+	 * inside `.causes-dropdown`. We modify those `<li>`s based on the
+	 * closure mode for each closed cause:
+	 *
+	 *   - hide                  → CSS-hide the <li> entirely
+	 *   - redirect_to_cause     → mark disabled + intercept clicks with a
+	 *                             "goal met! pick another" prompt
+	 *   - redirect_off_campaign → mark disabled + redirect on click to
+	 *                             the configured general fund permalink
+	 *
+	 * No-ops on campaigns without closed causes (the empty-object case).
+	 */
+	function applyCauseClosures( wrapper, scope ) {
+		var closedJson = wrapper.getAttribute( 'data-closed-causes' );
+		if ( ! closedJson || '{}' === closedJson || '' === closedJson ) {
+			return;
+		}
+
+		var closed;
+		try { closed = JSON.parse( closedJson ); }
+		catch ( e ) {
+			console.warn( '[dfwc] failed to parse data-closed-causes JSON; bailing' );
+			return;
+		}
+		if ( ! closed || 'object' !== typeof closed ) { return; }
+
+		var generalFundUrl = wrapper.getAttribute( 'data-general-fund-url' ) || '';
+
+		Object.keys( closed ).forEach( function ( causeId ) {
+			var entry = closed[ causeId ];
+			if ( ! entry || ! entry.name ) { return; }
+			var li = scope.querySelector( '.causes-dropdown li.dropdown-item[data-name="' + cssEscape( entry.name ) + '"]' );
+			if ( ! li ) { return; }
+
+			switch ( entry.mode ) {
+				case 'hide':
+					li.classList.add( 'dfwc-cause-closed', 'dfwc-cause-closed--hidden' );
+					li.style.display = 'none';
+					break;
+
+				case 'redirect_off_campaign':
+					li.classList.add( 'dfwc-cause-closed', 'dfwc-cause-closed--redirect-off' );
+					li.setAttribute( 'aria-disabled', 'true' );
+					li.style.opacity = '0.5';
+					li.addEventListener( 'click', function ( e ) {
+						e.stopImmediatePropagation();
+						e.preventDefault();
+						if ( '' !== generalFundUrl ) {
+							window.location.href = generalFundUrl;
+						} else {
+							window.alert( ( window.dfwcCompanion && window.dfwcCompanion.i18n && window.dfwcCompanion.i18n.causeClosedGeneric ) || 'This cause has reached its goal. Please choose another cause.' );
+						}
+					}, true );
+					break;
+
+				case 'redirect_to_cause':
+				default:
+					li.classList.add( 'dfwc-cause-closed', 'dfwc-cause-closed--redirect-cause' );
+					li.setAttribute( 'aria-disabled', 'true' );
+					li.style.opacity = '0.5';
+					li.addEventListener( 'click', function ( e ) {
+						e.stopImmediatePropagation();
+						e.preventDefault();
+						showCauseClosedPrompt( scope, entry );
+					}, true );
+					break;
+			}
+		} );
+	}
+
+	/**
+	 * v2.4.0 — render an inline "goal met!" prompt above parent's cause
+	 * picker, listing the open alternatives as clickable links. Replaces
+	 * any existing prompt so multiple closed-cause clicks don't stack.
+	 */
+	function showCauseClosedPrompt( scope, entry ) {
+		var i18n = ( window.dfwcCompanion && window.dfwcCompanion.i18n ) || {};
+		var existing = scope.querySelector( '.dfwc-cause-closed-prompt' );
+		if ( existing && existing.parentNode ) { existing.parentNode.removeChild( existing ); }
+
+		var card = document.createElement( 'div' );
+		card.className = 'dfwc-cause-closed-prompt';
+		card.setAttribute( 'role', 'status' );
+
+		var heading = document.createElement( 'strong' );
+		heading.textContent = ( i18n.causeMetHeading || '%s reached its goal!' ).replace( '%s', entry.name );
+		card.appendChild( heading );
+
+		var alternatives = entry.alternatives || [];
+		if ( alternatives.length > 0 ) {
+			var copy = document.createElement( 'p' );
+			copy.textContent = i18n.causeMetCopy || 'Please consider supporting one of these still-open causes:';
+			card.appendChild( copy );
+
+			var list = document.createElement( 'ul' );
+			list.className = 'dfwc-cause-closed-prompt__alternatives';
+			alternatives.forEach( function ( alt ) {
+				var item = document.createElement( 'li' );
+				var btn  = document.createElement( 'button' );
+				btn.type = 'button';
+				btn.textContent = alt.name;
+				btn.addEventListener( 'click', function () {
+					var open = scope.querySelector( '.causes-dropdown li.dropdown-item[data-name="' + cssEscape( alt.name ) + '"]' );
+					if ( open ) { open.click(); }
+					if ( card.parentNode ) { card.parentNode.removeChild( card ); }
+				} );
+				item.appendChild( btn );
+				list.appendChild( item );
+			} );
+			card.appendChild( list );
+		} else {
+			var copy2 = document.createElement( 'p' );
+			copy2.textContent = i18n.causeMetNoAlternatives || 'All causes on this campaign have reached their goals — please consider supporting our general fund.';
+			card.appendChild( copy2 );
+		}
+
+		var dropdown = scope.querySelector( '.causes-dropdown' );
+		if ( dropdown && dropdown.parentNode ) {
+			dropdown.parentNode.insertBefore( card, dropdown );
+		}
+	}
+
+	/**
+	 * Escape a string for use in a CSS attribute selector. Avoids the
+	 * full CSS.escape API (not in older browsers) — we only need to
+	 * escape double quotes + backslashes for the [data-name="..."] pattern.
+	 */
+	function cssEscape( value ) {
+		return String( value ).replace( /\\/g, '\\\\' ).replace( /"/g, '\\"' );
 	}
 
 	/**

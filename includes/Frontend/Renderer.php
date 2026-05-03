@@ -18,6 +18,7 @@ namespace DFWC\Companion\Frontend;
 
 defined( 'ABSPATH' ) || exit;
 
+use DFWC\Companion\Config\Cause_Closure_Service;
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Currency_Preset_Resolver;
 use DFWC\Companion\Config\Engine_Interval_Map;
@@ -99,13 +100,20 @@ final class Renderer {
 			? Crypto_Donation_Renderer::get_data_attributes( $campaign_id )
 			: Crypto_Donation_Renderer::get_disabled_attributes();
 
+		// v2.4.0 — closure map for the donor-side overlay JS. Empty
+		// JSON object on campaigns with no closed causes (cheapest
+		// possible signal — JS skips its closure-rendering pass).
+		$closed_causes_json = (string) wp_json_encode(
+			Cause_Closure_Service::closed_causes_for_campaign( $campaign_id )
+		);
+
 		return sprintf(
 			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d"'
 				. ' data-engine="%2$s" data-active-interval="%3$s" data-config="%4$s"'
 				. ' data-intervals="%5$s" data-display="%6$s" data-context="%7$s"'
 				. ' data-language="%8$s" data-fully-funded="%9$s" data-general-fund-url="%10$s"'
 				. ' data-stock-pledge-enabled="%11$s" data-stock-mode="%12$s"'
-				. ' data-stock-overflow-url="%13$s"%14$s>%15$s</div>',
+				. ' data-stock-overflow-url="%13$s" data-closed-causes="%14$s"%15$s>%16$s</div>',
 			(int) $campaign_id,
 			esc_attr( $attrs['engine'] ),
 			esc_attr( $attrs['active_interval'] ),
@@ -119,6 +127,7 @@ final class Renderer {
 			$attrs['stock_pledge_enabled'] ? '1' : '0',
 			esc_attr( $attrs['stock_mode'] ),
 			esc_attr( $attrs['stock_overflow_url'] ),
+			esc_attr( $closed_causes_json ),
 			self::format_crypto_attrs( $crypto_attrs ),
 			$inner // already escaped inside parent's shortcode/template
 		);

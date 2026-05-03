@@ -99,11 +99,87 @@ final class Cause_Raised_Aggregator {
 	 * Invalidate the cache for a single (campaign, cause) pair. Public
 	 * so other modules (admin reconciliation flows, manual edits) can
 	 * reach in cleanly.
+	 *
+	 * v2.4.0: detects closure threshold crossings. When the prior cached
+	 * value was below the cause's goal AND the now-fresh value is at or
+	 * above, fires `dfwc_companion_cause_closed` once. Listeners can use
+	 * this to cancel matching subscriptions, post to Slack, etc. The
+	 * recurring-renewal exemption is enforced separately in
+	 * Submit_Guard — closure blocks new enrollments only.
 	 */
 	public static function invalidate( int $campaign_id, string $cause_id ): void {
 		$key = self::cache_key( $campaign_id, $cause_id );
+
+		// Capture the prior cached value (memo wins — most recent
+		// per-request) before we wipe it. Used for the threshold-crossing
+		// detection below. Skip detection when no prior value (we can't
+		// know whether this represents a "crossing" without a baseline).
+		$prior = self::$memo[ $key ] ?? null;
+		if ( null === $prior ) {
+			$transient = get_transient( $key );
+			if ( false !== $transient && is_numeric( $transient ) ) {
+				$prior = (float) $transient;
+			}
+		}
+
 		delete_transient( $key );
 		unset( self::$memo[ $key ] );
+
+		self::maybe_fire_cause_closed( $campaign_id, $cause_id, $prior );
+	}
+
+	/**
+	 * Detect a closure threshold crossing and fire the action once.
+	 * Goal-aware giving listeners (e.g., admin notification, FluentCRM
+	 * tag, Slack hook) attach to this action.
+	 *
+	 * @param float|null $prior_raised Last cached raised amount before invalidation.
+	 */
+	private static function maybe_fire_cause_closed( int $campaign_id, string $cause_id, ?float $prior_raised ): void {
+		if ( ! Cause_Goals_Schema::feature_enabled() ) {
+			return;
+		}
+
+		$row = Cause_Goals_Schema::for_cause( $campaign_id, $cause_id );
+		if ( ! $row['enabled'] || $row['goal_amount'] <= 0.0 ) {
+			return;
+		}
+
+		// Compute the fresh raised total AFTER invalidation so we get the
+		// current truth, not the now-stale cached value.
+		$fresh = self::aggregate( $campaign_id, $cause_id );
+
+		// Re-prime the cache with the fresh value so the next read
+		// doesn't re-aggregate. Single SQL save.
+		set_transient( self::cache_key( $campaign_id, $cause_id ), $fresh, self::TTL_SECONDS );
+		self::$memo[ self::cache_key( $campaign_id, $cause_id ) ] = $fresh;
+
+		// Crossing detection: prior was below goal AND fresh is at-or-above.
+		// Skipped when prior is null (no baseline; first observation).
+		if ( null !== $prior_raised && $prior_raised < $row['goal_amount'] && $fresh >= $row['goal_amount'] ) {
+			/**
+			 * Fires once when a cause's raised total crosses its goal threshold.
+			 *
+			 * Listeners can act: cancel matching recurring subscriptions,
+			 * notify admin, post to Slack, etc. The recurring-renewal
+			 * exemption (closure blocks new only) is enforced by
+			 * Submit_Guard — listeners that cancel subscriptions are
+			 * making a deliberate policy choice on top.
+			 *
+			 * @param int    $campaign_id
+			 * @param string $cause_id
+			 * @param float  $goal_amount
+			 * @param float  $raised_amount Total raised at the crossing moment.
+			 */
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- our prefixed hook
+			do_action(
+				'dfwc_companion_cause_closed',
+				$campaign_id,
+				$cause_id,
+				$row['goal_amount'],
+				$fresh
+			);
+		}
 	}
 
 	/**

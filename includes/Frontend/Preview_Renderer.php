@@ -91,6 +91,7 @@ final class Preview_Renderer {
 			data-stock-pledge-enabled="0"
 			data-stock-mode="pledge_form"
 			data-stock-overflow-url=""
+			data-closed-causes="{}"
 			data-crypto-enabled="0"
 			data-tgb-environment=""
 			data-tgb-org-id=""

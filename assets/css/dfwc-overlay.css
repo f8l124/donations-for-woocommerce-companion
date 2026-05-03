@@ -660,3 +660,66 @@
 	white-space: nowrap;
 	border: 0;
 }
+
+/* v2.4.0 — cause-closure UX. Inline prompt that appears above parent's
+ * cause picker when a donor clicks a closed cause (mode: redirect_to_cause).
+ * Mirrors the goal-met card vocabulary from v1.2.0.
+ */
+[data-dfwc-overlay-target] .dfwc-cause-closed-prompt {
+	margin: 12px 0;
+	padding: 14px 16px;
+	background: #fff8e6;
+	border-left: 3px solid #d4a200;
+	border-radius: 4px;
+	color: #5a4500;
+	font-size: 0.95em;
+}
+
+[data-dfwc-overlay-target] .dfwc-cause-closed-prompt strong {
+	display: block;
+	margin-bottom: 4px;
+	color: #3d2f00;
+}
+
+[data-dfwc-overlay-target] .dfwc-cause-closed-prompt p {
+	margin: 0 0 8px;
+}
+
+[data-dfwc-overlay-target] .dfwc-cause-closed-prompt__alternatives {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+[data-dfwc-overlay-target] .dfwc-cause-closed-prompt__alternatives li {
+	margin: 0;
+}
+
+[data-dfwc-overlay-target] .dfwc-cause-closed-prompt__alternatives button {
+	padding: 6px 12px;
+	background: #fff;
+	border: 1px solid #d4a200;
+	border-radius: 3px;
+	color: #5a4500;
+	font-size: 0.9em;
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+
+[data-dfwc-overlay-target] .dfwc-cause-closed-prompt__alternatives button:hover,
+[data-dfwc-overlay-target] .dfwc-cause-closed-prompt__alternatives button:focus {
+	background: #d4a200;
+	color: #fff;
+}
+
+[data-dfwc-overlay-target] .causes-dropdown li.dfwc-cause-closed--hidden {
+	display: none !important;
+}
+
+[data-dfwc-overlay-target] .causes-dropdown li.dfwc-cause-closed[aria-disabled="true"] {
+	cursor: not-allowed;
+	opacity: 0.5;
+}

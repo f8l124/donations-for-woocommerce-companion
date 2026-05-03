@@ -165,6 +165,12 @@ final class Assets {
 				'cryptoPending'       => __( 'Donation submitted. Awaiting on-chain confirmation…', 'dfwc-companion' ),
 				'cryptoSuccess'       => __( 'Thanks! We\'ll email you when the donation is fully confirmed on-chain.', 'dfwc-companion' ),
 				'cryptoRecordingError' => __( 'Donation received by The Giving Block. Order recording on our side delayed; we\'ll reconcile via the webhook.', 'dfwc-companion' ),
+				// v2.4.0 — cause closure copy.
+				'causeClosedGeneric'   => __( 'This cause has reached its goal. Please choose another cause.', 'dfwc-companion' ),
+				/* translators: %s: cause name (e.g., "Education") */
+				'causeMetHeading'      => __( '%s reached its goal!', 'dfwc-companion' ),
+				'causeMetCopy'         => __( 'Please consider supporting one of these still-open causes:', 'dfwc-companion' ),
+				'causeMetNoAlternatives' => __( 'All causes on this campaign have reached their goals — please consider supporting our general fund.', 'dfwc-companion' ),
 			),
 			// v2.3.0 — TGB widget URL overrides. Filterable so admins on
 			// hosted-private TGB deployments can override without forking.

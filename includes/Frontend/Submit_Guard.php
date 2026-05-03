@@ -20,6 +20,8 @@ namespace DFWC\Companion\Frontend;
 
 defined( 'ABSPATH' ) || exit;
 
+use DFWC\Companion\Config\Cause_Closure_Service;
+use DFWC\Companion\Config\Cause_Identity;
 use DFWC\Companion\Config\Config_Resolver;
 use DFWC\Companion\Config\Currency_Preset_Resolver;
 use DFWC\Companion\Config\Engine_Interval_Map;
@@ -84,6 +86,25 @@ final class Submit_Guard {
 			$this->reject(
 				__( 'This donation interval is not available for this campaign.', 'dfwc-companion' )
 			);
+		}
+
+		// Phase 14 (v2.4.0) — cause closure enforcement. Trust boundary
+		// for the donor's cause selection: client UI hides / disables
+		// closed causes per the configured mode, but devtools / curl can
+		// bypass UI. Server says no regardless of mode.
+		//
+		// Recurring renewals don't reach this AJAX action (WCS / WPS SFW
+		// route renewals through WC's subscription pipeline, not
+		// donation_to_order), so any submit landing here is a NEW donation.
+		// The recurring-renewal exemption (plan §3.4 — closure blocks
+		// new only) is upheld implicitly by the action-surface boundary.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$cause_name_raw = isset( $_POST['cause_name'] ) ? sanitize_text_field( wp_unslash( (string) $_POST['cause_name'] ) ) : '';
+		if ( '' !== $cause_name_raw ) {
+			$cause_id = (string) Cause_Identity::id_for_name( $campaign_id, $cause_name_raw );
+			if ( '' !== $cause_id && Cause_Closure_Service::is_closed( $campaign_id, $cause_id ) ) {
+				$this->reject_closed_cause( $campaign_id );
+			}
 		}
 
 		// Phase 6 — overlay per-currency min/max so donors in non-base
@@ -201,5 +222,46 @@ final class Submit_Guard {
 			422
 		);
 		// wp_send_json_error calls wp_die — execution stops here.
+	}
+
+	/**
+	 * Mode-aware closed-cause rejection. For mode C
+	 * (redirect_off_campaign), the rejection message includes the
+	 * general-fund campaign URL so the donor isn't dropped without
+	 * an alternative. Modes A and B return a simpler message —
+	 * client UI handles the alternatives surface (mode A: hide;
+	 * mode B: pick-another-cause card). Donor only sees this server
+	 * message when bypassing the UI (devtools, curl).
+	 */
+	private function reject_closed_cause( int $campaign_id ): void {
+		// We don't have the cause_id resolved at the rejection-site level
+		// without re-doing the lookup; pull mode from global default for
+		// the message-customization decision (mode C → URL-bearing
+		// message). The per-cause mode override would require resolving
+		// cause_id again — acceptable cost for the rare bypass path.
+		$global = Config_Resolver::get_global_settings();
+		$mode   = isset( $global['default_cause_closure_mode'] )
+			? (string) $global['default_cause_closure_mode']
+			: 'redirect_to_cause';
+
+		if ( 'redirect_off_campaign' === $mode ) {
+			$general_fund_id  = (int) ( $global['general_fund_campaign_id'] ?? 0 );
+			$general_fund_url = $general_fund_id > 0 && $general_fund_id !== $campaign_id
+				? (string) get_permalink( $general_fund_id )
+				: '';
+			if ( '' !== $general_fund_url ) {
+				$this->reject(
+					sprintf(
+						/* translators: %s: general-fund campaign URL */
+						__( 'This cause has reached its goal. Please continue your support via our general fund: %s', 'dfwc-companion' ),
+						esc_url_raw( $general_fund_url )
+					)
+				);
+			}
+		}
+
+		$this->reject(
+			__( 'This cause has reached its goal and is no longer accepting new donations. Please choose another cause.', 'dfwc-companion' )
+		);
 	}
 }
