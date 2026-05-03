@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.4.0
+Stable tag: 2.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -98,6 +98,17 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 2.5.0 =
+**Per-cause progress bars.** Visible reward for the v2.4.0 cause-aware investment. When admins configure per-cause goals on a campaign, donors now see inline progress bars next to each cause in parent's picker — "$3,200 of $5,000 · 64% to goal" — so they can pick the under-funded cause if they want. Closed causes show "Goal met!" with a yellow bar at 100%.
+
+* **New:** `Cause_Closure_Service::progress_for_campaign` — read service returning every cause with active goal tracking, with name + goal + raised + percent + closure flag. Reuses Cause_Raised_Aggregator's 3-layer cache.
+* **New:** `data-cause-progress` wrapper attribute carrying the JSON map. Empty `{}` on campaigns with no tracked causes (cheapest possible signal).
+* **New:** Donor-side `renderCauseProgress` in `dfwc-overlay.js`. Mounts a small progress bar + label into parent's `<li class="dropdown-item">` cause items. ARIA-compliant (`role="progressbar"`, `aria-valuenow`). Idempotent on popup-clone re-init (skips when bar already present).
+* **New:** Currency-aware label formatting via `Intl.NumberFormat` with the donor's locale + WC currency symbol. Falls back gracefully on older browsers.
+* **CSS:** Open causes: green gradient bar. Closed causes: yellow gradient bar. Smooth width-transition animation on initial render.
+* **Backward compat:** zero behavior change on campaigns without per-cause goals. The data attribute ships as `{}` and the JS bails immediately.
+* **Internal:** test coverage 383 → 389 cases (+6 progress-specific cases on Cause_Closure_Service_Test).
 
 = 2.4.0 =
 **Cause-aware giving.** Extends v1.2.0 goal-aware giving (campaign-level) down to the cause level. Admins set per-cause goals; the companion tracks per-cause raised totals from existing WC order data and closes causes when their goal is reached. Three closure modes give admins control over what donors see when a cause is fully funded. Off by default — existing sites see zero behavior change until admins opt in via Settings → Goal-aware giving.
@@ -420,6 +431,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 2.5.0 =
+Adds per-cause progress bars to parent's cause picker on campaigns with goal tracking enabled. Inline visualization — "$X of $Y · N% to goal" — so donors can pick under-funded causes. Off by default (only renders when v2.4.0 cause goals are configured). Backward-compatible.
 
 = 2.4.0 =
 New feature: per-cause goals + closure UX. When a cause hits its goal, donors see one of three modes (hide, redirect to another cause, redirect off campaign). Off by default — existing sites see zero behavior change until admins opt in via Settings → Goal-aware giving. Recurring renewals are exempt from closure enforcement (existing sustainers continue to renew). Backward-compatible.

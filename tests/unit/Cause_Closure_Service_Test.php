@@ -236,4 +236,85 @@ final class Cause_Closure_Service_Test extends TestCase {
 		$this->assertSame( $ids[1], $alts[0]['cause_id'] );
 		$this->assertSame( 'Healthcare', $alts[0]['name'] );
 	}
+
+	/* ----- progress_for_campaign() (v2.5.0) ----- */
+
+	public function test_progress_returns_empty_when_feature_disabled(): void {
+		$ids = $this->seed_two_cause_campaign();
+		Cause_Goals_Schema::set( self::CAMPAIGN_ID, array(
+			$ids[0] => array( 'enabled' => true, 'goal_amount' => 1000, 'closure_mode' => Cause_Goals_Schema::CLOSURE_MODE_HIDE ),
+		) );
+
+		// Toggle feature off.
+		update_option( 'dfwc_companion_global_settings', array( 'enable_cause_goals' => false ), false );
+
+		$this->assertSame( array(), Cause_Closure_Service::progress_for_campaign( self::CAMPAIGN_ID ) );
+	}
+
+	public function test_progress_includes_only_tracked_causes(): void {
+		$ids = $this->seed_two_cause_campaign();
+		// Track Education only; Healthcare untracked.
+		Cause_Goals_Schema::set( self::CAMPAIGN_ID, array(
+			$ids[0] => array( 'enabled' => true, 'goal_amount' => 1000, 'closure_mode' => Cause_Goals_Schema::CLOSURE_MODE_HIDE ),
+		) );
+		$this->seed_raised( $ids[0], 250.0 );
+
+		$progress = Cause_Closure_Service::progress_for_campaign( self::CAMPAIGN_ID );
+
+		$this->assertArrayHasKey( $ids[0], $progress );
+		$this->assertArrayNotHasKey( $ids[1], $progress );
+	}
+
+	public function test_progress_skips_zero_goal_causes(): void {
+		// `enabled = true` + `goal_amount = 0` is a misconfiguration; skip.
+		$ids = $this->seed_two_cause_campaign();
+		Cause_Goals_Schema::set( self::CAMPAIGN_ID, array(
+			$ids[0] => array( 'enabled' => true, 'goal_amount' => 0, 'closure_mode' => Cause_Goals_Schema::CLOSURE_MODE_HIDE ),
+		) );
+
+		$this->assertSame( array(), Cause_Closure_Service::progress_for_campaign( self::CAMPAIGN_ID ) );
+	}
+
+	public function test_progress_payload_shape_is_canonical(): void {
+		$ids = $this->seed_two_cause_campaign();
+		Cause_Goals_Schema::set( self::CAMPAIGN_ID, array(
+			$ids[0] => array( 'enabled' => true, 'goal_amount' => 1000, 'closure_mode' => Cause_Goals_Schema::CLOSURE_MODE_HIDE ),
+		) );
+		$this->seed_raised( $ids[0], 250.0 );
+
+		$progress = Cause_Closure_Service::progress_for_campaign( self::CAMPAIGN_ID );
+
+		$row = $progress[ $ids[0] ];
+		$this->assertSame( 'Education', $row['name'] );
+		$this->assertSame( 1000.0, $row['goal_amount'] );
+		$this->assertSame( 250.0, $row['raised_amount'] );
+		$this->assertSame( 25, $row['percent'] );
+		$this->assertFalse( $row['is_closed'] );
+	}
+
+	public function test_progress_clamps_overfunded_to_100_percent(): void {
+		$ids = $this->seed_two_cause_campaign();
+		Cause_Goals_Schema::set( self::CAMPAIGN_ID, array(
+			$ids[0] => array( 'enabled' => true, 'goal_amount' => 1000, 'closure_mode' => Cause_Goals_Schema::CLOSURE_MODE_HIDE ),
+		) );
+		$this->seed_raised( $ids[0], 5000.0 ); // 500% of goal
+
+		$progress = Cause_Closure_Service::progress_for_campaign( self::CAMPAIGN_ID );
+
+		$this->assertSame( 100, $progress[ $ids[0] ]['percent'], 'Overfunded causes show 100% (closure UX handles overage messaging)' );
+		$this->assertTrue( $progress[ $ids[0] ]['is_closed'] );
+	}
+
+	public function test_progress_at_exactly_goal_marks_closed(): void {
+		$ids = $this->seed_two_cause_campaign();
+		Cause_Goals_Schema::set( self::CAMPAIGN_ID, array(
+			$ids[0] => array( 'enabled' => true, 'goal_amount' => 1000, 'closure_mode' => Cause_Goals_Schema::CLOSURE_MODE_HIDE ),
+		) );
+		$this->seed_raised( $ids[0], 1000.0 );
+
+		$progress = Cause_Closure_Service::progress_for_campaign( self::CAMPAIGN_ID );
+
+		$this->assertSame( 100, $progress[ $ids[0] ]['percent'] );
+		$this->assertTrue( $progress[ $ids[0] ]['is_closed'] );
+	}
 }

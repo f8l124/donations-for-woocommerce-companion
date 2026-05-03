@@ -106,6 +106,12 @@ final class Renderer {
 		$closed_causes_json = (string) wp_json_encode(
 			Cause_Closure_Service::closed_causes_for_campaign( $campaign_id )
 		);
+		// v2.5.0 — progress map for the donor-side overlay JS to render
+		// progress bars next to each cause in parent's picker. Includes
+		// every cause with active goal tracking (open + closed).
+		$cause_progress_json = (string) wp_json_encode(
+			Cause_Closure_Service::progress_for_campaign( $campaign_id )
+		);
 
 		return sprintf(
 			'<div class="dfwc-overlay" data-dfwc-overlay-target data-campaign-id="%1$d"'
@@ -113,7 +119,8 @@ final class Renderer {
 				. ' data-intervals="%5$s" data-display="%6$s" data-context="%7$s"'
 				. ' data-language="%8$s" data-fully-funded="%9$s" data-general-fund-url="%10$s"'
 				. ' data-stock-pledge-enabled="%11$s" data-stock-mode="%12$s"'
-				. ' data-stock-overflow-url="%13$s" data-closed-causes="%14$s"%15$s>%16$s</div>',
+				. ' data-stock-overflow-url="%13$s" data-closed-causes="%14$s"'
+				. ' data-cause-progress="%15$s"%16$s>%17$s</div>',
 			(int) $campaign_id,
 			esc_attr( $attrs['engine'] ),
 			esc_attr( $attrs['active_interval'] ),
@@ -128,6 +135,7 @@ final class Renderer {
 			esc_attr( $attrs['stock_mode'] ),
 			esc_attr( $attrs['stock_overflow_url'] ),
 			esc_attr( $closed_causes_json ),
+			esc_attr( $cause_progress_json ),
 			self::format_crypto_attrs( $crypto_attrs ),
 			$inner // already escaped inside parent's shortcode/template
 		);

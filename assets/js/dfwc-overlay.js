@@ -291,6 +291,12 @@
 		// closed causes (fastest path on the common case).
 		applyCauseClosures( wrapper, scope );
 
+		// v2.5.0 — render per-cause progress bars next to each `<li>` in
+		// parent's cause picker. Reads `data-cause-progress` JSON; bar
+		// width = percent (clamped to 100). No-op when no causes have
+		// active goal tracking.
+		renderCauseProgress( wrapper, scope );
+
 		var state = {
 			interval:    initialKey,
 			amount:      0,
@@ -1484,6 +1490,102 @@
 	 */
 	function cssEscape( value ) {
 		return String( value ).replace( /\\/g, '\\\\' ).replace( /"/g, '\\"' );
+	}
+
+	/**
+	 * v2.5.0 — render per-cause progress bars next to each cause in
+	 * parent's picker. Reads `data-cause-progress` JSON, finds the
+	 * matching `<li class="dropdown-item" data-name="...">`, appends a
+	 * small bar element. Bar width = percent (0-100, clamped server-
+	 * side). No-op when no causes have active tracking.
+	 */
+	function renderCauseProgress( wrapper, scope ) {
+		var progressJson = wrapper.getAttribute( 'data-cause-progress' );
+		if ( ! progressJson || '{}' === progressJson || '' === progressJson ) {
+			return;
+		}
+
+		var progress;
+		try { progress = JSON.parse( progressJson ); }
+		catch ( e ) {
+			console.warn( '[dfwc] failed to parse data-cause-progress JSON; bailing' );
+			return;
+		}
+		if ( ! progress || 'object' !== typeof progress ) { return; }
+
+		Object.keys( progress ).forEach( function ( causeId ) {
+			var entry = progress[ causeId ];
+			if ( ! entry || ! entry.name ) { return; }
+			var li = scope.querySelector( '.causes-dropdown li.dropdown-item[data-name="' + cssEscape( entry.name ) + '"]' );
+			if ( ! li ) { return; }
+			// Avoid duplicate bars on re-init (popup clone scenario).
+			if ( li.querySelector( '.dfwc-cause-progress' ) ) { return; }
+
+			var percent = Math.max( 0, Math.min( 100, parseInt( entry.percent, 10 ) || 0 ) );
+
+			var container = document.createElement( 'div' );
+			container.className = 'dfwc-cause-progress';
+			container.setAttribute( 'role', 'progressbar' );
+			container.setAttribute( 'aria-valuemin', '0' );
+			container.setAttribute( 'aria-valuemax', '100' );
+			container.setAttribute( 'aria-valuenow', String( percent ) );
+
+			var bar = document.createElement( 'div' );
+			bar.className = 'dfwc-cause-progress__bar';
+			if ( entry.is_closed ) {
+				bar.classList.add( 'dfwc-cause-progress__bar--closed' );
+			}
+			bar.style.width = percent + '%';
+			container.appendChild( bar );
+
+			var label = document.createElement( 'span' );
+			label.className = 'dfwc-cause-progress__label';
+			label.textContent = formatProgressLabel( entry );
+			container.appendChild( label );
+
+			// Append inside the cause-text-wrap div if present (matches
+			// parent v3.9.8 markup), else append directly to the <li>.
+			var textWrap = li.querySelector( '.cause-text-wrap' );
+			( textWrap || li ).appendChild( container );
+		} );
+	}
+
+	/**
+	 * Format the small label below the progress bar. Uses the donor's
+	 * locale via `dfwcCompanion.locale` if available; falls back to
+	 * en-US. Closed causes get a "Goal met!" override; otherwise show
+	 * "$raised of $goal · N% to goal".
+	 */
+	function formatProgressLabel( entry ) {
+		var i18n = ( window.dfwcCompanion && window.dfwcCompanion.i18n ) || {};
+		if ( entry.is_closed ) {
+			return i18n.causeProgressMet || 'Goal met!';
+		}
+		var raised = formatCurrency( entry.raised_amount );
+		var goal   = formatCurrency( entry.goal_amount );
+		var tmpl   = i18n.causeProgressLabel || '%raised of %goal · %percent% to goal';
+		return tmpl
+			.replace( '%raised', raised )
+			.replace( '%goal', goal )
+			.replace( '%percent', String( entry.percent ) );
+	}
+
+	/**
+	 * Format a numeric amount as currency using the donor's locale +
+	 * configured currency symbol. Defensive for old browsers without
+	 * Intl.NumberFormat — falls back to a simple symbol+rounded-dollars
+	 * pattern.
+	 */
+	function formatCurrency( amount ) {
+		var loc = ( window.dfwcCompanion && window.dfwcCompanion.locale ) || 'en-US';
+		var sym = ( window.dfwcCompanion && window.dfwcCompanion.currencySymbol ) || '$';
+		var num = Math.round( ( parseFloat( amount ) || 0 ) );
+		try {
+			if ( typeof Intl !== 'undefined' && Intl.NumberFormat ) {
+				return sym + new Intl.NumberFormat( loc ).format( num );
+			}
+		} catch ( e ) { /* fall through */ }
+		return sym + num.toLocaleString();
 	}
 
 	/**

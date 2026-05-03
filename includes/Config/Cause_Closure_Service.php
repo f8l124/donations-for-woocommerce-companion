@@ -131,6 +131,64 @@ final class Cause_Closure_Service {
 	}
 
 	/**
+	 * v2.5.0 — progress data for every cause on a campaign that has goal
+	 * tracking enabled. Used by the donor renderer to show inline
+	 * progress bars in parent's cause picker (next to each `<li>`).
+	 *
+	 * Distinct from `closed_causes_for_campaign` which only returns
+	 * CLOSED causes — progress visualization needs OPEN causes too so
+	 * donors see "this cause is 60% to goal" alongside the picker.
+	 *
+	 * Returns only causes with `enabled=true` AND `goal_amount > 0` —
+	 * untracked causes have no progress bar (no signal to show).
+	 *
+	 * Percent is clamped to 100 (overfunded causes show as full, not
+	 * 120% — the closure UX handles overage messaging separately).
+	 *
+	 * @return array<string,array{
+	 *     name:string,
+	 *     goal_amount:float,
+	 *     raised_amount:float,
+	 *     percent:int,
+	 *     is_closed:bool
+	 * }>
+	 */
+	public static function progress_for_campaign( int $campaign_id ): array {
+		if ( ! Cause_Goals_Schema::feature_enabled() || $campaign_id < 1 ) {
+			return array();
+		}
+
+		$ids = Cause_Identity::for_campaign( $campaign_id );
+		if ( empty( $ids ) ) {
+			return array();
+		}
+
+		$out = array();
+		foreach ( $ids as $cause_id ) {
+			$cause_id = (string) $cause_id;
+			$row      = Cause_Goals_Schema::for_cause( $campaign_id, $cause_id );
+
+			// Skip causes without active goal tracking — they don't
+			// participate in progress visualization.
+			if ( ! $row['enabled'] || $row['goal_amount'] <= 0.0 ) {
+				continue;
+			}
+
+			$raised  = Cause_Raised_Aggregator::for_cause( $campaign_id, $cause_id );
+			$percent = (int) min( 100, floor( ( $raised / $row['goal_amount'] ) * 100 ) );
+
+			$out[ $cause_id ] = array(
+				'name'          => (string) Cause_Identity::name_for_id( $campaign_id, $cause_id ),
+				'goal_amount'   => $row['goal_amount'],
+				'raised_amount' => $raised,
+				'percent'       => $percent,
+				'is_closed'     => $raised >= $row['goal_amount'],
+			);
+		}
+		return $out;
+	}
+
+	/**
 	 * Compile a list of OTHER open causes on the same campaign, with
 	 * their human-readable names. Used by mode B (redirect_to_cause)
 	 * so the donor sees a "pick one of these instead" prompt.

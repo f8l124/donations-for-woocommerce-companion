@@ -133,6 +133,9 @@ final class Context_Augmenter {
 		$closed_causes_json = (string) wp_json_encode(
 			Cause_Closure_Service::closed_causes_for_campaign( $campaign_id )
 		);
+		$cause_progress_json = (string) wp_json_encode(
+			Cause_Closure_Service::progress_for_campaign( $campaign_id )
+		);
 
 		// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped
 		printf(
@@ -141,7 +144,8 @@ final class Context_Augmenter {
 				. ' data-intervals="%5$s" data-display="%6$s" data-context="%7$s"'
 				. ' data-language="%8$s" data-fully-funded="%9$s" data-general-fund-url="%10$s"'
 				. ' data-stock-pledge-enabled="%11$s" data-stock-mode="%12$s"'
-				. ' data-stock-overflow-url="%13$s" data-closed-causes="%14$s"%15$s>',
+				. ' data-stock-overflow-url="%13$s" data-closed-causes="%14$s"'
+				. ' data-cause-progress="%15$s"%16$s>',
 			(int) $campaign_id,
 			esc_attr( $attrs['engine'] ),
 			esc_attr( $attrs['active_interval'] ),
@@ -156,6 +160,7 @@ final class Context_Augmenter {
 			esc_attr( (string) ( $attrs['stock_mode'] ?? 'pledge_form' ) ),
 			esc_attr( (string) ( $attrs['stock_overflow_url'] ?? '' ) ),
 			esc_attr( $closed_causes_json ),
+			esc_attr( $cause_progress_json ),
 			Renderer::format_crypto_attrs( $crypto_attrs )
 		);
 		// phpcs:enable

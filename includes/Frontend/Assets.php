@@ -171,6 +171,10 @@ final class Assets {
 				'causeMetHeading'      => __( '%s reached its goal!', 'dfwc-companion' ),
 				'causeMetCopy'         => __( 'Please consider supporting one of these still-open causes:', 'dfwc-companion' ),
 				'causeMetNoAlternatives' => __( 'All causes on this campaign have reached their goals — please consider supporting our general fund.', 'dfwc-companion' ),
+				// v2.5.0 — per-cause progress bar copy.
+				/* translators: %raised, %goal, %percent are dynamic tokens replaced client-side (e.g., "$3,200 of $5,000 · 64% to goal") */
+				'causeProgressLabel'   => __( '%raised of %goal · %percent% to goal', 'dfwc-companion' ),
+				'causeProgressMet'     => __( 'Goal met!', 'dfwc-companion' ),
 			),
 			// v2.3.0 — TGB widget URL overrides. Filterable so admins on
 			// hosted-private TGB deployments can override without forking.
