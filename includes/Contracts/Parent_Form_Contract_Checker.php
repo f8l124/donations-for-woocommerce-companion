@@ -248,6 +248,17 @@ final class Parent_Form_Contract_Checker {
 				Parent_Form_Contract::SEVERITY_WARNING,
 				array( $this, 'check_advanced_intervals_engine' )
 			),
+			// Phase 14 (v2.4.0) — cause goals orphan detection. Warns
+			// when a campaign has cause goals configured but parent's
+			// cause-display-option is disabled (the goals will never
+			// apply because parent isn't rendering the cause picker).
+			new Parent_Form_Contract(
+				'cause_goals_health',
+				__( 'Cause goals not orphaned', 'dfwc-companion' ),
+				__( 'Per-cause goals only apply when the parent plugin is rendering causes on the campaign. This check flags campaigns where the goals are configured but the parent cause picker is disabled.', 'dfwc-companion' ),
+				Parent_Form_Contract::SEVERITY_INFO,
+				array( $this, 'check_cause_goals_health' )
+			),
 			// Phase 13 (v2.3.0) — TGB connection health. Auto-passes when
 			// crypto is disabled (no signal to surface). Warns when the
 			// global toggle is on but credentials are missing or invalid.
@@ -574,6 +585,85 @@ final class Parent_Form_Contract_Checker {
 			}
 		}
 		return new Parent_Form_Contract_Report( $results, (int) ( $data['checked_at'] ?? 0 ) );
+	}
+
+	/**
+	 * v2.4.0 — cause goals orphan detection.
+	 *
+	 * Auto-passes silently when the master toggle is off. Otherwise
+	 * scans for campaigns that have cause-goals configured AND parent's
+	 * `wc-donation-cause-display-option` is `disabled`. The combination
+	 * means the admin set per-cause goals on a campaign whose cause
+	 * picker isn't even being rendered to donors — the goals will never
+	 * apply. Warn with the count + a sample of affected campaign IDs.
+	 */
+	public function check_cause_goals_health(): Parent_Form_Contract_Result {
+		if ( ! \DFWC\Companion\Config\Cause_Goals_Schema::feature_enabled() ) {
+			return Parent_Form_Contract_Result::pass(
+				'cause_goals_health',
+				__( 'Cause goals disabled (no health signal needed).', 'dfwc-companion' )
+			);
+		}
+
+		// Find campaigns with cause-goals overrides. The serialized
+		// overrides meta carries `cause_goals` as a sub-key; LIKE-match
+		// then verify by re-parsing.
+		$query = new \WP_Query(
+			array(
+				'post_type'              => 'wc-donation',
+				'post_status'            => 'publish',
+				'fields'                 => 'ids',
+				'posts_per_page'         => 200,
+				'meta_query'             => array(
+					array(
+						'key'     => \DFWC\Companion\Config\Cause_Goals_Schema::OVERRIDES_META_KEY,
+						'value'   => 'cause_goals',
+						'compare' => 'LIKE',
+					),
+				),
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+			)
+		);
+
+		$orphans = array();
+		foreach ( $query->posts as $post_id ) {
+			$campaign_id  = (int) $post_id;
+			$has_goals    = ! empty( \DFWC\Companion\Config\Cause_Goals_Schema::for_campaign( $campaign_id ) );
+			$parent_disp  = (string) get_post_meta( $campaign_id, 'wc-donation-cause-display-option', true );
+			if ( $has_goals && 'show' !== $parent_disp ) {
+				$orphans[] = $campaign_id;
+			}
+		}
+
+		if ( empty( $orphans ) ) {
+			return Parent_Form_Contract_Result::pass(
+				'cause_goals_health',
+				__( 'No orphaned cause goals — every configured campaign has the parent cause picker enabled.', 'dfwc-companion' )
+			);
+		}
+
+		$sample = array_slice( $orphans, 0, 5 );
+		return Parent_Form_Contract_Result::warn(
+			'cause_goals_health',
+			sprintf(
+				/* translators: 1: number of orphaned campaigns, 2: sample campaign IDs */
+				_n(
+					'%1$d campaign has cause goals configured but parent\'s cause picker is disabled (sample IDs: %2$s).',
+					'%1$d campaigns have cause goals configured but parent\'s cause picker is disabled (sample IDs: %2$s).',
+					count( $orphans ),
+					'dfwc-companion'
+				),
+				count( $orphans ),
+				implode( ', ', $sample )
+			),
+			__( 'Open the affected campaigns and either enable parent\'s "Donation Cause" display setting or clear the per-cause goals from the meta box.', 'dfwc-companion' ),
+			array(
+				'orphan_count' => count( $orphans ),
+				'orphan_ids'   => implode( ',', $orphans ),
+			)
+		);
 	}
 
 	/**

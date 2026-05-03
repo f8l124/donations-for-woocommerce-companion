@@ -4,7 +4,7 @@ Tags: woocommerce, donations, recurring, subscriptions, fundraising
 Requires at least: 6.2
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.3.0
+Stable tag: 2.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -98,6 +98,23 @@ This plugin stores no donor data. Configuration data (interval presets, etc.) is
 * Per-currency preset amounts require WCML (WPML WooCommerce Multilingual) for the active-currency lookup to resolve automatically. Without WCML, the companion falls back to the WC base currency. WCPay Multi-Currency and Aelia Currency Switcher are supported via the `dfwc_companion_active_currency` filter (5-line snippet documented in `docs/multi-currency.md`).
 
 == Changelog ==
+
+= 2.4.0 =
+**Cause-aware giving.** Extends v1.2.0 goal-aware giving (campaign-level) down to the cause level. Admins set per-cause goals; the companion tracks per-cause raised totals from existing WC order data and closes causes when their goal is reached. Three closure modes give admins control over what donors see when a cause is fully funded. Off by default — existing sites see zero behavior change until admins opt in via Settings → Goal-aware giving.
+
+* **New:** Stable cause IDs. The companion mints UUIDs per cause and threads them through cart → order line item meta. Renames in parent's UI preserve the ID, so historical orders carrying that cause keep counting toward the renamed cause. Forward queries use the cause-id; legacy orders fall back to name-match.
+* **New:** Per-cause goal storage under `_dfwc_companion_overrides.cause_goals`. Each cause can have its own goal amount + closure mode override. Defaults inherit from a global `default_cause_closure_mode` setting.
+* **New:** "Per-cause goals" meta box on every campaign edit screen (visible when global cause goals is on). Track checkbox + Goal amount + Closure mode dropdown per cause. The Inherit option label dynamically shows the resolved global default.
+* **New:** Three closure modes per cause. **Hide:** silently drops the closed cause from the donor's picker. **Redirect to another cause** (default): click is intercepted, inline yellow card renders above the picker with buttons for each open alternative. **Redirect off campaign:** click redirects donor to the configured general fund campaign.
+* **New:** Server-side enforcement via Submit_Guard. Closed causes reject AJAX submits with mode-aware messaging — Redirect-off-campaign mode includes the general fund URL. Defense in depth even when client UI is bypassed (DevTools, curl).
+* **New:** `dfwc_companion_cause_closed` action fires once when a cause's raised total crosses its goal threshold. Listeners (admin notification, FluentCRM tag, Slack hook, custom recurring-cancellation policy) can act on the milestone.
+* **New:** Diagnostic check `cause_goals_health` flags campaigns where per-cause goals are configured but parent's cause-display-option is disabled (orphaned config — goals will never apply).
+* **Recurring renewals are exempt from closure enforcement.** Existing sustainers continue to renew normally even when their target cause closes; the closure blocks NEW enrollments only. Admins who want to forcibly cancel renewals can listen on `dfwc_companion_cause_closed` and cancel matching subscriptions explicitly.
+* **HPOS-aware aggregation.** Single SQL query joining order_items + order_itemmeta + the orders table, branching on `OrderUtil::custom_orders_table_usage_is_enabled` for HPOS sites. Line-item meta storage is unchanged across HPOS migration.
+* **3-layer cache.** Per-request memo (closure renderer hits the same cause many times) → 5-minute transient (cross-request consistency) → SQL aggregate. Invalidator listens on woocommerce_order_status_completed / processing / refunded.
+* **Internal:** test coverage 374 → 437 cases. Six new sub-phase commits (14.A-F): Cause_Identity (stable IDs + cart hook + order-item hook); Cause_Goals_Schema (storage + admin meta box); Cause_Raised_Aggregator (HPOS-aware aggregation); Cause_Closure_Service (decision composite); Submit_Guard extension; dfwc-overlay.js extension (3 closure modes UX).
+* **Backward compat:** zero behavior change on sites that don't enable cause goals. The closure data attribute (`data-closed-causes`) ships as `{}` on campaigns with no closed causes — cheapest possible signal for the donor JS to skip its closure-rendering pass.
+* **Architectural note:** v2.4.0 builds on the v2.3.0 channel pattern (storage + admin + REST + Phase 9 fire). Both sub-features (cause-goals + crypto) become channels in the v3.0.0 `Donor_Channel` interface refactor (per `plans/v2/v3-channel-api-and-extraction.md`).
 
 = 2.3.0 =
 **Crypto donations via The Giving Block.** Third donor channel alongside cash and stock. Donors complete the wallet handshake inside The Giving Block widget; companion records the order and fires the existing Phase 9 hook so analytics + CRM listeners see crypto donations identically to cash. KYC/AML, supported coins, and on-chain confirmation are owned entirely by The Giving Block — companion never touches blockchain.
@@ -403,6 +420,9 @@ Headline release. Solves the admin-scale problem: a nonprofit with 50+ campaigns
 * HPOS + Cart Block compatibility declared.
 
 == Upgrade Notice ==
+
+= 2.4.0 =
+New feature: per-cause goals + closure UX. When a cause hits its goal, donors see one of three modes (hide, redirect to another cause, redirect off campaign). Off by default — existing sites see zero behavior change until admins opt in via Settings → Goal-aware giving. Recurring renewals are exempt from closure enforcement (existing sustainers continue to renew). Backward-compatible.
 
 = 2.3.0 =
 New feature: crypto donations via The Giving Block. Off by default — existing sites see zero behavior change until admins opt in via WooCommerce → Donations Companion → Crypto Donations. Donors get a "Donate Crypto" button below the cash form on enabled campaigns; The Giving Block handles wallet UX and KYC. Phase 9 hooks fire identically to cash donations with `$context = 'crypto'` so existing CRM/analytics listeners pick them up without code changes. Backward-compatible.
